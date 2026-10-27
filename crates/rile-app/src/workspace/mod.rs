@@ -10,6 +10,7 @@ pub mod preview;
 mod remote_ops;
 mod rewards;
 mod search;
+mod sources;
 mod speedtest;
 mod tabs;
 pub mod text_edit;
@@ -102,6 +103,7 @@ pub struct Workspace {
     pub tabs: Vec<Vec<Entity<Pane>>>,
     pub active_pane: usize,
     pub dual: bool,
+    pub(crate) drive_menu: Option<(usize, Entity<gpui_kit::component::menu::PopupMenu>)>,
     pub settings: Settings,
     pub clipboard: FileClipboard,
     /// Connection the clipboard paths belong to (None = local).
@@ -132,6 +134,7 @@ pub struct Workspace {
     /// Sidebar destination currently under a drag (animated feedback).
     pub sidebar_drop_hover: Option<PathBuf>,
     pub sidebar_visible: bool,
+    sidebar_transition: Option<(std::time::Instant, f32)>,
     /// Measured width of each pane slot (0 until first painted). Layout
     /// inside a slot follows this, not the window width.
     pub slot_widths: [f32; 2],
@@ -208,6 +211,7 @@ impl Workspace {
             tabs: Vec::new(),
             active_pane: 0,
             dual: false,
+            drive_menu: None,
             settings,
             clipboard: FileClipboard::default(),
             clipboard_conn: None,
@@ -229,6 +233,7 @@ impl Workspace {
             search_form: None,
             sidebar_drop_hover: None,
             sidebar_visible: true,
+            sidebar_transition: None,
             slot_widths: [0.; 2],
             inspector_overlay: false,
             overview: Default::default(),
@@ -275,6 +280,7 @@ impl Workspace {
     fn create_pane(&mut self, location: Location, window: &mut Window, cx: &mut Context<Self>) -> Entity<Pane> {
         let s = &self.settings;
         let (hidden, key, order, view) = (s.show_hidden, s.sort_key, s.sort_order, s.default_view);
+        let view = if self.dual { ViewKind::List } else { view };
         let pane = cx.new(|cx| Pane::new(location, hidden, key, order, view, cx));
         let subs = [
             cx.subscribe_in(&pane, window, Self::on_pane_event),
@@ -351,6 +357,7 @@ impl Workspace {
 
     pub fn set_dual(&mut self, dual: bool, window: &mut Window, cx: &mut Context<Self>) {
         self.dual = dual;
+        self.drive_menu = None;
         if dual && self.panes.len() < 2 {
             let loc = self.pane().read(cx).location.clone();
             self.add_pane(loc, window, cx);
@@ -359,6 +366,10 @@ impl Workspace {
             self.panes.swap(0, 1);
             self.tabs.swap(0, 1);
             self.active_pane = 0;
+        }
+        let view = if dual { ViewKind::List } else { self.settings.default_view };
+        for pane in self.all_panes() {
+            pane.update(cx, |pane, cx| pane.set_view(view, cx));
         }
         self.sync_active_flags(cx);
         self.settings.dual_pane = dual;
@@ -423,7 +434,11 @@ impl Workspace {
                 }
             }
             PaneEvent::Drop { paths, src_conn, dest, dest_conn, copy } => {
-                self.transfer_between(paths.clone(), src_conn.clone(), dest.clone(), dest_conn.clone(), *copy, window, cx);
+                if self.dual {
+                    self.confirm_transfer(paths.clone(), src_conn.clone(), dest.clone(), dest_conn.clone(), *copy, window, cx);
+                } else {
+                    self.transfer_between(paths.clone(), src_conn.clone(), dest.clone(), dest_conn.clone(), *copy, window, cx);
+                }
             }
             PaneEvent::DropExternal { paths, dest, dest_conn } => {
                 self.transfer_between(paths.clone(), None, dest.clone(), dest_conn.clone(), true, window, cx);
@@ -561,6 +576,7 @@ impl Workspace {
     }
 
     pub fn set_view(&mut self, view: ViewKind, window: &mut Window, cx: &mut Context<Self>) {
+        if self.dual { return; }
         self.pane().update(cx, |p, cx| p.set_view(view, cx));
         self.settings.default_view = view;
         self.save_settings(window, cx);
@@ -692,7 +708,7 @@ impl Workspace {
         self.set_view(ViewKind::Columns, window, cx);
     }
 
-    fn toggle_dual(&mut self, _: &ToggleDualPane, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn toggle_dual(&mut self, _: &ToggleDualPane, window: &mut Window, cx: &mut Context<Self>) {
         self.set_dual(!self.dual, window, cx);
     }
 
@@ -741,6 +757,11 @@ impl Workspace {
             .h_full()
             .bg(crate::theme::chrome(cx).browser)
             .when(self.dual && ix == 1, |d| d.border_l_1().border_color(hairline))
+            .when(self.dual && matches!(location, Location::Home | Location::Gallery | Location::PluginPage { .. }), |d| {
+                d.child(h_flex().px(px(12.)).py(px(4.))
+                    .when(ix == 1, |d| d.justify_end())
+                    .child(self.render_drive_selector(ix, cx)))
+            })
             .child(content)
             // Records the slot's width so its layout can adapt to it.
             .child(
@@ -769,9 +790,7 @@ impl Workspace {
             return measured;
         }
         let mut w: f32 = window.viewport_size().width.into();
-        if self.sidebar_visible {
-            w -= sidebar::width(self, window);
-        }
+        w -= self.sidebar_display_width(window);
         if self.inspector_inline(window) {
             w -= inspector::width(window);
         }
@@ -793,8 +812,23 @@ impl Workspace {
     }
 
     pub(crate) fn toggle_sidebar(&mut self, _: &ToggleSidebar, _: &mut Window, cx: &mut Context<Self>) {
+        let now = std::time::Instant::now();
+        let from = self.sidebar_fraction(now);
         self.sidebar_visible = !self.sidebar_visible;
+        self.sidebar_transition = Some((now, from));
         cx.notify();
+    }
+
+    fn sidebar_fraction(&self, now: std::time::Instant) -> f32 {
+        let target = if self.sidebar_visible { 1. } else { 0. };
+        let Some((started, from)) = self.sidebar_transition else { return target };
+        let t = (now.duration_since(started).as_secs_f32() / 0.2).clamp(0., 1.);
+        // Cubic ease-out; reversals start at the currently displayed width.
+        from + (target - from) * (1. - (1. - t).powi(3))
+    }
+
+    pub(crate) fn sidebar_display_width(&self, window: &Window) -> f32 {
+        sidebar::width(self, window) * self.sidebar_fraction(std::time::Instant::now())
     }
 
     fn on_zoom_event(
@@ -853,7 +887,23 @@ impl Render for Workspace {
                 .bottom(px(if views::chrome::width_class(window) <= views::chrome::Width::Phone { 90. } else { 64. }))
                 .child(crate::jobs::render_panel(self, window, cx))
         });
-        let sidebar = self.sidebar_visible.then(|| sidebar::render(self, window, cx).into_any_element());
+        if let Some((started, _)) = self.sidebar_transition {
+            if started.elapsed() >= std::time::Duration::from_millis(200) {
+                self.sidebar_transition = None;
+            } else {
+                cx.on_next_frame(window, |_, _, cx| cx.notify());
+            }
+        }
+        let sidebar_width = self.sidebar_display_width(window);
+        let sidebar = (self.sidebar_visible || self.sidebar_transition.is_some()).then(|| {
+            div()
+                .w(px(sidebar_width))
+                .h_full()
+                .flex_none()
+                .overflow_hidden()
+                .child(sidebar::render(self, window, cx))
+                .into_any_element()
+        });
         let toolbar = views::chrome::render_toolbar(self, window, cx);
         let tabs = views::chrome::render_tab_strip(self, window, cx);
         let status = statusbar::render(self, window, cx);
@@ -944,6 +994,8 @@ impl Render for Workspace {
             .on_action(cx.listener(Self::view_columns))
             .on_action(cx.listener(Self::toggle_dual))
             .on_action(cx.listener(Self::switch_pane))
+            .on_action(cx.listener(Self::select_left_drive))
+            .on_action(cx.listener(Self::select_right_drive))
             .on_action(cx.listener(Self::open_in_other_pane))
             .on_action(cx.listener(Self::copy))
             .on_action(cx.listener(Self::cut))

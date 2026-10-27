@@ -228,6 +228,8 @@ impl Workspace {
         let id = info.id.clone();
         let conn_id = info.id.clone();
         let label = format!("Connecting to {}", remote::label(&id));
+        // The user may switch panes or tabs while the connection is opening.
+        let target_pane = self.pane().downgrade();
         self.start_op_then(
             label,
             window,
@@ -243,7 +245,12 @@ impl Workspace {
             },
             move |this, window, cx| {
                 let path = start.lock().unwrap().clone();
-                this.open_location(Location::Remote { conn: conn_id, path }, window, cx);
+                this.editing_path = false;
+                _ = target_pane.update(cx, |pane, cx| {
+                    pane.navigate(Location::Remote { conn: conn_id, path }, cx);
+                    if pane.active { pane.focus(window, cx); }
+                });
+                cx.notify();
             },
         );
     }

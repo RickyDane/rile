@@ -501,6 +501,10 @@ async fn filter_search_and_dual_pane(cx: &mut TestAppContext) {
     let first = cx.update(|cx| ws.read(cx).panes[0].clone());
     cx.update(|cx| first.update(cx, |p, cx| p.cursor_to(2, false, cx)));
     press(cx, window, &["f5"]);
+    assert!(!root.join("dest/top.txt").exists());
+    press(cx, window, &["escape"]);
+    assert!(!root.join("dest/top.txt").exists());
+    press(cx, window, &["f5", "enter"]);
     wait_until(cx, "copied to other pane", |_| root.join("dest/top.txt").exists());
     assert!(root.join("top.txt").exists());
 
@@ -514,6 +518,31 @@ async fn filter_search_and_dual_pane(cx: &mut TestAppContext) {
     })
     .unwrap();
     wait_until(cx, "moved by drop", |_| root.join("a/top.txt").exists() && !root.join("top.txt").exists());
+}
+
+#[gpui_kit::test]
+async fn dual_pane_move_requires_confirmation(cx: &mut TestAppContext) {
+    use gpui_kit::component::WindowExt;
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    let dest = root.join("dest");
+    fs::create_dir(&dest).unwrap();
+    fs::write(root.join("file.txt"), "keep me").unwrap();
+    let (window, ws) = setup_with(&root, "update_check_on_start = false\nplugins_enabled = false\ndual_pane = true\n", None, cx);
+    wait_for_names(cx, window, &ws, &["dest", "file.txt"]).await;
+    let panes = cx.update(|cx| ws.read(cx).panes.clone());
+    cx.update(|cx| {
+        panes[1].update(cx, |p, cx| p.navigate(Location::Dir(dest.clone()), cx));
+        panes[0].update(cx, |p, cx| p.cursor_to(1, false, cx));
+    });
+    press(cx, window, &["f6"]);
+    assert!(cx.update_window(window, |_, window, cx| window.has_active_dialog(cx)).unwrap());
+    assert!(root.join("file.txt").exists());
+    assert!(!dest.join("file.txt").exists());
+    press(cx, window, &["escape"]);
+    assert!(root.join("file.txt").exists());
+    press(cx, window, &["f6", "enter"]);
+    wait_until(cx, "confirmed move", |_| dest.join("file.txt").exists() && !root.join("file.txt").exists());
 }
 
 #[gpui_kit::test]
@@ -563,6 +592,92 @@ async fn dual_pane_starts_with_left_active(cx: &mut TestAppContext) {
         (ws.active_pane, ws.panes.iter().map(|p| p.read(cx).active).collect::<Vec<_>>())
     });
     assert_eq!((active, flags), (0, vec![true, false]));
+}
+
+#[gpui_kit::test]
+async fn backspace_navigates_only_the_active_pane(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    let child = root.join("child");
+    fs::create_dir(&child).unwrap();
+    let (window, ws) = setup_with(&root, "update_check_on_start = false\nplugins_enabled = false\ndual_pane = true\n", None, cx);
+    wait_for_names(cx, window, &ws, &["child"]).await;
+    let panes = cx.update(|cx| ws.read(cx).panes.clone());
+    cx.update(|cx| {
+        for pane in &panes {
+            pane.update(cx, |p, cx| p.navigate(Location::Dir(child.clone()), cx));
+        }
+    });
+    press(cx, window, &["backspace"]);
+    assert_eq!(cx.update(|cx| panes[0].read(cx).location.clone()), Location::Dir(root.clone()));
+    assert_eq!(cx.update(|cx| panes[1].read(cx).location.clone()), Location::Dir(child.clone()));
+    press(cx, window, &["tab", "backspace"]);
+    assert_eq!(cx.update(|cx| panes[1].read(cx).location.clone()), Location::Dir(root.clone()));
+    // Backspace in the filter edits text instead of navigating history.
+    let modifier = if cfg!(target_os = "macos") { "cmd" } else { "ctrl" };
+    press(cx, window, &[&format!("{modifier}-f"), "a", "b", "backspace"]);
+    assert_eq!(cx.update(|cx| ws.read(cx).search_input.read(cx).value().to_string()), "a");
+    assert_eq!(cx.update(|cx| panes[1].read(cx).location.clone()), Location::Dir(root));
+}
+
+#[gpui_kit::test]
+async fn dual_pane_only_allows_list_view(cx: &mut TestAppContext) {
+    use rile_core::settings::ViewKind;
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &[]).await;
+    press(cx, window, &["cmd-2", "cmd-shift-d"]);
+    assert!(cx.update(|cx| ws.read(cx).all_panes().iter().all(|p| p.read(cx).view == ViewKind::List)));
+    press(cx, window, &["cmd-2", "cmd-3", "tab", "cmd-2", "cmd-3"]);
+    assert!(cx.update(|cx| ws.read(cx).all_panes().iter().all(|p| p.read(cx).view == ViewKind::List)));
+    cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.open_tab(Location::Dir(root.clone()), window, cx))).unwrap();
+    assert!(cx.update(|cx| ws.read(cx).all_panes().iter().all(|p| p.read(cx).view == ViewKind::List)));
+    assert_eq!(cx.update(|cx| ws.read(cx).settings.default_view), ViewKind::Grid);
+    press(cx, window, &["cmd-shift-d"]);
+    assert_eq!(cx.update(|cx| ws.read(cx).pane().read(cx).view), ViewKind::Grid);
+    press(cx, window, &["cmd-3"]);
+    assert_eq!(cx.update(|cx| ws.read(cx).pane().read(cx).view), ViewKind::Columns);
+}
+
+#[gpui_kit::test]
+async fn drive_selector_shortcuts_target_each_pane(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    let (window, ws) = setup_with(&root, "update_check_on_start = false\nplugins_enabled = false\ndual_pane = true\n", None, cx);
+    wait_for_names(cx, window, &ws, &[]).await;
+    let modifier = if cfg!(target_os = "macos") { "cmd" } else { "ctrl" };
+    for (key, slot) in [("f2", 1), ("f1", 0)] {
+        press(cx, window, &[&format!("{modifier}-{key}")]);
+        assert_eq!(cx.update(|cx| ws.read(cx).drive_menu.as_ref().map(|(slot, _)| *slot)), Some(slot));
+        assert_eq!(cx.update(|cx| ws.read(cx).active_pane), slot);
+        press(cx, window, &["escape"]);
+        assert!(cx.update(|cx| ws.read(cx).drive_menu.is_none()));
+    }
+    let drive = root.join("mounted-drive");
+    {
+        use gpui_kit::{Modifiers, MouseButton, VisualTestContext};
+        let mut vcx = VisualTestContext::from_window(window, cx);
+        vcx.run_until_parked();
+        let button = vcx.debug_bounds("drive-selector-0").expect("left drive selector").center();
+        vcx.simulate_mouse_down(button, MouseButton::Left, Modifiers::none());
+        vcx.simulate_mouse_up(button, MouseButton::Left, Modifiers::none());
+        vcx.run_until_parked();
+    }
+    assert_eq!(cx.update(|cx| ws.read(cx).drive_menu.as_ref().map(|(slot, _)| *slot)), Some(0));
+    press(cx, window, &["escape"]);
+    fs::create_dir(&drive).unwrap();
+    cx.update(|cx| ws.update(cx, |ws, cx| {
+        ws.volumes = vec![rile_core::places::Volume {
+            name: "Test drive".into(), mount_point: drive.clone(),
+            total: 100, available: 50, removable: true,
+        }];
+        cx.notify();
+    }));
+    press(cx, window, &[&format!("{modifier}-f2"), "down", "enter"]);
+    assert_eq!(cx.update(|cx| ws.read(cx).panes[1].read(cx).location.clone()), Location::Dir(drive));
+    assert_eq!(cx.update(|cx| ws.read(cx).panes[0].read(cx).location.clone()), Location::Dir(root));
+    assert!(cx.update(|cx| ws.read(cx).drive_menu.is_none()));
 }
 
 /// Regression: dialogs built inside a workspace action must not read the
@@ -908,6 +1023,47 @@ async fn tabs_open_switch_and_close(cx: &mut TestAppContext) {
     wait_for_names(cx, window, &ws, &["inner.txt"]).await;
 }
 
+/// The header toggle opens a second pane and either pane can close it.
+#[gpui_kit::test]
+async fn dual_pane_header_toggle(cx: &mut TestAppContext) {
+    use gpui_kit::{Modifiers, MouseButton, VisualTestContext};
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &[]).await;
+
+    let mut vcx = VisualTestContext::from_window(window, cx);
+    for (selector, expected) in [("dual-pane-toggle-0", true), ("dual-pane-toggle-1", false)] {
+        vcx.run_until_parked();
+        let toggle = vcx.debug_bounds(selector).expect("dual-pane header toggle").center();
+        vcx.simulate_mouse_down(toggle, MouseButton::Left, Modifiers::none());
+        vcx.simulate_mouse_up(toggle, MouseButton::Left, Modifiers::none());
+        vcx.run_until_parked();
+        assert_eq!(cx.update(|cx| ws.read(cx).dual), expected);
+    }
+}
+
+/// Rapid keyboard toggles reverse the slide and settle at the requested width.
+#[gpui_kit::test]
+async fn sidebar_animation_reverses_and_finishes(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &[]).await;
+    let width = cx.update_window(window, |_, window, cx| ws.read(cx).sidebar_display_width(window)).unwrap();
+
+    press(cx, window, &["cmd-shift-s", "cmd-shift-s"]);
+    assert!(cx.update(|cx| ws.read(cx).sidebar_visible));
+    std::thread::sleep(Duration::from_millis(250));
+    let restored = cx.update_window(window, |_, window, cx| ws.read(cx).sidebar_display_width(window)).unwrap();
+    assert_eq!(restored, width);
+
+    press(cx, window, &["cmd-shift-s"]);
+    std::thread::sleep(Duration::from_millis(250));
+    let collapsed = cx.update_window(window, |_, window, cx| ws.read(cx).sidebar_display_width(window)).unwrap();
+    assert_eq!(collapsed, 0.);
+}
+
 /// The sidebar header toggle hides it; the toolbar toggle brings it back.
 #[gpui_kit::test]
 async fn sidebar_toggle_button_moves_with_visibility(cx: &mut TestAppContext) {
@@ -940,7 +1096,7 @@ async fn sidebar_toggle_button_moves_with_visibility(cx: &mut TestAppContext) {
 }
 
 /// The inspector loads real metadata (properties + image dimensions) for
-/// the selection, and the sidebar toggles with ⌥⌘S.
+/// the selection, and the sidebar toggles with ⇧⌘S.
 #[gpui_kit::test]
 async fn inspector_metadata_and_sidebar_toggle(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
@@ -962,9 +1118,9 @@ async fn inspector_metadata_and_sidebar_toggle(cx: &mut TestAppContext) {
     assert_eq!(dims, Some((3, 2)));
     assert!(has_props);
 
-    press(cx, window, &["cmd-alt-s"]);
+    press(cx, window, &["cmd-shift-s"]);
     assert!(!cx.update(|cx| ws.read(cx).sidebar_visible));
-    press(cx, window, &["cmd-alt-s"]);
+    press(cx, window, &["cmd-shift-s"]);
     assert!(cx.update(|cx| ws.read(cx).sidebar_visible));
 
     // Favorites (folders) moved to ⌃⌘T (⌘T is New Tab); with a file

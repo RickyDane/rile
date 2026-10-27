@@ -468,19 +468,45 @@ impl Workspace {
     }
 
     pub fn copy_to_other(&mut self, _: &CopyToOtherPane, window: &mut Window, cx: &mut Context<Self>) {
-        let src_conn = self.pane().read(cx).conn();
-        match self.other_dir(cx) {
-            Some((dest, dest_conn)) => self.transfer_between(self.selection(cx), src_conn, dest, dest_conn, true, window, cx),
-            None => window.push_notification(Notification::info("Open dual-pane view (⇧⌘D) to copy to the other pane"), cx),
-        }
+        self.confirm_transfer_to_other(true, window, cx);
     }
 
     pub fn move_to_other(&mut self, _: &MoveToOtherPane, window: &mut Window, cx: &mut Context<Self>) {
+        self.confirm_transfer_to_other(false, window, cx);
+    }
+
+    fn confirm_transfer_to_other(&mut self, copy: bool, window: &mut Window, cx: &mut Context<Self>) {
+        let verb = if copy { "Copy" } else { "Move" };
+        let Some((dest, dest_conn)) = self.other_dir(cx) else {
+            window.push_notification(Notification::info(format!("Open dual-pane view (⇧⌘D) to {} to the other pane", verb.to_lowercase())), cx);
+            return;
+        };
+        let paths = self.selection(cx);
         let src_conn = self.pane().read(cx).conn();
-        match self.other_dir(cx) {
-            Some((dest, dest_conn)) => self.transfer_between(self.selection(cx), src_conn, dest, dest_conn, false, window, cx),
-            None => window.push_notification(Notification::info("Open dual-pane view (⇧⌘D) to move to the other pane"), cx),
-        }
+        self.confirm_transfer(paths, src_conn, dest, dest_conn, copy, window, cx);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn confirm_transfer(
+        &mut self, paths: Vec<PathBuf>, src_conn: Option<String>, dest: PathBuf,
+        dest_conn: Option<String>, copy: bool, window: &mut Window, cx: &mut Context<Self>,
+    ) {
+        if paths.is_empty() { return; }
+        let verb = if copy { "Copy" } else { "Move" };
+        let destination = match &dest_conn {
+            Some(conn) => format!("{}:{}", crate::remote::label(conn), dest.display()),
+            None => dest.display().to_string(),
+        };
+        let ws = cx.entity().downgrade();
+        dialogs::confirm(
+            format!("{verb} {} to:\n{destination}?", item_count(paths.len())),
+            verb, false, window, cx,
+            move |window, cx| {
+                _ = ws.update(cx, |this, cx| {
+                    this.transfer_between(paths.clone(), src_conn.clone(), dest.clone(), dest_conn.clone(), copy, window, cx);
+                });
+            },
+        );
     }
 
     /// Copies the selected paths, or the current folder's when nothing is selected.

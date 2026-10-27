@@ -421,7 +421,7 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
             .when(!(rail && mac), |d| d.child(wordmark))
             .when(!rail, |d| {
                 d.child(
-                    icon_button("sidebar-toggle", IconName::PanelLeft, format!("Toggle sidebar ({}⌥S)", mod_key()), &ch)
+                    icon_button("sidebar-toggle", IconName::PanelLeft, format!("Toggle sidebar (⇧{}S)", mod_key()), &ch)
                         .debug_selector(|| "sidebar-toggle".into())
                         .on_click(cx.listener(|this, _, w, cx| this.toggle_sidebar(&crate::actions::ToggleSidebar, w, cx))),
                 )

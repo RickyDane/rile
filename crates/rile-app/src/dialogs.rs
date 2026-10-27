@@ -131,6 +131,7 @@ pub fn open_shortcuts(window: &mut Window, cx: &mut App) {
                 "Navigation",
                 vec![
                     (format!("{m}[  {m}]"), "Back, forward"),
+                    ("Backspace".into(), "Back in focused pane"),
                     (format!("{m}↑"), "Enclosing folder"),
                     (format!("⇧{m}H"), "Home"),
                     (format!("{m}L"), "Go to path"),
@@ -146,10 +147,11 @@ pub fn open_shortcuts(window: &mut Window, cx: &mut App) {
                 vec![
                     (format!("{m}1  {m}2  {m}3"), "List, icons, columns"),
                     (format!("⇧{m}D"), "Dual pane"),
+                    (format!("{m}F1  {m}F2"), "Select left, right drive"),
                     ("Tab".into(), "Switch pane"),
                     ("F5  F6".into(), "Copy, move to other pane"),
                     (format!("⇧{m}P"), "Inspector"),
-                    (format!("⌥{m}S"), "Sidebar"),
+                    (format!("⇧{m}S"), "Sidebar"),
                     (format!("⇧{m}."), "Hidden files"),
                     (format!("⇧{m}T"), "Light, dark"),
                     (format!("{m}K"), "AI assistant"),

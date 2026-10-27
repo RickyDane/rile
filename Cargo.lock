@@ -6948,7 +6948,7 @@ dependencies = [
 
 [[package]]
 name = "rile-app"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -6981,7 +6981,7 @@ dependencies = [
 
 [[package]]
 name = "rile-core"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "dirs 6.0.0",
@@ -6996,7 +6996,7 @@ dependencies = [
 
 [[package]]
 name = "rile-plugins"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "dirs 6.0.0",
@@ -7008,7 +7008,7 @@ dependencies = [
 
 [[package]]
 name = "rile-remote"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -7032,7 +7032,7 @@ dependencies = [
 
 [[package]]
 name = "rile-services"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "brotli",

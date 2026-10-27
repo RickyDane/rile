@@ -1,58 +1,91 @@
 # Rile
 
-A fast, index-free file explorer written in Rust with [GPUI](https://gpui-kit.com).
+**A fast file explorer built in Rust with [GPUI](https://gpui-kit.com).**
 
-## UI preview
+Browse local files and remote servers, preview what matters, and search your files. Rile brings tabs, multiple views, file operations, and on-device intelligence together in a native desktop interface.
 
-The approved Native design lives as an interactive browser prototype in [`mockups/`](mockups/README.md) (`python3 -m http.server 4173 --bind 127.0.0.1 --directory mockups`, then visit http://localhost:4173). The native app implements it; the prototype's sample figures are illustrative only, while the app's Overview shows live data.
+## See it in action
 
-## Features
-- List, grid (with image thumbnails) and Miller-column views; dual-pane mode (Tab, F5 copy / F6 move to other pane)
-- Native dark chrome: sidebar (favorites, locations, devices with eject), toolbar with breadcrumbs, folder tabs (⌘T / ⌘W / ⌃Tab), inspector (⇧⌘P), path bar, icon-size zoom
-- Overview start page (Home, separate from your home folder): live disk usage, the top level of your places by kind, recent changes from file dates and recently modified files — computed on demand, no index or history
-- File-type artwork in the icon grid, back/forward history, `rile <folder>` opens a folder, `rile <file>` reveals a file
-- Copy/cut/paste/duplicate/rename/trash/delete, new file/folder, with animated progress + cancel; drag & drop (Alt = copy), drops from Finder, spring-loaded sidebar targets; drag-to-select (rubber band)
-- FTP / FTPS / SFTP connections (sidebar → Network): browse, Quick Look, upload/download by drag, F5/F6 or paste, rename, delete; passwords in the Keychain
-- Real app icons, mouse back/forward buttons
-- Quick Look (Space), preview panel, Properties (⌘I) with recursive folder totals
-- Search runs on Enter, without filtering the current listing while you type; recursive search (name contains/glob/regex, content, size, date, type, .gitignore), optional Spotlight backend; folders you open are remembered so searching them again is instant (no background crawling, re-checked on disk, can be turned off or cleared in Settings → Search)
-- Sidebar devices show how full they are; settings and a background jobs panel (copies, moves, server transfers with progress and cancel) sit at the bottom of the sidebar
-- On-device AI (Apple Foundation Models via `spotlight-llm`, Apple Vision): type in the main search field and press Shift+Enter (or click the AI icon) for intelligent search, with results directly in the file list; Enter keeps regular recursive search. AI reviews remembered file/folder names by meaning across languages (e.g. “outgoing invoices” → “Ausgangsrechnungen”), then browses promising folders and uses smart tags; summaries of files and folders; "Describe & Tag with AI" for images (labels + OCR) and documents
-- Photo library (sidebar → Photos): every image in your home folder and Photos library, grouped by month, searchable by content once described
-- Centered transfer window (current file + overall progress, speed, ETA; "Run in Background"), compress/extract (zip, 7z, tar, tar.gz/br/zst, gz, br, zst with selectable level), Open With and per-type default programs
-- Quick Look PDF viewer and syntax highlighting; recursive name search on servers
-- Four icon styles (Lucide outline; Phosphor filled, duotone, light — MIT, regenerate with `crates/rile-app/scripts/gen_icon_sets.py`), glass effect, resizable sidebar, any startup folder
-- Sandboxed WebAssembly plugins (context-menu commands, previewers) — see `plugins/README.md`
-- Themes: system/light/dark, accent colors, density; GitHub-release self-updater; ⌘/ lists all shortcuts
+These screenshots show the native application using a small sample folder. The sidebar and available devices reflect the machine on which they were captured.
 
-## Build
+| List view and inspector | Grid view |
+| :---: | :---: |
+| ![Rile list view with the folder inspector open](docs/screenshots/native-list.png) | ![Rile grid view showing sample folders and files](docs/screenshots/native-grid.png) |
+
+An interactive design prototype is also available in [`mockups/`](mockups/README.md); its sample data is illustrative and is not the native application.
+
+## What you can do
+
+- **Browse your way:** switch between list, thumbnail grid, and Miller-column views; open folder tabs or work in two panes. Navigate with breadcrumbs, history, favorites, and mounted devices.
+- **Work with files:** copy, move, rename, duplicate, trash, or delete; drag and drop between folders, Finder, and remote servers. Transfers support progress, cancellation, and background execution.
+- **Inspect and preview:** use Quick Look, the inspector, or Properties for files and recursive folder totals. Preview PDFs, images, and syntax-highlighted text.
+- **Search on demand:** search recursively by name, glob, regex, content, size, date, and type, with `.gitignore` support and an optional Spotlight backend. A discovery index remembers visited folders for faster subsequent searches; it can be disabled or cleared in Settings.
+- **Connect to servers:** browse FTP, FTPS, and SFTP locations, transfer files, and manage remote entries. Credentials are stored in the Keychain.
+- **Explore storage and photos:** the Overview shows live disk usage and recent file activity; Photos groups images from your home folder and Photos library by month.
+- **Use on-device AI:** on supported Apple systems, search by meaning, summarize files and folders, and describe or tag images and documents. Press **Shift+Enter** in search for AI search; **Enter** runs regular search.
+- **Make it yours:** choose themes, accents, density, icon styles, and a startup folder. Extend context menus and previews with sandboxed [WebAssembly plugins](plugins/README.md).
+- **Handle archives:** compress and extract ZIP, 7z, tar and supported compressed formats, with selectable compression levels.
+
+## Getting started
+
+### Run from source
+
+Install a recent stable Rust toolchain (the workspace selects `stable` in [`rust-toolchain.toml`](rust-toolchain.toml)), then run:
+
 ```sh
-cargo run -p rile-app            # Rust stable >= 1.99 (pinned in rust-toolchain.toml)
-cargo run -p rile-app --no-default-features   # without AI (non-Apple platforms build this way automatically)
-cargo test --workspace
+cargo run -p rile-app
 ```
 
-### macOS app icon and bundle
+To start in a specific folder, pass its path after `--`. Passing a file reveals it instead:
 
-The Pathline icons are embedded in the executable, so the Dock follows the
-selected accent immediately, even with `cargo run`. The Finder icon uses the
-default blue artwork; the running app's Dock icon reflects the selected accent.
-Build a Finder-launchable app with `sh crates/rile-app/scripts/bundle_macos.sh`
-(or add `--debug`); the result is `target/release/Rile.app` (`target/debug/Rile.app`
-with `--debug`). Copy that bundle to Applications if desired.
+```sh
+cargo run -p rile-app -- ~/Documents
+```
 
-The accent artwork is in `crates/rile-app/assets/app-icons/`. After editing it,
-regenerate the checked-in `.icns` files with
-`sh crates/rile-app/scripts/gen_app_icon.sh` (macOS and `brew install librsvg`).
-Normal builds do not need the icon-generation tools.
+The default `ai` feature uses Apple Foundation Models on Apple Silicon with macOS 26 or later. To build without it:
 
-## Layout
-| Crate | Purpose |
-|---|---|
-| `rile-core` | listing, sorting, file ops, history, settings, watcher |
-| `rile-services` | search, properties, preview loading, updater, volume unmount |
-| `rile-plugins` | wasmtime component host + WIT (`wit/rile-plugin.wit`) |
-| `rile-remote` | FTP/FTPS (suppaftp) and SFTP (russh) behind a blocking `RemoteFs` API, keychain credentials |
-| `rile-app` | GPUI application |
+```sh
+cargo run -p rile-app --no-default-features
+```
 
-Settings live in `~/Library/Application Support/rile/settings.toml` (override with `RILE_CONFIG_DIR`); plugins in its `plugins/` folder.
+### Build a macOS app
+
+```sh
+sh crates/rile-app/scripts/bundle_macos.sh
+```
+
+The bundle is written to `target/release/Rile.app`. Add `--debug` for `target/debug/Rile.app`. The release packaging script, [`scripts/bundle-macos.sh`](scripts/bundle-macos.sh), also supports signing, notarization, and DMG creation. Normal builds do not require the icon-generation tools; see [`gen_app_icon.sh`](crates/rile-app/scripts/gen_app_icon.sh) if you change the icon artwork.
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `⌘T` / `⌘W` | Open / close a tab |
+| `⌃Tab` | Switch tabs |
+| `Tab` | Switch panes in dual-pane mode |
+| `F5` / `F6` | Copy / move to the other pane |
+| `Space` | Quick Look |
+| `⌘I` | Properties |
+| `⇧⌘P` | Toggle inspector |
+| `⌘/` | Show all shortcuts |
+
+## Configuration and plugins
+
+On macOS, settings are stored in `~/Library/Application Support/rile/settings.toml`. Set `RILE_CONFIG_DIR` to use another configuration directory. Plugins live in its `plugins/` folder; see the [plugin guide](plugins/README.md) for development and installation details.
+
+## Development
+
+```sh
+cargo build --workspace --locked
+cargo test --workspace --locked
+```
+
+| Crate | Responsibility |
+| --- | --- |
+| `rile-app` | GPUI application and interface |
+| `rile-core` | File listing, operations, settings, history, and watching |
+| `rile-services` | Search, previews, archives, properties, and system services |
+| `rile-remote` | FTP/FTPS and SFTP backends and credentials |
+| `rile-plugins` | Wasmtime component host and plugin interface |
+
+The workspace declares the MIT license in [`Cargo.toml`](Cargo.toml).

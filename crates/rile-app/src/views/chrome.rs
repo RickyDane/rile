@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{
-    Disableable, Sizable, h_flex,
+    Disableable, Selectable, Sizable, h_flex,
     button::{Button, ButtonVariants},
     input::Input,
     menu::{DropdownMenu, PopupMenuItem},
@@ -142,7 +142,7 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
     let location = pane.location.clone();
     let mac = cfg!(target_os = "macos");
     let lights = mac && !window.is_fullscreen();
-    let sidebar_width = if ws.sidebar_visible { crate::sidebar::width(ws, window) } else { 0. };
+    let sidebar_width = ws.sidebar_display_width(window);
     let inspector_on = ws.inspector_visible(window);
     let compact = width <= Width::Phone;
 
@@ -150,7 +150,7 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
         .flex_none()
         .when(!ws.sidebar_visible || compact, |d| {
             d.child(
-                icon_button("sidebar-toggle", IconName::PanelLeft, format!("Toggle sidebar ({}⌥S)", mod_key()), &ch)
+                icon_button("sidebar-toggle", IconName::PanelLeft, format!("Toggle sidebar (⇧{}S)", mod_key()), &ch)
                     .debug_selector(|| "sidebar-toggle".into())
                     .on_click(cx.listener(|this, _, w, cx| this.toggle_sidebar(&ToggleSidebar, w, cx))),
             )
@@ -653,6 +653,7 @@ pub fn render_browser(ws: &mut Workspace, pane: Entity<Pane>, slot: usize, windo
         .bg(ch.browser_toolbar)
         .border_b_1()
         .border_color(ch.hairline)
+        .when(dual && slot == 0, |d| d.child(ws.render_drive_selector(slot, cx)))
         .child(
             h_flex()
                 .flex_1()
@@ -687,10 +688,17 @@ pub fn render_browser(ws: &mut Workspace, pane: Entity<Pane>, slot: usize, windo
                             })),
                     )
                 })
-                .child(switch)
+                .when(!dual, |d| d.child(switch))
+                .child(
+                    icon_button(("dual-pane-toggle", slot), IconName::Columns2, format!("Dual pane (⇧{m}D)"), &ch)
+                        .debug_selector(move || format!("dual-pane-toggle-{slot}"))
+                        .selected(dual)
+                        .on_click(cx.listener(|this, _, w, cx| this.toggle_dual(&ToggleDualPane, w, cx))),
+                )
                 .when(!tight, |d| d.child(sort_menu))
                 .child(more_menu),
-        );
+        )
+        .when(dual && slot == 1, |d| d.child(ws.render_drive_selector(slot, cx)));
 
     v_flex()
         .id(("browser", slot))
