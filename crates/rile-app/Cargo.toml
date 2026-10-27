@@ -28,6 +28,8 @@ smol.workspace = true
 humansize.workspace = true
 chrono.workspace = true
 imagesize = "0.13"
+url = "2"
+data-url = "0.3"
 # Thumbnails (same crate/version gpui decodes with).
 image = { version = "0.25", default-features = false, features = ["bmp", "gif", "ico", "jpeg", "png", "tiff", "webp"] }
 

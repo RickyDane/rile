@@ -51,6 +51,11 @@ fn find_syntax<'a>(ss: &'a SyntaxSet, hint: &str) -> Option<&'a SyntaxReference>
         return None;
     }
     let lower = hint.to_lowercase();
+    let lower = match lower.rsplit('.').next().unwrap_or(&lower) {
+        "slnx" | "csproj" | "fsproj" | "vbproj" | "vcxproj" | "props" | "targets" | "resx" | "config" => "xml".to_string(),
+        "slnf" => "json".to_string(),
+        _ => lower,
+    };
     let ext = hint.rsplit_once('.').map(|(_, e)| e).filter(|e| !e.is_empty());
     let syntax = ss
         .find_syntax_by_extension(hint)
@@ -63,7 +68,64 @@ fn find_syntax<'a>(ss: &'a SyntaxSet, hint: &str) -> Option<&'a SyntaxReference>
 /// Human-readable language name for a hint (e.g. `"rs"` → `"Rust"`), for a
 /// label in the preview. `None` if the hint matches no known syntax.
 pub fn language_name(hint: &str) -> Option<String> {
+    if is_solution(hint) {
+        return Some("Visual Studio Solution".into());
+    }
     find_syntax(&assets().syntaxes, hint).map(|s| s.name.clone())
+}
+
+fn is_solution(hint: &str) -> bool {
+    hint.trim().rsplit('.').next().is_some_and(|e| e.eq_ignore_ascii_case("sln"))
+}
+
+/// Semantic runs for the line-oriented Visual Studio solution format.
+/// Shared by the preview and the live editor; offsets are UTF-8 bytes.
+pub fn solution_tokens(text: &str) -> Vec<(Range<usize>, &'static str)> {
+    let text = highlight_limit(text);
+    let mut tokens = Vec::new();
+    let mut offset = 0;
+    for line in LinesWithEndings::from(text) {
+        let trimmed = line.trim_start_matches([' ', '\t', '\u{feff}']);
+        if trimmed.starts_with('#') {
+            let start = line.len() - trimmed.len();
+            tokens.push((offset + start..offset + line.trim_end().len(), "comment"));
+        } else {
+            let mut chars = line.char_indices().peekable();
+            while let Some((start, ch)) = chars.next() {
+                let kind = if ch == '"' {
+                    for (_, c) in chars.by_ref() {
+                        if c == '"' { break; }
+                    }
+                    Some("string")
+                } else if ch == '{' {
+                    for (_, c) in chars.by_ref() {
+                        if c == '}' { break; }
+                    }
+                    Some("constant")
+                } else if ch.is_ascii_alphanumeric() || ch == '_' {
+                    while chars.peek().is_some_and(|(_, c)| c.is_ascii_alphanumeric() || *c == '_' || *c == '.') {
+                        chars.next();
+                    }
+                    let end = chars.peek().map_or(line.len(), |(i, _)| *i);
+                    match &line[start..end] {
+                        "Project" | "EndProject" | "Global" | "EndGlobal" | "GlobalSection" | "EndGlobalSection"
+                        | "ProjectSection" | "EndProjectSection" | "preSolution" | "postSolution" | "preProject" | "postProject" => Some("keyword"),
+                        "VisualStudioVersion" | "MinimumVisualStudioVersion" => Some("property"),
+                        word if word.starts_with(|c: char| c.is_ascii_digit()) => Some("number"),
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
+                if let Some(kind) = kind {
+                    let end = chars.peek().map_or(line.len(), |(i, _)| *i);
+                    tokens.push((offset + start..offset + end, kind));
+                }
+            }
+        }
+        offset += line.len();
+    }
+    tokens
 }
 
 fn rgb(c: Color) -> u32 {
@@ -93,6 +155,21 @@ fn highlight_limit(text: &str) -> &str {
 /// the UI draws those (and any gaps) in its own text color. Only the first
 /// [`MAX_BYTES`] / [`MAX_LINES`] of the text are highlighted.
 pub fn highlight(text: &str, language_hint: Option<&str>, dark: bool) -> Option<Vec<Span>> {
+    if is_solution(language_hint?) {
+        return Some(solution_tokens(text).into_iter().map(|(range, kind)| {
+            let color = match (kind, dark) {
+                ("comment", true) => 0x65737e,
+                ("comment", false) => 0x969896,
+                ("string", true) => 0xa3be8c,
+                ("string", false) => 0x183691,
+                ("keyword", true) => 0xb48ead,
+                ("keyword", false) => 0xa71d5d,
+                (_, true) => 0xd08770,
+                (_, false) => 0x0086b3,
+            };
+            Span { range, color, bold: false, italic: false }
+        }).collect());
+    }
     let a = assets();
     let syntax = find_syntax(&a.syntaxes, language_hint?)?;
     let theme: &Theme = a.themes.themes.get(if dark { DARK_THEME } else { LIGHT_THEME })?;
@@ -171,6 +248,42 @@ mod tests {
         assert!(spans.iter().any(|s| &py[s.range.clone()] == "def"));
         assert_eq!(language_name("py").as_deref(), Some("Python"));
         assert_eq!(language_name("Makefile").as_deref(), Some("Makefile"));
+    }
+
+    #[test]
+    fn highlights_dotnet_files() {
+        let solution = "\u{feff}Microsoft Visual Studio Solution File, Format Version 12.00\r\n# Visual Studio Version 17\r\nProject(\"{FAE04EC0}\") = \"héllo\", \"App\\App.csproj\", \"{1234}\"\r\nEndProject\r\nGlobal\r\n\tGlobalSection(SolutionConfigurationPlatforms) = preSolution\r\n\tEndGlobalSection\r\nEndGlobal\r\n";
+        let tokens = solution_tokens(solution);
+        for (word, kind) in [("Project", "keyword"), ("\"héllo\"", "string"), ("12.00", "number"), ("# Visual Studio Version 17", "comment"), ("preSolution", "keyword")] {
+            assert!(tokens.iter().any(|(r, k)| &solution[r.clone()] == word && *k == kind), "{word}");
+        }
+        for dark in [true, false] {
+            let spans = highlight(solution, Some("App.SLN"), dark).unwrap();
+            check_spans(solution, &spans);
+            assert!(!spans.is_empty());
+            for ext in ["csproj", "fsproj", "vbproj", "slnx", "props", "targets", "resx", "config"] {
+                let xml = "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup /></Project>";
+                let spans = highlight(xml, Some(ext), dark).unwrap();
+                assert!(!spans.is_empty(), "{ext}");
+                check_spans(xml, &spans);
+                assert_eq!(language_name(&format!("App.{ext}")).as_deref(), Some("XML"));
+            }
+        }
+        assert_eq!(language_name("sln").as_deref(), Some("Visual Studio Solution"));
+        assert_eq!(language_name("App.slnf").as_deref(), Some("JSON"));
+        assert!(!highlight("{\"solution\": {\"path\": \"App.sln\"}}", Some("slnf"), true).unwrap().is_empty());
+    }
+
+    #[test]
+    fn solution_tokens_handle_partial_strings_and_limit_input() {
+        for text in ["Project(\"unfinished héllo", "{unfinished", "# comment", "\u{feff}# comment\r\n", ""] {
+            let spans = highlight(text, Some("sln"), true).unwrap();
+            check_spans(text, &spans);
+        }
+        let text = "Global\n".repeat(MAX_LINES + 10);
+        let tokens = solution_tokens(&text);
+        assert_eq!(tokens.len(), MAX_LINES);
+        assert!(tokens.last().unwrap().0.end <= highlight_limit(&text).len());
     }
 
     #[test]

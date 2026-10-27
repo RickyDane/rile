@@ -14,6 +14,7 @@ fn open_backend(info: &ConnectionInfo, secret: Option<&str>) -> Result<Box<dyn B
     Ok(match info.protocol {
         Protocol::Ftp | Protocol::Ftps => Box::new(crate::ftp::FtpBackend::connect(info, secret)?),
         Protocol::Sftp => Box::new(crate::sftp::SftpBackend::connect(info, secret)?),
+        Protocol::Smb => Box::new(crate::smb::SmbBackend::connect(info, secret)?),
     })
 }
 
@@ -109,7 +110,12 @@ impl RemoteFs for Reconnecting {
     }
 
     fn remove(&mut self, path: &str) -> Result<()> {
-        self.simple(|b| backend::remove_recursive(b, path))
+        // Protect share roots before recursive removal visits any children.
+        let path = paths::normalize(path);
+        if self.info.protocol == Protocol::Smb && !path.trim_matches('/').contains('/') {
+            anyhow::bail!("refusing to remove an SMB server or share root");
+        }
+        self.simple(|b| backend::remove_recursive(b, &path))
     }
 
     fn rename(&mut self, from: &str, to: &str) -> Result<()> {

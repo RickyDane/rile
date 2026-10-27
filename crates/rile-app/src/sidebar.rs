@@ -76,9 +76,9 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
             return div().mx(px(5.)).mt(px(6.)).mb(px(10.)).h(px(1.)).bg(ch.hairline);
         }
         div()
-            .px(px(12.))
-            .pt(px(14.))
-            .pb(px(7.))
+            .px(px(10.))
+            .pt(px(10.))
+            .pb(px(4.))
             .text_size(px(11.))
             .font_weight(FontWeight::SEMIBOLD)
             .text_color(ch.sidebar_heading)
@@ -113,10 +113,10 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
                     ),
                 )
             })
-            .h(px(if rail { 34. } else { 31. }))
+            .h(px(if rail { 34. } else { 28. }))
             .my(px(1.))
             .when(rail, |d| d.justify_center())
-            .when(!rail, |d| d.px(px(12.)).gap(px(11.)))
+            .when(!rail, |d| d.px(px(10.)).gap(px(9.)))
             .rounded(px(6.))
             .text_size(px(12.))
             .cursor_pointer()
@@ -350,7 +350,7 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
                 head = head.child(
                     div()
                         .id("add-connection")
-                        .mt(px(8.))
+                        .mt(px(6.))
                         .mr(px(8.))
                         .p_0p5()
                         .rounded_sm()
@@ -395,12 +395,6 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
     }
 
     let mac = cfg!(target_os = "macos") && !window.is_fullscreen();
-    let wordmark = h_flex()
-        .text_size(px(if rail { 23. } else if sidebar_width < 180. { 21. } else { 25. }))
-        .font_weight(FontWeight::BOLD)
-        .text_color(ch.text_strong)
-        .child("rile")
-        .child(div().text_color(ch.accent).child("."));
     let brand = window_drag(
         h_flex()
             .id("sidebar-header")
@@ -416,9 +410,6 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
             })
             // The traffic lights sit in the header's left half on macOS.
             .when(!rail && !mac, |d| d.justify_start())
-            // The rail is narrower than the traffic lights: leave their
-            // corner empty (the toolbar shifts right to clear them too).
-            .when(!(rail && mac), |d| d.child(wordmark))
             .when(!rail, |d| {
                 d.child(
                     icon_button("sidebar-toggle", IconName::PanelLeft, format!("Toggle sidebar (⇧{}S)", mod_key()), &ch)
@@ -492,8 +483,8 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
         h_flex()
             .flex_none()
             .px(px(if sidebar_width < 180. { 10. } else { 16. }))
-            .pt(px(8.))
-            .pb(px(14.))
+            .pt(px(6.))
+            .pb(px(10.))
             .gap(px(4.))
             .child(settings_button)
             .child(jobs_button)

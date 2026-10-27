@@ -26,6 +26,70 @@ use crate::icons::icon_for_path;
 
 const MAX_TEXT: usize = 512 * 1024;
 
+/// Explicitly allow filesystem images only for local Markdown documents.
+/// GPUI's default Markdown resolver deliberately treats all links as URIs.
+fn markdown_image_source(document: &std::path::Path, uri: &gpui_kit::SharedUri) -> gpui_kit::ImageSource {
+    if let Ok(data) = data_url::DataUrl::process(uri.as_ref()) {
+        let mime = data.mime_type();
+        if let Some(format) = gpui_kit::ImageFormat::from_mime_type(&format!("{}/{}", mime.type_, mime.subtype)) {
+            if let Ok((bytes, _)) = data.decode_to_vec() {
+                return Arc::new(gpui_kit::Image::from_bytes(format, bytes)).into();
+            }
+        }
+    }
+
+    let resolved = url::Url::parse(uri.as_ref()).ok().or_else(|| {
+        let document = std::path::absolute(document).ok()?;
+        url::Url::from_file_path(document).ok()?.join(uri.as_ref()).ok()
+    });
+    if let Some(path) = resolved.and_then(|url| url.to_file_path().ok()) {
+        return path.into();
+    }
+    uri.clone().into()
+}
+
+#[cfg(test)]
+mod markdown_image_tests {
+    use super::markdown_image_source;
+    use gpui_kit::{ImageSource, Resource};
+    use std::path::Path;
+
+    #[test]
+    fn local_images_resolve_relative_to_document() {
+        let document = Path::new("/project/docs/README.md");
+        for (link, expected) in [
+            ("screenshots/native-list.png", "/project/docs/screenshots/native-list.png"),
+            ("../images/screen%20shot.png", "/project/images/screen shot.png"),
+            ("/images/photo.png", "/images/photo.png"),
+            ("file:///images/screen%20shot.png", "/images/screen shot.png"),
+            ("images/photo.png?raw=true#preview", "/project/docs/images/photo.png"),
+        ] {
+            let ImageSource::Resource(Resource::Path(path)) = markdown_image_source(document, &link.into()) else {
+                panic!("expected a filesystem image for {link}");
+            };
+            assert_eq!(path.as_ref(), Path::new(expected));
+        }
+    }
+
+    #[test]
+    fn web_images_remain_uri_resources() {
+        let link = "https://example.com/image.png";
+        let ImageSource::Resource(Resource::Uri(uri)) = markdown_image_source(Path::new("/docs/README.md"), &link.into()) else {
+            panic!("expected a web image");
+        };
+        assert_eq!(uri.as_ref(), link);
+    }
+
+    #[test]
+    fn embedded_images_remain_decoded() {
+        let link = "data:image/png;base64,iVBORw0KGgo=";
+        assert!(matches!(
+            markdown_image_source(Path::new("/docs/README.md"), &link.into()),
+            ImageSource::Image(_)
+        ));
+    }
+}
+
 pub enum Loaded {
     Preview(Preview),
     /// A PDF: its page count; pages render progressively into
@@ -443,7 +507,10 @@ impl Workspace {
                 .child(gpui_kit::component::text::TextView::markdown(
                     gpui_kit::ElementId::Name(format!("md-{}", path.display()).into()),
                     SharedString::from(text.clone()),
-                ).selectable(true))
+                ).selectable(true).when(self.preview.loaded_conn.is_none(), |view| {
+                    let document = path.clone();
+                    view.image_source(move |uri| markdown_image_source(&document, uri))
+                }))
                 .into_any_element(),
             Loaded::Preview(Preview::Text { .. }) | Loaded::Plugin(_) if !lines.is_empty() => {
                 let truncated = matches!(&**loaded, Loaded::Preview(Preview::Text { truncated: true, .. }));

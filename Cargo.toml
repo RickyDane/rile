@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
 members = ["crates/rile-core", "crates/rile-services", "crates/rile-plugins", "crates/rile-remote", "crates/rile-app"]
-exclude = ["plugins"]
+exclude = ["plugins", "vendor/smb"]
 
 [workspace.package]
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 license = "MIT"
 
@@ -13,7 +13,7 @@ rile-core = { path = "crates/rile-core" }
 rile-services = { path = "crates/rile-services" }
 rile-plugins = { path = "crates/rile-plugins" }
 rile-remote = { path = "crates/rile-remote" }
-gpui-kit = "0.8.1"
+gpui-kit = { version = "0.8.1", features = ["syntect"] }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
@@ -39,3 +39,6 @@ debug = false
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+[patch.crates-io]
+smb = { path = "vendor/smb" }

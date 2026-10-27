@@ -1,7 +1,7 @@
 //! App updater UI: background check, release notes, download + install.
 
 use gpui_kit::component::{
-    WindowExt, button::{Button, ButtonVariants}, notification::Notification, v_flex,
+    WindowExt, button::{Button, ButtonVariants}, notification::Notification, text::TextView, v_flex,
 };
 use gpui_kit::{AppContext, Context, InteractiveElement, ParentElement, StatefulInteractiveElement, Styled, Task, Window, div, px};
 use rile_services::updater::{self, Release, UpdateConfig};
@@ -110,7 +110,7 @@ impl Workspace {
                                 .text_size(px(12.))
                                 .line_height(px(19.))
                                 .text_color(ch.text)
-                                .child(notes),
+                                .child(TextView::markdown("release-notes-markdown", notes).selectable(true)),
                         ),
                     )
                     .children((!can_install).then(|| {

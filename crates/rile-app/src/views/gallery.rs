@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{
@@ -18,8 +18,8 @@ use gpui_kit::component::{
 };
 use gpui_kit::{
     AnyElement, AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ListAlignment, ListState, MouseButton,
-    ObjectFit, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, StyledImage, Subscription, Task,
-    WeakEntity, Window, div, img, list, prelude::FluentBuilder, px,
+    ObjectFit, ParentElement, Pixels, Point, Render, ScrollDelta, SharedString, Size, StatefulInteractiveElement, Styled, StyledImage, Subscription, Task,
+    WeakEntity, Window, div, img, list, prelude::FluentBuilder, px, relative,
 };
 use rile_core::history::Location;
 use rile_services::tags::{self, TagKind};
@@ -30,6 +30,90 @@ use crate::workspace::Workspace;
 const GAP: f32 = 4.;
 const HEADER_HEIGHT: f32 = 46.;
 const MIN_TILE: f32 = 132.;
+
+#[derive(Default)]
+struct PhotoPan {
+    offset: Point<Pixels>,
+    drag: Option<Point<Pixels>>,
+    viewport: Size<Pixels>,
+    image: Size<f32>,
+}
+
+impl PhotoPan {
+    fn constrain(&mut self, scale: f32) {
+        let width = f32::from(self.viewport.width);
+        let height = f32::from(self.viewport.height);
+        if self.image.width <= 0. || self.image.height <= 0. {
+            self.offset = Point::default();
+            return;
+        }
+        // ObjectFit::Contain leaves letterboxing: only the actual image's
+        // overflow can be panned, not the enlarged element's empty margins.
+        let fit = (width / self.image.width).min(height / self.image.height);
+        let x = px(((self.image.width * fit * scale - width) / 2.).max(0.));
+        let y = px(((self.image.height * fit * scale - height) / 2.).max(0.));
+        self.offset.x = self.offset.x.clamp(-x, x);
+        self.offset.y = self.offset.y.clamp(-y, y);
+        if scale <= 1. {
+            self.drag = None;
+        }
+    }
+
+    fn move_to(&mut self, position: Point<Pixels>, pressed_left: bool, scale: f32) -> bool {
+        let Some(previous) = self.drag else { return false };
+        if pressed_left {
+            self.offset += position - previous;
+            self.drag = Some(position);
+            self.constrain(scale);
+        } else {
+            // Recover if the mouse was released outside the window.
+            self.drag = None;
+        }
+        true
+    }
+}
+
+struct PhotoZoom {
+    scale: f32,
+    target: f32,
+    last_frame: Option<Instant>,
+    pan: PhotoPan,
+}
+
+impl Default for PhotoZoom {
+    fn default() -> Self {
+        Self { scale: 1., target: 1., last_frame: None, pan: PhotoPan::default() }
+    }
+}
+
+impl PhotoZoom {
+    fn scroll(&mut self, control: bool, delta: ScrollDelta) -> bool {
+        if !control {
+            return false;
+        }
+        let delta = f32::from(delta.pixel_delta(px(24.)).y);
+        if !delta.is_finite() || delta == 0. {
+            return false;
+        }
+        // Exponential steps feel the same at every magnification. Keep fit as
+        // the minimum, and normalize mouse-wheel lines and trackpad pixels.
+        self.target = (self.target * (delta * 0.004).exp()).clamp(1., 8.);
+        true
+    }
+
+    fn advance(&mut self, elapsed: Duration) -> bool {
+        // Time-based easing stays consistent across different refresh rates.
+        self.scale += (self.target - self.scale) * (1. - (-elapsed.as_secs_f32() * 20.).exp());
+        self.pan.constrain(self.scale);
+        if (self.target - self.scale).abs() < 0.001 {
+            self.scale = self.target;
+            self.pan.constrain(self.scale);
+            false
+        } else {
+            true
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct Photo {
@@ -62,13 +146,14 @@ pub struct GalleryView {
     applied_query: String,
     /// Photo index (into `shown`) open in the viewer.
     viewer: Option<usize>,
+    zoom: PhotoZoom,
     _scan: Option<Task<()>>,
     _sub: Subscription,
 }
 
 impl GalleryView {
     pub fn new(ws: WeakEntity<Workspace>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let query = cx.new(|cx| InputState::new(window, cx).placeholder("Search photos: \"beach at sunset\", \"receipts\", a name… (Return)"));
+        let query = cx.new(|cx| InputState::new(window, cx).placeholder("Search photos: \"beach at sunset\", \"receipts\", a name…"));
         let sub = cx.subscribe_in(&query, window, |this: &mut Self, _, ev: &InputEvent, _, cx| {
             // Search on Enter; clearing the field shows everything again.
             let text = this.query.read(cx).value().trim().to_lowercase();
@@ -95,6 +180,7 @@ impl GalleryView {
             query,
             applied_query: String::new(),
             viewer: None,
+            zoom: PhotoZoom::default(),
             _scan: None,
             _sub: sub,
         };
@@ -230,12 +316,16 @@ impl GalleryView {
 
     fn open_viewer(&mut self, ix: usize, cx: &mut Context<Self>) {
         self.viewer = Some(ix);
+        self.zoom = PhotoZoom::default();
         cx.notify();
     }
 
     fn step_viewer(&mut self, delta: isize, cx: &mut Context<Self>) {
         if let Some(ix) = self.viewer {
             let next = (ix as isize + delta).clamp(0, self.shown.len() as isize - 1) as usize;
+            if next != ix {
+                self.zoom = PhotoZoom::default();
+            }
             self.viewer = Some(next);
             cx.notify();
         }
@@ -286,10 +376,36 @@ impl GalleryView {
         }
     }
 
-    fn render_viewer(&mut self, ix: usize, cx: &mut Context<Self>) -> AnyElement {
+    fn render_viewer(&mut self, ix: usize, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let ch = chrome(cx);
         let Some(photo) = self.shown.get(ix).and_then(|&i| self.photos.get(i)).cloned() else { return div().into_any_element() };
+        let now = Instant::now();
+        let elapsed = self.zoom.last_frame.map(|last| now.duration_since(last)).unwrap_or(Duration::ZERO);
+        if self.zoom.advance(elapsed) {
+            self.zoom.last_frame = Some(now);
+            cx.on_next_frame(window, |_, _, cx| cx.notify());
+        } else {
+            self.zoom.last_frame = None;
+        }
         let image = crate::art::thumbnail(&photo.path, photo.modified, photo.size, 1024., cx);
+        self.zoom.pan.image = image.as_ref().map(|image| {
+            let size = image.size(0);
+            gpui_kit::size(size.width.0 as f32, size.height.0 as f32)
+        }).unwrap_or_default();
+        self.zoom.pan.constrain(self.zoom.scale);
+        let entity = cx.entity();
+        let pan_on_move = cx.listener(|this, event: &gpui_kit::MouseMoveEvent, _, cx| {
+            if this.zoom.pan.move_to(event.position, event.pressed_button == Some(MouseButton::Left), this.zoom.scale) {
+                cx.stop_propagation();
+                cx.notify();
+            }
+        });
+        let pan_on_up = cx.listener(|this, event: &gpui_kit::MouseUpEvent, _, cx| {
+            if event.button == MouseButton::Left && this.zoom.pan.drag.take().is_some() {
+                cx.stop_propagation();
+                cx.notify();
+            }
+        });
         let record = tags::get(&photo.path);
         let name = photo.path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         let taken = chrono::DateTime::<chrono::Local>::from(photo.taken).format("%A, %B %-d, %Y at %H:%M").to_string();
@@ -389,6 +505,7 @@ impl GalleryView {
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .child(
                 div()
+                    .id("photo-stage")
                     .flex_1()
                     // Never let the photo's own size push the details panel
                     // out: the stage takes what's left and the photo fits in it.
@@ -397,8 +514,15 @@ impl GalleryView {
                     .h_full()
                     .relative()
                     .overflow_hidden()
+                    .on_scroll(cx.listener(|this, event: &gpui_kit::ScrollEvent, _, cx| {
+                        if this.zoom.scroll(event.modifiers.control, event.delta) {
+                            cx.stop_propagation();
+                            cx.notify();
+                        }
+                    }))
                     .child(
                         div()
+                            .id("photo-pan-viewport")
                             .absolute()
                             .top(px(56.))
                             .bottom(px(40.))
@@ -407,10 +531,52 @@ impl GalleryView {
                             .flex()
                             .items_center()
                             .justify_center()
+                            .overflow_hidden()
+                            .when(image.is_some() && self.zoom.scale > 1., |d| d.cursor_grab())
+                            .when(self.zoom.pan.drag.is_some(), |d| d.cursor_grabbing())
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &gpui_kit::MouseDownEvent, _, cx| {
+                                if this.zoom.scale > 1. && this.zoom.pan.image.width > 0. {
+                                    this.zoom.pan.drag = Some(event.position);
+                                    cx.stop_propagation();
+                                    cx.notify();
+                                }
+                            }))
                             .child(match image {
-                                Some(image) => img(image).size_full().object_fit(ObjectFit::Contain).into_any_element(),
+                                Some(image) => img(image)
+                                    .w(relative(self.zoom.scale))
+                                    .h(relative(self.zoom.scale))
+                                    .flex_none()
+                                    .relative()
+                                    .left(self.zoom.pan.offset.x)
+                                    .top(self.zoom.pan.offset.y)
+                                    .object_fit(ObjectFit::Contain)
+                                    .into_any_element(),
                                 None => div().text_color(gpui_kit::white().opacity(0.6)).child("Loading…").into_any_element(),
-                            }),
+                            })
+                            .child(gpui_kit::canvas(
+                                move |bounds, _, cx| {
+                                    entity.update(cx, |this, cx| {
+                                        if this.zoom.pan.viewport != bounds.size {
+                                            this.zoom.pan.viewport = bounds.size;
+                                            this.zoom.pan.constrain(this.zoom.scale);
+                                            cx.notify();
+                                        }
+                                    });
+                                },
+                                move |_, _, window, _| {
+                                    // Keep dragging and releasing even beyond the image viewport.
+                                    window.on_mouse_event(move |event: &gpui_kit::MouseMoveEvent, phase, window, cx| {
+                                        if phase == gpui_kit::DispatchPhase::Capture {
+                                            pan_on_move(event, window, cx);
+                                        }
+                                    });
+                                    window.on_mouse_event(move |event: &gpui_kit::MouseUpEvent, phase, window, cx| {
+                                        if phase == gpui_kit::DispatchPhase::Capture {
+                                            pan_on_up(event, window, cx);
+                                        }
+                                    });
+                                },
+                            ).absolute().inset_0()),
                     )
                     .child(
                         div().absolute().top_0().bottom_0().left(px(14.)).flex().items_center()
@@ -437,7 +603,7 @@ impl GalleryView {
                             .left(px(14.))
                             .text_size(px(11.))
                             .text_color(gpui_kit::white().opacity(0.6))
-                            .child(format!("{} of {count} · ←/→ browse · Esc close", ix + 1)),
+                            .child(format!("{} of {count} · {:.0}% · Ctrl+scroll zoom · Drag to pan · ←/→ browse · Esc close", ix + 1, self.zoom.scale * 100.)),
                     ),
             )
             .child(details)
@@ -543,7 +709,7 @@ impl Drop for CancelOnDrop {
 }
 
 impl Render for GalleryView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let ch = chrome(cx);
         let total = self.photos.len();
         let shown = self.shown.len();
@@ -651,7 +817,7 @@ impl Render for GalleryView {
             );
         let empty = shown == 0 && !self.scanning;
         let loading = shown == 0 && self.scanning;
-        let viewer = self.viewer.map(|ix| self.render_viewer(ix, cx));
+        let viewer = self.viewer.map(|ix| self.render_viewer(ix, window, cx));
         v_flex()
             .id("gallery")
             .key_context("Gallery")
@@ -732,6 +898,120 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn pan_fixture() -> PhotoPan {
+        PhotoPan {
+            viewport: gpui_kit::size(px(400.), px(300.)),
+            image: gpui_kit::size(800., 600.),
+            ..PhotoPan::default()
+        }
+    }
+
+    #[test]
+    fn dragging_moves_with_mouse_and_stops_after_release() {
+        let mut pan = pan_fixture();
+        let start = gpui_kit::point(px(100.), px(100.));
+        let moved = gpui_kit::point(px(140.), px(125.));
+        assert!(!pan.move_to(moved, true, 2.));
+        pan.drag = Some(start);
+        assert!(pan.move_to(moved, true, 2.));
+        assert_eq!(pan.offset, gpui_kit::point(px(40.), px(25.)));
+        assert_eq!(pan.drag, Some(moved));
+        assert!(pan.move_to(start, false, 2.));
+        assert_eq!(pan.drag, None);
+        assert!(!pan.move_to(start, true, 2.));
+        assert_eq!(pan.offset, gpui_kit::point(px(40.), px(25.)));
+    }
+
+    #[test]
+    fn dragging_clamps_at_edges_and_reverses_immediately() {
+        let mut pan = pan_fixture();
+        pan.drag = Some(Point::default());
+        pan.move_to(gpui_kit::point(px(1000.), px(-1000.)), true, 2.);
+        assert_eq!(pan.offset, gpui_kit::point(px(200.), px(-150.)));
+        pan.move_to(gpui_kit::point(px(990.), px(-990.)), true, 2.);
+        assert_eq!(pan.offset, gpui_kit::point(px(190.), px(-140.)));
+    }
+
+    #[test]
+    fn pan_limits_account_for_letterboxing_on_both_axes() {
+        let mut pan = pan_fixture();
+        pan.image = gpui_kit::size(1200., 300.);
+        pan.offset = gpui_kit::point(px(1000.), px(1000.));
+        pan.constrain(2.);
+        assert_eq!(pan.offset, gpui_kit::point(px(200.), px(0.)));
+        pan.image = gpui_kit::size(300., 1200.);
+        pan.offset = gpui_kit::point(px(-1000.), px(-1000.));
+        pan.constrain(2.);
+        assert_eq!(pan.offset, gpui_kit::point(px(0.), px(-150.)));
+    }
+
+    #[test]
+    fn pan_recenters_on_zoom_out_and_reclamps_after_resize() {
+        let mut zoom = PhotoZoom { scale: 2., target: 1., pan: pan_fixture(), ..PhotoZoom::default() };
+        zoom.pan.offset = gpui_kit::point(px(200.), px(150.));
+        zoom.pan.drag = Some(Point::default());
+        zoom.advance(Duration::from_secs(1));
+        assert_eq!(zoom.pan.offset, Point::default());
+        assert_eq!(zoom.pan.drag, None);
+        zoom.pan.offset = gpui_kit::point(px(200.), px(150.));
+        zoom.pan.viewport = gpui_kit::size(px(200.), px(150.));
+        zoom.pan.constrain(2.);
+        assert_eq!(zoom.pan.offset, gpui_kit::point(px(100.), px(75.)));
+    }
+
+    #[test]
+    fn zoom_requires_control_and_vertical_scroll() {
+        let mut zoom = PhotoZoom::default();
+        let vertical = ScrollDelta::Lines(gpui_kit::point(0., 1.));
+        assert!(!zoom.scroll(false, vertical));
+        assert!(!zoom.scroll(true, ScrollDelta::Lines(gpui_kit::point(1., 0.))));
+        assert!(!zoom.scroll(true, ScrollDelta::Lines(gpui_kit::point(0., f32::NAN))));
+        assert_eq!(zoom.target, 1.);
+        assert!(zoom.scroll(true, vertical));
+        assert!(zoom.target > 1.);
+        assert_eq!(zoom.scale, 1., "scroll should set a target, not jump to it");
+    }
+
+    #[test]
+    fn zoom_normalizes_scroll_units_and_clamps_to_fit_and_eight_times() {
+        let mut lines = PhotoZoom::default();
+        let mut pixels = PhotoZoom::default();
+        lines.scroll(true, ScrollDelta::Lines(gpui_kit::point(0., 1.)));
+        pixels.scroll(true, ScrollDelta::Pixels(gpui_kit::point(px(0.), px(24.))));
+        assert_eq!(lines.target, pixels.target);
+        lines.scroll(true, ScrollDelta::Lines(gpui_kit::point(0., -1.)));
+        assert!((lines.target - 1.).abs() < 0.0001);
+        lines.scroll(true, ScrollDelta::Lines(gpui_kit::point(0., 10000.)));
+        assert_eq!(lines.target, 8.);
+        lines.scroll(true, ScrollDelta::Lines(gpui_kit::point(0., -10000.)));
+        assert_eq!(lines.target, 1.);
+    }
+
+    #[test]
+    fn zoom_eases_in_both_directions_and_stops_at_target() {
+        let mut zoom = PhotoZoom { target: 4., ..PhotoZoom::default() };
+        assert!(zoom.advance(Duration::from_millis(16)));
+        assert!(zoom.scale > 1. && zoom.scale < 4.);
+        assert!(!zoom.advance(Duration::from_secs(1)));
+        assert_eq!(zoom.scale, 4.);
+        zoom.target = 1.;
+        assert!(zoom.advance(Duration::from_millis(16)));
+        assert!(zoom.scale > 1. && zoom.scale < 4.);
+        assert!(!zoom.advance(Duration::from_secs(1)));
+        assert_eq!(zoom.scale, 1.);
+    }
+
+    #[test]
+    fn zoom_easing_is_independent_of_frame_rate() {
+        let mut fast = PhotoZoom { target: 4., ..PhotoZoom::default() };
+        let mut slow = PhotoZoom { target: 4., ..PhotoZoom::default() };
+        for _ in 0..10 {
+            fast.advance(Duration::from_millis(10));
+        }
+        slow.advance(Duration::from_millis(100));
+        assert!((fast.scale - slow.scale).abs() < 0.0001);
+    }
 
     #[test]
     fn search_rows_resolve_filtered_positions_in_relevance_order() {

@@ -1,4 +1,4 @@
-//! Remote (FTP/FTPS/SFTP) operations and the "Connect to Server" dialog.
+//! Remote (FTP/FTPS/SFTP/SMB) operations and the "Connect to Server" dialog.
 //! Remote panes reuse the normal listing/selection machinery; anything that
 //! touches the server runs as a background operation with progress.
 
@@ -15,8 +15,8 @@ use gpui_kit::component::{
     v_flex,
 };
 use gpui_kit::{
-    AppContext, Context, Entity, IntoElement, ParentElement, Render, SharedString, Styled,
-    Subscription, WeakEntity, Window, prelude::FluentBuilder, px, StatefulInteractiveElement,
+    AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render, SharedString, Styled,
+    Subscription, Task, WeakEntity, Window, div, prelude::FluentBuilder, px, StatefulInteractiveElement,
 };
 use rile_core::history::Location;
 use rile_core::ops::{self, Progress};
@@ -236,10 +236,7 @@ impl Workspace {
             cx,
             move |_, _| {
                 let session = remote::session(&id)?;
-                let home = match &info.initial_path {
-                    Some(p) if !p.trim().is_empty() => p.trim().to_string(),
-                    _ => session.lock().map_err(|_| anyhow::anyhow!("connection busy"))?.home_dir()?,
-                };
+                let home = session.lock().map_err(|_| anyhow::anyhow!("connection busy"))?.home_dir()?;
                 *start_out.lock().unwrap() = home;
                 Ok(Vec::new())
             },
@@ -269,10 +266,11 @@ impl Workspace {
                 dialog,
                 gpui_kit::assets::IconName::Server,
                 title,
-                Some("SFTP, FTP or FTPS · passwords stay in your Keychain".into()),
+                Some("SFTP, FTP, FTPS or SMB · passwords stay in your Keychain".into()),
                 500.,
                 cx,
             )
+            .pb_0()
             .child(view.clone())
         });
     }
@@ -318,6 +316,11 @@ pub struct ConnectView {
     key_path: Entity<InputState>,
     path: Entity<InputState>,
     error: Option<SharedString>,
+    servers: Vec<rile_remote::discovery::DiscoveredServer>,
+    discovery_error: Option<SharedString>,
+    scroll: gpui_kit::ScrollHandle,
+    has_more_below: bool,
+    _discovery_task: Task<()>,
     _subs: Vec<Subscription>,
 }
 
@@ -351,7 +354,7 @@ impl ConnectView {
             window,
             cx,
         );
-        let path = field("Optional, e.g. /var/www", e.as_ref().and_then(|i| i.initial_path.clone()).unwrap_or_default(), window, cx);
+        let path = field("Optional, e.g. /var/www or /share/folder", e.as_ref().and_then(|i| i.initial_path.clone()).unwrap_or_default(), window, cx);
         let subs = [&name, &host, &port, &user, &secret, &key_path, &path]
             .into_iter()
             .map(|i| {
@@ -368,6 +371,29 @@ impl ConnectView {
             Some(Auth::Anonymous) => AuthKind::Anonymous,
             _ => AuthKind::Password,
         };
+        let discovery_task = cx.spawn(async move |this, cx| {
+            let discovery = cx.background_spawn(async { rile_remote::discovery::Discovery::new() }).await;
+            let mut discovery = match discovery {
+                Ok(discovery) => discovery,
+                Err(error) => {
+                    _ = this.update(cx, |this, cx| {
+                        this.discovery_error = Some(format!("Discovery unavailable: {error}. Enter a server manually.").into());
+                        cx.notify();
+                    });
+                    return;
+                }
+            };
+            loop {
+                let servers = discovery.poll();
+                if this.update(cx, |this, cx| {
+                    if this.servers != servers {
+                        this.servers = servers;
+                        cx.notify();
+                    }
+                }).is_err() { break; }
+                cx.background_executor().timer(std::time::Duration::from_millis(500)).await;
+            }
+        });
         Self {
             ws,
             protocol: e.as_ref().map(|i| i.protocol).unwrap_or(Protocol::Sftp),
@@ -382,12 +408,32 @@ impl ConnectView {
             key_path,
             path,
             error: None,
+            servers: Vec::new(),
+            discovery_error: None,
+            scroll: gpui_kit::ScrollHandle::new(),
+            has_more_below: false,
+            _discovery_task: discovery_task,
             _subs: subs,
         }
     }
 
     pub fn host_input(&self) -> Entity<InputState> {
         self.host.clone()
+    }
+
+    fn choose_server(&mut self, server: &rile_remote::discovery::DiscoveredServer, window: &mut Window, cx: &mut Context<Self>) {
+        self.protocol = server.protocol;
+        if self.protocol != Protocol::Sftp && matches!(self.auth, AuthKind::Key | AuthKind::Agent) {
+            self.auth = AuthKind::Password;
+        }
+        self.host.update(cx, |i, cx| i.set_value(server.host.clone(), window, cx));
+        self.port.update(cx, |i, cx| i.set_value(server.port.to_string(), window, cx));
+        self.name.update(cx, |i, cx| i.set_value(server.name.clone(), window, cx));
+        self.path.update(cx, |i, cx| i.set_value("", window, cx));
+        self.secret.update(cx, |i, cx| i.set_value("", window, cx));
+        self.error = None;
+        self.user.update(cx, |i, cx| i.focus(window, cx));
+        cx.notify();
     }
 
     fn submit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -401,9 +447,9 @@ impl ConnectView {
         let port = match text(&self.port) {
             p if p.is_empty() => self.protocol.default_port(),
             p => match p.parse() {
-                Ok(p) => p,
-                Err(_) => {
-                    self.error = Some("Port must be a number".into());
+                Ok(p) if p != 0 => p,
+                _ => {
+                    self.error = Some("Port must be between 1 and 65535".into());
                     cx.notify();
                     return;
                 }
@@ -423,7 +469,7 @@ impl ConnectView {
                 Auth::KeyFile { path: super::expand_tilde(&k) }
             }
         };
-        let info = ConnectionInfo {
+        let mut info = ConnectionInfo {
             id: self.editing.as_ref().map(|i| i.id.clone()).unwrap_or_else(ConnectionInfo::new_id),
             name: text(&self.name),
             protocol: self.protocol,
@@ -433,7 +479,13 @@ impl ConnectView {
             auth,
             initial_path: Some(text(&self.path)).filter(|p| !p.is_empty()),
         };
-        let secret = Some(text(&self.secret)).filter(|s| !s.is_empty());
+        if let Err(error) = info.normalize_smb_address() {
+            self.error = Some(error.to_string().into());
+            cx.notify();
+            return;
+        }
+        // Passwords and passphrases may intentionally contain surrounding whitespace.
+        let secret = Some(self.secret.read(cx).value().to_string()).filter(|s| !s.is_empty());
         let remember = self.remember;
         window.close_dialog(cx);
         self.ws.update(cx, |ws, cx| ws.connect(info, secret, remember, window, cx)).ok();
@@ -444,8 +496,12 @@ impl Render for ConnectView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         use crate::views::kit;
         let proto = |p: Protocol, this: &Self, cx: &mut Context<Self>| {
-            kit::segment(p.label(), p.label(), this.protocol == p, cx).on_click(cx.listener(move |this, _, _, cx| {
+            kit::segment(p.label(), p.label(), this.protocol == p, cx).on_click(cx.listener(move |this, _, window, cx| {
+                if this.protocol != p {
+                    this.port.update(cx, |i, cx| i.set_value("", window, cx));
+                }
                 this.protocol = p;
+                this.error = None;
                 if p != Protocol::Sftp && matches!(this.auth, AuthKind::Key | AuthKind::Agent) {
                     this.auth = AuthKind::Password;
                 }
@@ -460,7 +516,14 @@ impl Render for ConnectView {
         };
         let sftp = self.protocol == Protocol::Sftp;
         let secret_label = if self.auth == AuthKind::Key { "Passphrase" } else { "Password" };
-        v_flex()
+        let body = v_flex()
+            .id("connect-form")
+            .debug_selector(|| "connect-body".into())
+            .flex_1()
+            .min_h_0()
+            .overflow_y_scroll()
+            .track_scroll(&self.scroll)
+            .pb(px(14.))
             .gap(px(14.))
             .text_size(px(13.))
             .child(
@@ -470,9 +533,20 @@ impl Render for ConnectView {
                         kit::segmented(cx)
                             .child(proto(Protocol::Sftp, self, cx))
                             .child(proto(Protocol::Ftp, self, cx))
-                            .child(proto(Protocol::Ftps, self, cx)),
+                            .child(proto(Protocol::Ftps, self, cx))
+                            .child(proto(Protocol::Smb, self, cx)),
                     ),
             )
+            .child(kit::field("Nearby servers", v_flex().id("discovered-servers").gap(px(2.)).max_h(px(100.)).overflow_y_scroll().children(
+                self.servers.iter().enumerate().map(|(index, server)| {
+                    let server = server.clone();
+                    Button::new(("discovered-server", index)).ghost().cursor_pointer()
+                        .label(format!("{} · {} · {}:{}", server.name, server.protocol.label(), server.host, server.port))
+                        .on_click(cx.listener(move |this, _, window, cx| this.choose_server(&server, window, cx)))
+                })
+            ), cx))
+            .when(self.servers.is_empty() && self.discovery_error.is_none(), |d| d.child(kit::hint("Looking for advertised servers on your local network… You can also enter one manually.", cx)))
+            .when_some(self.discovery_error.clone(), |d, error| d.child(kit::notice(error, false, cx)))
             .child(kit::field("Name", Input::new(&self.name), cx))
             .child(
                 h_flex()
@@ -492,7 +566,7 @@ impl Render for ConnectView {
                                 d.child(auth("a-key", "Key file", AuthKind::Key, self, cx))
                                     .child(auth("a-agent", "SSH agent", AuthKind::Agent, self, cx))
                             })
-                            .when(!sftp, |d| d.child(auth("a-anon", "Anonymous", AuthKind::Anonymous, self, cx))),
+                            .when(!sftp, |d| d.child(auth("a-anon", if self.protocol == Protocol::Smb { "Guest" } else { "Anonymous" }, AuthKind::Anonymous, self, cx))),
                     ),
                     cx,
                 ),
@@ -510,18 +584,61 @@ impl Render for ConnectView {
                 )
             })
             .child(kit::field("Start folder", Input::new(&self.path), cx))
+            .when(self.protocol == Protocol::Smb, |d| d.child(kit::hint("Leave empty to choose a share after connecting, or enter /share/folder. Use DOMAIN\\user for domain accounts.", cx)))
             .when(self.auth == AuthKind::Agent, |d| d.child(kit::hint("Uses the keys loaded in your SSH agent.", cx)))
-            .when_some(self.error.clone(), |d, e| d.child(kit::notice(e, true, cx)))
-            .child(
+            .when_some(self.error.clone(), |d, e| d.child(kit::notice(e, true, cx)));
+
+        let ch = crate::theme::chrome(cx);
+        let view = cx.entity().downgrade();
+        let scroll = self.scroll.clone();
+        let has_more_below = self.has_more_below;
+        let footer =
                 kit::footer()
-                    .child(Button::new("connect-cancel").cursor_pointer().ghost().label("Cancel").on_click(|_, window, cx| window.close_dialog(cx)))
+                    .debug_selector(|| "connect-footer".into())
+                    .flex_none()
+                    .relative()
+                    .mx(px(-16.))
+                    .p_4()
+                    .rounded_b(px(14.))
+                    .bg(ch.surface_colors().1)
+                    .when(has_more_below, |d| d.shadow(vec![gpui_kit::BoxShadow {
+                        color: gpui_kit::black().opacity(if ch.dark { 0.3 } else { 0.12 }),
+                        offset: gpui_kit::point(px(0.), px(-4.)),
+                        blur_radius: px(12.),
+                        spread_radius: px(-4.),
+                        inset: false,
+                    }]))
+                    // Measure after layout so scrolling, resizing and changing
+                    // authentication fields all update the shadow correctly.
+                    .child(div()
+                        .debug_selector(move || if has_more_below { "connect-footer-shadow" } else { "connect-footer-no-shadow" }.into())
+                        .absolute()
+                        .inset_0()
+                        .child(gpui_kit::canvas(move |_, _, cx| {
+                            let more = scroll.max_offset().y + scroll.offset().y > px(1.);
+                            if more != has_more_below {
+                                cx.defer(move |cx| {
+                                    _ = view.update(cx, |this, cx| {
+                                        this.has_more_below = more;
+                                        cx.notify();
+                                    });
+                                });
+                            }
+                        }, |_, _, _, _| {}).size_full()))
+                    .child(Button::new("connect-cancel").cursor_pointer().ghost()
+                        .icon(crate::icons::icon(gpui_kit::assets::IconName::X))
+                        .label("Cancel").on_click(|_, window, cx| window.close_dialog(cx)))
                     .child(
                         Button::new("connect-go").cursor_pointer()
                             .primary()
+                            .icon(crate::icons::icon(gpui_kit::assets::IconName::Server))
                             .label("Connect")
                             .on_click(cx.listener(|this, _, window, cx| this.submit(window, cx))),
-                    ),
-            )
+                    );
+        v_flex()
+            .max_h((_window.viewport_size().height - px(180.)).max(px(160.)))
+            .child(body)
+            .child(footer)
     }
 }
 

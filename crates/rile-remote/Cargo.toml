@@ -9,6 +9,19 @@ anyhow.workspace = true
 serde = { version = "1", features = ["derive"] }
 dirs = "6"
 log = "0.4"
+url = "2"
+percent-encoding = "2"
+smb = { version = "=0.10.2", default-features = false, features = ["async", "sign", "encrypt"] }
+futures-util = "0.3"
+# Keep the SMB family aligned: 0.10.4 subcrates changed internal APIs.
+smb-dtyp = "=0.10.2"
+smb-fscc = "=0.10.2"
+smb-msg = "=0.10.2"
+smb-rpc = "=0.10.2"
+smb-transport = { version = "=0.10.2", default-features = false }
+# sspi 0.16 expects the pre-crypto-migration API; later picky prereleases break it.
+picky = { version = "=7.0.0-rc.17", default-features = false }
+mdns-sd = { version = "0.21.6", default-features = false, features = ["logging"] }
 # FTP / FTPS (explicit TLS via rustls, ring crypto provider -> no system libs, no cmake)
 suppaftp = { version = "12.2", features = ["rustls-ring"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }

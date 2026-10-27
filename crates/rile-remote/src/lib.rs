@@ -1,19 +1,21 @@
-//! Remote file system access for Rile: FTP, FTPS (explicit TLS) and SFTP.
+//! Remote file system access for Rile: FTP, FTPS (explicit TLS), SFTP and SMB2/3.
 //!
 //! The API is synchronous and blocking; callers are expected to run it on
-//! background threads. SFTP is implemented with `russh`/`russh-sftp` driven by a
-//! private tokio runtime that never leaks out of this crate. Do not call into
+//! background threads. SFTP (`russh`/`russh-sftp`) and SMB use private tokio
+//! runtimes that never leak out of this crate. Do not call into
 //! this crate from inside a tokio runtime (it uses `block_on` internally).
 //!
 //! Remote paths are always `/`-separated strings; see [`paths`].
 
 mod backend;
 pub mod credentials;
+pub mod discovery;
 mod ftp;
 pub mod known_hosts;
 pub mod paths;
 mod pool;
 mod sftp;
+mod smb;
 
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -35,6 +37,7 @@ pub enum Protocol {
     Sftp,
     Ftp,
     Ftps,
+    Smb,
 }
 
 impl Protocol {
@@ -42,6 +45,7 @@ impl Protocol {
         match self {
             Protocol::Sftp => 22,
             Protocol::Ftp | Protocol::Ftps => 21,
+            Protocol::Smb => 445,
         }
     }
 
@@ -50,6 +54,7 @@ impl Protocol {
             Protocol::Sftp => "SFTP",
             Protocol::Ftp => "FTP",
             Protocol::Ftps => "FTPS",
+            Protocol::Smb => "SMB",
         }
     }
 }
@@ -62,7 +67,7 @@ pub enum Auth {
     KeyFile { path: PathBuf },
     /// SFTP only: keys held by the running ssh-agent (`SSH_AUTH_SOCK`).
     Agent,
-    /// FTP: `anonymous` login. SFTP: the `none` auth method.
+    /// FTP: `anonymous` login. SFTP: the `none` auth method. SMB: guest login.
     Anonymous,
 }
 
@@ -88,6 +93,34 @@ pub struct ConnectionInfo {
 }
 
 impl ConnectionInfo {
+    /// Accept an SMB URL or UNC address in the server field. Credentials must
+    /// stay in their dedicated fields so they never enter saved addresses.
+    pub fn normalize_smb_address(&mut self) -> Result<()> {
+        if self.protocol != Protocol::Smb { return Ok(()); }
+        let address = self.host.trim().replace('\\', "/");
+        let address = if address.starts_with("//") { format!("smb:{address}") } else { address };
+        if !address.contains('/') { return Ok(()); }
+        let url = url::Url::parse(&address).map_err(|_| anyhow::anyhow!("Enter a server name or smb://server/share"))?;
+        if url.scheme() != "smb" || url.query().is_some() || url.fragment().is_some() {
+            anyhow::bail!("Enter an SMB address without a query or fragment");
+        }
+        if !url.username().is_empty() || url.password().is_some() {
+            anyhow::bail!("Enter SMB credentials in the Username and Password fields, not the server address");
+        }
+        let host = url.host_str().ok_or_else(|| anyhow::anyhow!("Enter an SMB server name"))?;
+        let path = percent_encoding::percent_decode_str(url.path()).decode_utf8()
+            .map_err(|_| anyhow::anyhow!("Invalid UTF-8 in SMB address"))?;
+        if path != "/" && !path.is_empty() {
+            if self.initial_path.as_ref().is_some_and(|p| !p.is_empty() && paths::normalize(p) != paths::normalize(&path)) {
+                anyhow::bail!("The SMB address and Start folder specify different folders");
+            }
+            self.initial_path = Some(paths::normalize(&path));
+        }
+        self.host = host.trim_matches(['[', ']']).to_string();
+        if let Some(port) = url.port() { self.port = port; }
+        Ok(())
+    }
+
     /// A new unique id (time + counter + pid based, hex).
     pub fn new_id() -> String {
         use std::sync::atomic::{AtomicU64, Ordering};
@@ -207,7 +240,9 @@ impl fmt::Display for ConnectionLost {
 impl std::error::Error for ConnectionLost {}
 
 pub(crate) fn is_connection_lost(err: &anyhow::Error) -> bool {
-    err.downcast_ref::<ConnectionLost>().is_some() || err.chain().any(|e| e.is::<ConnectionLost>())
+    err.downcast_ref::<ConnectionLost>().is_some()
+        || err.chain().any(|e| e.is::<ConnectionLost>())
+        || smb::is_connection_lost(err)
 }
 
 /// The server's host key (SFTP) or certificate (FTPS) differs from the recorded one.

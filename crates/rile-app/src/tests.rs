@@ -385,6 +385,44 @@ async fn views_quicklook_properties_and_typeahead(cx: &mut TestAppContext) {
 }
 
 #[gpui_kit::test]
+async fn quicklook_code_edit_and_save(cx: &mut TestAppContext) {
+    for (name, language, text) in [
+        ("main.rs", "rs", "fn main() {}\n"),
+        ("App.cs", "cs", "class App {}\n"),
+        ("App.sln", "sln", "\u{feff}Microsoft Visual Studio Solution File, Format Version 12.00\r\nGlobal\r\nEndGlobal\r\n"),
+        ("App.csproj", "xml", "<Project Sdk=\"Microsoft.NET.Sdk\" />\n"),
+        ("App.slnx", "xml", "<Solution />\n"),
+    ] {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().canonicalize().unwrap();
+        let path = root.join(name);
+        fs::write(&path, text).unwrap();
+        assert!(crate::workspace::text_edit::is_editable(&path));
+        let (window, ws) = setup(&root, cx);
+        wait_for_names(cx, window, &ws, &[name]).await;
+        let pane = cx.update(|cx| ws.read(cx).pane().clone());
+        cx.update(|cx| pane.update(cx, |p, cx| p.cursor_to(0, false, cx)));
+        press(cx, window, &["space"]);
+        wait_until(cx, "code preview", |cx| ws.read(cx).preview.loaded.as_ref().is_some_and(|(p, ..)| p == &path));
+        window.update(cx, |_, w, cx| ws.update(cx, |ws, cx| ws.start_editing(w, cx))).unwrap();
+        cx.run_until_parked();
+        cx.update(|cx| {
+            let ed = ws.read(cx).preview.editor.as_ref().unwrap();
+            let state = ed.state.as_editor().expect("code files use Kit Editor");
+            assert_eq!(state.read(cx).language_name().as_ref(), language, "{name}");
+            assert!(!ed.dirty(cx), "opening {name} must preserve its contents");
+        });
+        press(cx, window, &["cmd-down"]);
+        cx.simulate_input(window, "edited");
+        press(cx, window, &["cmd-s"]);
+        assert_eq!(fs::read_to_string(&path).unwrap(), format!("{text}edited"), "{name}");
+        cx.simulate_input(window, "!");
+        window.update(cx, |_, _, cx| ws.update(cx, |ws, cx| ws.finish_editing(false, cx))).unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), format!("{text}edited"));
+    }
+}
+
+#[gpui_kit::test]
 async fn quicklook_markdown_edit_and_save(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().canonicalize().unwrap();
@@ -448,6 +486,44 @@ async fn properties_footer_stays_visible_while_scrolling(cx: &mut TestAppContext
         assert_eq!(vcx.debug_bounds("properties-footer").unwrap(), footer);
         let indicator = if lines < 0. { "properties-footer-no-shadow" } else { "properties-footer-shadow" };
         assert!(vcx.debug_bounds(indicator).is_some(), "shadow should indicate remaining content below");
+    }
+}
+
+#[gpui_kit::test]
+async fn connect_footer_stays_visible_while_scrolling(cx: &mut TestAppContext) {
+    use gpui_kit::{ScrollDelta, ScrollEvent, VisualTestContext, point, px, size};
+
+    let tmp = tempfile::tempdir().unwrap();
+    let (window, ws) = setup(tmp.path(), cx);
+    cx.update_window(window, |_, window, cx| {
+        ws.update(cx, |ws, cx| ws.open_connect_dialog(None, window, cx));
+    }).unwrap();
+    let mut vcx = VisualTestContext::from_window(window, cx);
+    for (height, indicator) in [
+        (1400., "connect-footer-no-shadow"),
+        (500., "connect-footer-shadow"),
+        (1400., "connect-footer-no-shadow"),
+    ] {
+        vcx.simulate_resize(size(px(900.), px(height)));
+        vcx.run_until_parked();
+        let footer = vcx.debug_bounds("connect-footer").unwrap();
+        let body = vcx.debug_bounds("connect-body").unwrap();
+        assert!(footer.bottom() <= px(height), "buttons must remain visible");
+        assert!(body.bottom() <= footer.top(), "fields must not overlap the footer");
+        assert!(vcx.debug_bounds(indicator).is_some(), "wrong shadow at height {height}");
+        if height == 500. {
+            for lines in [-100., 100.] {
+                vcx.simulate_event(ScrollEvent {
+                    position: body.center(),
+                    delta: ScrollDelta::Lines(point(0., lines)),
+                    ..Default::default()
+                });
+                vcx.run_until_parked();
+                assert_eq!(vcx.debug_bounds("connect-footer").unwrap(), footer);
+                let indicator = if lines < 0. { "connect-footer-no-shadow" } else { "connect-footer-shadow" };
+                assert!(vcx.debug_bounds(indicator).is_some());
+            }
+        }
     }
 }
 

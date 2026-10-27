@@ -11,5 +11,12 @@
     <key>CFBundleShortVersionString</key><string>0.1.0</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>NSHighResolutionCapable</key><true/>
+    <key>NSLocalNetworkUsageDescription</key><string>Rile discovers file servers and shared folders on your local network so you can connect to them.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_ftp._tcp</string>
+        <string>_smb._tcp</string>
+        <string>_sftp-ssh._tcp</string>
+    </array>
 </dict>
 </plist>

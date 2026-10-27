@@ -325,6 +325,12 @@ impl Render for SettingsView {
         ];
         let tab_list = v_flex().gap(px(2.)).children(tabs.into_iter().map(|(t, label, icon)| {
             let active = self.tab == t;
+            let color = if active { ch.sidebar_active_icon } else { ch.sidebar_icon };
+            let glyph = if t == Tab::Ai {
+                crate::icons::apple_intelligence(15., color, cx)
+            } else {
+                crate::icons::icon(icon).size(px(15.)).text_color(color).into_any_element()
+            };
             h_flex()
                 .id(label)
                 .h(px(32.))
@@ -336,7 +342,7 @@ impl Render for SettingsView {
                 .text_color(if active { ch.text_strong } else { ch.text })
                 .when(active, |d| d.bg(ch.sidebar_active))
                 .when(!active, |d| d.hover(|d| d.bg(ch.hover_strong)))
-                .child(crate::icons::icon(icon).size(px(15.)).text_color(if active { ch.sidebar_active_icon } else { ch.sidebar_icon }))
+                .child(glyph)
                 .child(label)
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.tab = t;
