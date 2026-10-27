@@ -217,6 +217,18 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
         .border_color(ch.search_border)
         .bg(ch.search_bg)
         .text_size(px(11.))
+        // Escape or a click outside the field dismisses it.
+        .capture_key_down(cx.listener(|this, ev: &gpui_kit::KeyDownEvent, w, cx| {
+            if ev.keystroke.key == "escape" && this.search_focus.0 {
+                cx.stop_propagation();
+                this.dismiss_search(w, cx);
+            }
+        }))
+        .on_mouse_down_out(cx.listener(|this, _, w, cx| {
+            if this.search_focus.0 {
+                this.dismiss_search(w, cx);
+            }
+        }))
         .child(crate::icons::icon(IconName::Search).size(px(14.)).text_color(if focused { accent } else { ch.text_faint }))
         .child(div().flex_1().min_w_0().child(Input::new(&ws.search_input).appearance(false).xsmall().cleanable(true)))
         .when(!compact, |d| d.child(kbd(if ws.settings.ai_enabled { "⇧ ↵" } else if mac { "⌘ F" } else { "Ctrl F" }, &ch)))
@@ -309,6 +321,7 @@ pub fn crumbs(ws: &Workspace, location: &Location) -> Vec<(String, Option<Locati
     match location {
         Location::Home => vec![("Home".into(), Some(Location::Home), IconName::House)],
         Location::Gallery => vec![("Photos".into(), Some(Location::Gallery), IconName::Images)],
+        Location::PluginPage { title, .. } => vec![(title.clone(), Some(location.clone()), IconName::Puzzle)],
         Location::Remote { conn, path } => {
             let dir = PathBuf::from(path);
             let mut v: Vec<_> = dir
@@ -413,6 +426,7 @@ pub fn render_tab_strip(ws: &mut Workspace, window: &mut Window, cx: &mut Contex
         let icon = match &location {
             Location::Home => IconName::House,
             Location::Gallery => IconName::Images,
+            Location::PluginPage { .. } => IconName::Puzzle,
             Location::Remote { .. } => IconName::Globe,
             Location::Dir(_) => IconName::Folder,
         };

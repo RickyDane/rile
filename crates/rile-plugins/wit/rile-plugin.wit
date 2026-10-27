@@ -40,11 +40,112 @@ interface types {
         copy-text(string),
         /// Show a notification to the user.
         notify(string),
+        /// (Pages only) ask the user for a folder; on success the page's
+        /// root is set to it and the page is rendered again.
+        choose-root,
+        /// (Pages only) set the page's root directly (must be an existing directory).
+        set-root(string),
+    }
+
+    /// A directory entry returned by `host.read-dir`.
+    record entry {
+        name: string,
+        is-dir: bool,
+        /// File size in bytes; 0 for directories (use `host.dir-size`).
+        size: u64,
+        /// Modification time, seconds since the Unix epoch.
+        modified: option<u64>,
+    }
+
+    /// A custom page contributed by a plugin (listed in the sidebar).
+    record page {
+        /// Unique within the plugin.
+        id: string,
+        title: string,
+        /// Optional built-in icon name (e.g. `chart`, `disk`); host falls back to a default.
+        icon: option<string>,
+    }
+
+    /// The input for every page call.
+    record page-request {
+        page-id: string,
+        /// Root directory the page works on (initially the explorer's current
+        /// directory). The plugin may list/size anything below it.
+        root: option<string>,
+        /// Opaque state returned by the previous call (empty initially).
+        /// Persisted by the host, so pages survive plugin re-instantiation.
+        state: string,
+    }
+
+    /// A circle in a `bubbles` chart; area is proportional to `value`.
+    record bubble {
+        label: string,
+        /// Secondary line, e.g. a formatted size.
+        detail: string,
+        value: f64,
+        /// 0xRRGGBB; host picks a palette color when absent.
+        color: option<u32>,
+        /// Event sent to `page-event` when clicked.
+        event: option<string>,
+    }
+
+    record button {
+        label: string,
+        event: string,
+    }
+
+    record list-item {
+        title: string,
+        detail: string,
+        /// Right-aligned trailing text (e.g. a size).
+        trailing: string,
+        event: option<string>,
+    }
+
+    /// One UI element. Containers (`column`, `row`) hold the nodes whose
+    /// `parent` points at them.
+    variant node-kind {
+        column,
+        row,
+        heading(string),
+        text(string),
+        /// Secondary, dimmed text.
+        muted(string),
+        button(button),
+        list-item(list-item),
+        /// Progress/usage bar, `0.0..=1.0`.
+        progress(f32),
+        bubbles(list<bubble>),
+        spacer,
+    }
+
+    record node {
+        /// Index of the containing `column`/`row` node in `page-view.nodes`;
+        /// `none` for top-level nodes (laid out in a column). Must be smaller
+        /// than this node's own index.
+        parent: option<u32>,
+        kind: node-kind,
+    }
+
+    /// A declarative page UI as a flat node tree.
+    record page-view {
+        nodes: list<node>,
+    }
+
+    /// Result of `render-page` / `page-event`.
+    record page-update {
+        view: page-view,
+        /// New opaque state, given back in the next `page-request`.
+        state: string,
+        /// Host actions to perform afterwards.
+        actions: list<action>,
     }
 }
 
 /// Functions the host provides to plugins. All file access is sandboxed.
 interface host {
+    use types.{entry};
+
     /// Write a message to the host's log.
     log: func(msg: string);
     /// Queue a user-visible notification (delivered after the call returns).
@@ -55,10 +156,17 @@ interface host {
     /// List the entry names of a directory. Allowed for the current directory,
     /// selected entries and their parents, and direct children of those.
     list-dir: func(path: string) -> result<list<string>, string>;
+    /// Like `list-dir` but with metadata (symlinks are not followed). In page
+    /// calls, every directory below the page root is allowed.
+    read-dir: func(path: string) -> result<list<entry>, string>;
+    /// Total size in bytes of all files below `path` (computed by the host,
+    /// symlinks not followed, capped at 2 million entries). Page calls only:
+    /// `path` must be inside the page root.
+    dir-size: func(path: string) -> result<u64, string>;
 }
 
 world plugin {
-    use types.{manifest, context, command, action};
+    use types.{manifest, context, command, action, page, page-request, page-update};
 
     import host;
 
@@ -71,4 +179,10 @@ world plugin {
     /// Text preview for a file; `ext` is the lowercase extension without the dot.
     /// Return `none` when the file type is not supported.
     export preview: func(path: string, ext: string) -> option<string>;
+    /// Custom pages this plugin contributes.
+    export pages: func() -> list<page>;
+    /// Render a page (on open, after a root change, or on refresh).
+    export render-page: func(req: page-request) -> result<page-update, string>;
+    /// Handle a UI event (a clicked button/bubble/list item) and re-render.
+    export page-event: func(req: page-request, event: string) -> result<page-update, string>;
 }

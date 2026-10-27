@@ -11,7 +11,9 @@ and no network. The only way to touch files is the `host` interface:
 | `log(msg)` | write to Rile's log (stderr) | - |
 | `notify(msg)` | queue a user-visible notification (delivered after the call) | max 64 per call |
 | `read-text(path, max-bytes)` | read a file as lossy UTF-8 (capped at 16 MiB) | path must be in the current selection (for `preview`, the previewed file) |
-| `list-dir(path)` | sorted entry names of a directory | current dir, selected entries, their parent dirs, and direct children of those |
+| `list-dir(path)` | sorted entry names of a directory | current dir, selected entries, their parent dirs, and direct children of those; in page calls also anything below the page root |
+| `read-dir(path)` | entries with `is-dir`, `size`, `modified` (symlinks not followed) | same as `list-dir` |
+| `dir-size(path)` | total bytes below a path, computed by the host | page calls only, path must be below the page root |
 
 Paths are canonicalized before checking, so `..` and symlinks cannot escape.
 Each call gets a fuel budget (~5 billion wasm instructions, roughly half a
@@ -28,6 +30,32 @@ A plugin exports:
 - `preview(path, ext)` – a text preview for the file (`ext` is lowercase, without dot),
   or `none` if the plugin does not handle it. The first enabled plugin returning
   `some` wins.
+- `pages()` – custom pages shown in the sidebar (`id`, `title`, optional `icon`: `chart`, `disk`, `folder`).
+- `render-page(req)` / `page-event(req, event)` – return a `page-update`: the
+  page UI, a new opaque `state` string (handed back next call, kept by the host
+  so it survives re-instantiation) and actions. Pages may also return
+  `choose-root` (folder picker) and `set-root(dir)`; both re-render the page.
+
+### Pages
+
+A page works on a **root** folder (initially the explorer's current folder).
+During page calls the plugin may `list-dir`/`read-dir`/`dir-size` anything below it.
+The UI is a flat node list; each node names its parent container by index
+(`none` = top level, laid out in a column):
+
+| Node | Renders as |
+| --- | --- |
+| `column`, `row` | containers (rows wrap) |
+| `heading`, `text`, `muted` | text |
+| `button { label, event }` | button; click sends `event` |
+| `list-item { title, detail, trailing, event? }` | list row, clickable when `event` is set |
+| `progress(f32)` | 0..1 bar |
+| `bubbles(list<bubble>)` | packed bubble chart, area ∝ `value`; bubbles with `event` are clickable |
+| `spacer` | vertical gap |
+
+Invalid parents become top-level; views are capped at 20 000 nodes, 500 bubbles
+per chart and 4 MiB of state. The `hello` plugin's "Folder Sizes" page is a
+minimal example.
 
 ## Writing a plugin in Rust
 

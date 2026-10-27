@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 
-use rile_plugins::{Action, Context, PluginHost};
+use rile_plugins::{Action, Context, NodeKind, PageRequest, PluginHost};
 
 /// Builds the example plugin once per test binary. Returns `None` (and prints
 /// why) if the wasm32-wasip2 target is not installed.
@@ -273,4 +273,76 @@ fn csv_preview() {
 #[test]
 fn default_plugin_dir_is_set() {
     assert!(rile_plugins::default_plugin_dir().is_some_and(|d| d.ends_with("plugins")));
+}
+
+fn probe_page(host: &mut PluginHost, root: Option<&Path>, event: &str) -> String {
+    let req = PageRequest {
+        page_id: "probe".into(),
+        root: root.map(Path::to_path_buf),
+        state: String::new(),
+    };
+    match host.page_event("rile.test.probe", &req, event).unwrap().actions.as_slice() {
+        [Action::Notify(msg)] => msg.clone(),
+        other => panic!("unexpected actions {other:?}"),
+    }
+}
+
+#[test]
+fn page_root_scopes_recursive_access() {
+    let Some(mut host) = host_with_probe() else {
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("root");
+    std::fs::create_dir_all(root.join("a/b/c")).unwrap();
+    std::fs::write(root.join("a/b/c/f"), [0u8; 7]).unwrap();
+    std::fs::write(dir.path().join("outside"), b"x").unwrap();
+    let deep = root.join("a/b/c");
+    assert_eq!(probe_page(&mut host, Some(&root), &format!("readdir:{}", deep.display())), "ok:f");
+    assert_eq!(probe_page(&mut host, Some(&root), &format!("size:{}", root.display())), "ok:7");
+    assert!(probe_page(&mut host, Some(&root), &format!("readdir:{}", dir.path().display())).starts_with("err:"));
+    assert!(probe_page(&mut host, Some(&root), &format!("size:{}", dir.path().display())).starts_with("err:"));
+    assert!(probe_page(&mut host, None, &format!("size:{}", root.display())).starts_with("err:"));
+    // Escaping via `..` is caught by canonicalization.
+    assert!(probe_page(&mut host, Some(&root), &format!("size:{}/..", root.display())).starts_with("err:"));
+    // Commands get no page scope.
+    let ctx = Context { current_dir: Some(dir.path().to_path_buf()), selection: vec![] };
+    assert!(probe(&mut host, &format!("list:{}", deep.display()), &ctx).starts_with("err:"));
+}
+
+#[test]
+fn hello_sizes_page() {
+    let Some(mut host) = host_with_hello() else {
+        return;
+    };
+    let pages = host.pages();
+    assert_eq!(pages.len(), 1);
+    assert_eq!(pages[0].0, "rile.hello");
+    assert_eq!(pages[0].1.id, "sizes");
+
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir(dir.path().join("big")).unwrap();
+    std::fs::write(dir.path().join("big/f"), vec![0u8; 5000]).unwrap();
+    std::fs::write(dir.path().join("small"), [0u8; 10]).unwrap();
+    let req = PageRequest { page_id: "sizes".into(), root: Some(dir.path().to_path_buf()), state: String::new() };
+    let update = host.render_page("rile.hello", &req).unwrap();
+    let bubbles = update
+        .view
+        .nodes
+        .iter()
+        .find_map(|n| match &n.kind {
+            NodeKind::Bubbles(b) => Some(b.clone()),
+            _ => None,
+        })
+        .expect("bubbles node");
+    assert_eq!(bubbles.len(), 2);
+    assert_eq!(bubbles[0].label, "big");
+    assert_eq!(bubbles[0].value, 5000.0);
+    assert!(bubbles[0].event.as_deref().unwrap().starts_with("open:"));
+
+    let ev = bubbles[0].event.clone().unwrap();
+    let update = host.page_event("rile.hello", &req, &ev).unwrap();
+    assert!(matches!(update.actions.as_slice(), [Action::SetRoot(p)] if p.ends_with("big")));
+    let update = host.page_event("rile.hello", &req, "choose").unwrap();
+    assert_eq!(update.actions, vec![Action::ChooseRoot]);
 }

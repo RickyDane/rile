@@ -5,6 +5,7 @@ pub mod gallery;
 pub mod home;
 pub mod kit;
 pub mod list;
+pub mod plugin_page;
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -279,7 +280,7 @@ fn frame(pane: &mut Pane, body: AnyElement, cx: &mut Context<Pane>) -> AnyElemen
                         }
                     }),
                 )
-                .when_some(dir.clone(), |d, dir| drop_target(d, dir, cx))
+                .when_some(dir.clone(), |d, dir| drop_target_quiet(d, dir, cx))
                 .child(body)
                 .when_some(pane.rubber.as_ref().map(|r| r.rect()), |d, rect| {
                     let o = pane.viewport_origin;
@@ -403,6 +404,7 @@ pub fn entry_interactions(
         label: entry.name.to_string().into(),
     };
     let name = entry.name.clone();
+    let entry_icon = crate::icons::icon_for_entry(entry);
     let el = el
         .debug_selector(|| format!("entry-{name}"))
         .cursor_pointer()
@@ -432,10 +434,10 @@ pub fn entry_interactions(
                 this.ensure_selected(ix, cx);
             }),
         )
-        .on_drag(dragged, |d, _, _, cx| {
+        .on_drag(dragged, move |d, offset, _, cx| {
             let count = d.resolve(cx).len();
-            let label = if count > 1 { format!("{} items", count).into() } else { d.label.clone() };
-            cx.new(|_| DragPreview(label))
+            let icon = if count > 1 { IconName::Files } else { entry_icon.clone() };
+            cx.new(|_| DragPreview { icon, offset })
         })
         .external_drag_payload(|d: &DraggedFiles, _, cx| d.external_payload(cx));
     if entry.is_dir {
@@ -448,9 +450,19 @@ pub fn entry_interactions(
 /// Makes an element accept internal file drags and external (OS) drops into `dest`.
 pub fn drop_target<E: InteractiveElement + StatefulInteractiveElement>(el: E, dest: PathBuf, cx: &mut Context<Pane>) -> E {
     let hl = cx.theme().drop_target;
+    drop_target_inner(el.drag_over::<DraggedFiles>(move |s, _, _, _| s.bg(hl)), dest, cx)
+}
+
+/// Like [`drop_target`], but in-app drags don't tint it (used for the whole
+/// item list, where a full-area highlight is just noise).
+pub fn drop_target_quiet<E: InteractiveElement + StatefulInteractiveElement>(el: E, dest: PathBuf, cx: &mut Context<Pane>) -> E {
+    drop_target_inner(el, dest, cx)
+}
+
+fn drop_target_inner<E: InteractiveElement + StatefulInteractiveElement>(el: E, dest: PathBuf, cx: &mut Context<Pane>) -> E {
+    let hl = cx.theme().drop_target;
     let dest2 = dest.clone();
-    el.drag_over::<DraggedFiles>(move |s, _, _, _| s.bg(hl))
-        .drag_over::<ExternalPaths>(move |s, _, _, _| s.bg(hl))
+    el.drag_over::<ExternalPaths>(move |s, _, _, _| s.bg(hl))
         .on_drop(cx.listener(move |this, d: &DraggedFiles, window, cx| {
             let dest_conn = this.conn();
             let same_fs = d.conn == dest_conn;
@@ -472,20 +484,20 @@ pub fn drop_target<E: InteractiveElement + StatefulInteractiveElement>(el: E, de
         }))
 }
 
-pub struct DragPreview(pub SharedString);
+pub struct DragPreview {
+    pub icon: IconName,
+    /// Where the cursor grabbed the source element; GPUI anchors the preview
+    /// at `cursor - offset`, so padding by it pins the preview to the cursor.
+    pub offset: gpui_kit::Point<gpui_kit::Pixels>,
+}
 
 impl Render for DragPreview {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
         div()
-            .px_2()
-            .py_1()
-            .rounded_md()
-            .bg(theme.primary)
-            .text_color(theme.primary_foreground)
-            .text_sm()
-            .shadow_md()
-            .child(self.0.clone())
+            .pl(self.offset.x)
+            .pt(self.offset.y)
+            .child(crate::icons::icon(self.icon.clone()).size_6().text_color(theme.foreground))
     }
 }
 

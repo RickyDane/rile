@@ -168,6 +168,20 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
             .on_click(cx.listener(|this, _, w, cx| this.open_location(Location::Gallery, w, cx)))
             .into_any_element(),
     ];
+    // Plugin pages sit with the built-in library pages.
+    for (ix, (plugin, page)) in ws.plugins.pages.clone().into_iter().enumerate() {
+        let active = matches!(&location, Location::PluginPage { plugin: p, page: pg, .. } if *p == plugin && *pg == page.id);
+        let icon = match page.icon.as_deref() {
+            Some("chart" | "disk") => IconName::ChartPie,
+            Some("folder") => IconName::Folder,
+            _ => IconName::Puzzle,
+        };
+        lib.push(
+            item(("side-plugin-page", ix).into(), icon, page.title.clone().into(), active, None)
+                .on_click(cx.listener(move |this, _, w, cx| this.open_plugin_page(&plugin, &page.id, w, cx)))
+                .into_any_element(),
+        );
+    }
     let (mut fav, mut loc, mut dev, mut net): (Vec<AnyElement>, Vec<AnyElement>, Vec<AnyElement>, Vec<AnyElement>) = Default::default();
 
     for (ix, path) in ws.settings.favorites.clone().into_iter().enumerate() {
@@ -290,7 +304,6 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
     // Sections in the user's order. Each header can be dragged onto another
     // section to move it there; the whole section is the drop target.
     let drop_hl = theme.drop_target;
-    let dragging = cx.has_active_drag();
     let mut col = v_flex()
         .id("places")
         .flex_1()
@@ -362,7 +375,7 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
                 .on_drop(cx.listener(move |this, d: &DraggedSection, window, cx| {
                     this.move_sidebar_section(d.0, section, window, cx);
                 }))
-                .when(dragging, |d| d.pb(px(2.)))
+                .pb(px(2.))
                 .child(head.context_menu({
                     let this = cx.entity().downgrade();
                     move |menu, _, _| {

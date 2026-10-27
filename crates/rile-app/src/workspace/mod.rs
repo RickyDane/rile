@@ -179,7 +179,18 @@ impl Workspace {
         let handle = WorkspaceHandle(cx.entity().downgrade());
         cx.set_global(handle);
 
+        // Escape cancels an in-app drag. An interceptor runs before key
+        // bindings, so the pane's own Escape action (deselect) can't eat it.
+        // Once a drag leaves the window, macOS owns it and handles Escape.
+        let weak = cx.entity().downgrade();
+        let cancel_drag = cx.intercept_keystrokes(move |ev, window, cx| {
+            if ev.keystroke.key == "escape" && cx.stop_active_drag(window) {
+                weak.update(cx, |this, cx| this.clear_drop_hover(cx)).ok();
+                cx.stop_propagation();
+            }
+        });
         let subscriptions = vec![
+            cancel_drag,
             cx.subscribe_in(&path_input, window, Self::on_path_input_event),
             cx.subscribe_in(&search_input, window, Self::on_search_input_event),
             cx.subscribe_in(&zoom, window, Self::on_zoom_event),
@@ -684,6 +695,8 @@ impl Workspace {
             views::home::render(self, ix, window, cx).into_any_element()
         } else if location == Location::Gallery {
             views::gallery::render(self, ix, window, cx)
+        } else if let Location::PluginPage { plugin, page, .. } = &location {
+            views::plugin_page::render(self, ix, plugin, page, window, cx)
         } else {
             views::chrome::render_browser(self, pane, ix, window, cx).into_any_element()
         };

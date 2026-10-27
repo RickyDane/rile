@@ -24,6 +24,7 @@ pub enum Art {
     Computer,
     ExternalDrive,
     Discovered,
+    FreeSpace,
 }
 
 /// SVGs rasterize at their intrinsic size, so declare a large one to stay
@@ -34,7 +35,7 @@ fn hires_svg(svg: &str, w: u32, h: u32) -> Arc<Image> {
 }
 
 pub fn image(art: Art) -> Arc<Image> {
-    static CACHE: [OnceLock<Arc<Image>>; 6] = [const { OnceLock::new() }; 6];
+    static CACHE: [OnceLock<Arc<Image>>; 7] = [const { OnceLock::new() }; 7];
     let (ix, src) = match art {
         Art::Storage => (0, include_str!("../assets/overview/storage.svg")),
         Art::Files => (1, include_str!("../assets/overview/files.svg")),
@@ -42,6 +43,7 @@ pub fn image(art: Art) -> Arc<Image> {
         Art::Computer => (3, include_str!("../assets/overview/computer.svg")),
         Art::ExternalDrive => (4, include_str!("../assets/overview/external-drive.svg")),
         Art::Discovered => (5, include_str!("../assets/overview/discovered.svg")),
+        Art::FreeSpace => (6, include_str!("../assets/overview/free-space.svg")),
     };
     CACHE[ix].get_or_init(|| hires_svg(src, 256, 256)).clone()
 }

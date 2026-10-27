@@ -4,6 +4,7 @@ wit_bindgen::generate!({
 });
 
 use rile::plugin::host;
+use rile::plugin::types::PageView;
 
 struct Probe;
 
@@ -57,6 +58,33 @@ impl Guest for Probe {
 
     fn preview(_path: String, _ext: String) -> Option<String> {
         None
+    }
+
+    fn pages() -> Vec<Page> {
+        vec![Page { id: "probe".into(), title: "Probe".into(), icon: None }]
+    }
+
+    /// Notifies with `read-dir`/`dir-size` results for the event path
+    /// (`readdir:<path>` / `size:<path>`).
+    fn render_page(_req: PageRequest) -> Result<PageUpdate, String> {
+        Ok(PageUpdate { view: PageView { nodes: Vec::new() }, state: String::new(), actions: Vec::new() })
+    }
+
+    fn page_event(_req: PageRequest, event: String) -> Result<PageUpdate, String> {
+        let msg = if let Some(path) = event.strip_prefix("readdir:") {
+            match host::read_dir(path) {
+                Ok(e) => format!("ok:{}", e.iter().map(|e| e.name.as_str()).collect::<Vec<_>>().join(",")),
+                Err(e) => format!("err:{e}"),
+            }
+        } else if let Some(path) = event.strip_prefix("size:") {
+            match host::dir_size(path) {
+                Ok(n) => format!("ok:{n}"),
+                Err(e) => format!("err:{e}"),
+            }
+        } else {
+            return Err("unknown".into());
+        };
+        Ok(PageUpdate { view: PageView { nodes: Vec::new() }, state: String::new(), actions: vec![Action::Notify(msg)] })
     }
 }
 

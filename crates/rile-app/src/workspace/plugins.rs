@@ -1,12 +1,13 @@
 //! WASM plugin integration: loading, context-menu commands, actions.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use gpui_kit::component::{WindowExt, notification::Notification};
 use gpui_kit::{AppContext, ClipboardItem, Context, SharedString, Task, Window};
 use rile_core::history::Location;
-use rile_plugins::{Action, Context as PluginContext, PluginHost, PluginInfo};
+use rile_plugins::{Action, Context as PluginContext, Page, PageRequest, PageView, PluginHost, PluginInfo};
 
 use super::Workspace;
 
@@ -16,7 +17,23 @@ pub struct PluginState {
     pub infos: Vec<PluginInfo>,
     pub errors: Vec<SharedString>,
     pub loading: bool,
+    /// Pages contributed by enabled plugins: (plugin id, page).
+    pub pages: Vec<(String, Page)>,
+    /// Live page sessions keyed by (plugin id, page id); shared by all panes.
+    pub sessions: HashMap<(String, String), PageSession>,
     _task: Option<Task<()>>,
+}
+
+/// The host-side state of an open plugin page.
+#[derive(Default)]
+pub struct PageSession {
+    pub root: Option<PathBuf>,
+    /// Opaque plugin state, handed back on every call.
+    pub state: String,
+    pub view: Option<PageView>,
+    pub error: Option<SharedString>,
+    /// A call is in flight; further events are dropped until it returns.
+    pub busy: bool,
 }
 
 impl Workspace {
@@ -25,6 +42,8 @@ impl Workspace {
         self.plugins.host = None;
         self.plugins.infos.clear();
         self.plugins.errors.clear();
+        self.plugins.pages.clear();
+        self.plugins.sessions.clear();
         if !self.settings.plugins_enabled {
             cx.notify();
             return;
@@ -39,15 +58,17 @@ impl Workspace {
             for id in &disabled {
                 host.set_enabled(id, false);
             }
-            anyhow::Ok((host, errors))
+            let pages = host.pages();
+            anyhow::Ok((host, errors, pages))
         });
         self.plugins._task = Some(cx.spawn(async move |this, cx| {
             let result = task.await;
             this.update(cx, |this, cx| {
                 this.plugins.loading = false;
                 match result {
-                    Ok((host, errors)) => {
+                    Ok((host, errors, pages)) => {
                         this.plugins.infos = host.plugins();
+                        this.plugins.pages = pages;
                         this.plugins.errors = errors.into_iter().map(|e| format!("{e:#}").into()).collect();
                         this.plugins.host = Some(Arc::new(Mutex::new(host)));
                     }
@@ -69,7 +90,9 @@ impl Workspace {
         {
             h.set_enabled(id, enabled);
             self.plugins.infos = h.plugins();
+            self.plugins.pages = h.pages();
         }
+        self.plugins.sessions.retain(|(pid, _), _| pid != id);
         self.save_settings(window, cx);
         cx.notify();
     }
@@ -108,6 +131,106 @@ impl Workspace {
         .detach();
     }
 
+    /// Opens a plugin page in the active pane. A new session starts at the
+    /// explorer's current directory.
+    pub fn open_plugin_page(&mut self, plugin: &str, page: &str, window: &mut Window, cx: &mut Context<Self>) {
+        let Some((_, info)) = self.plugins.pages.iter().find(|(p, pg)| p == plugin && pg.id == page) else { return };
+        let location = Location::PluginPage { plugin: plugin.to_string(), page: page.to_string(), title: info.title.clone() };
+        let key = (plugin.to_string(), page.to_string());
+        if !self.plugins.sessions.contains_key(&key) {
+            let root = self.pane().read(cx).dir_path().filter(|p| p.is_dir());
+            self.plugins.sessions.insert(key.clone(), PageSession { root, ..Default::default() });
+            self.call_plugin_page(key, None, window, cx);
+        }
+        self.open_location(location, window, cx);
+    }
+
+    /// Re-renders a page (e.g. a refresh button, or after a root change).
+    pub fn refresh_plugin_page(&mut self, plugin: &str, page: &str, window: &mut Window, cx: &mut Context<Self>) {
+        self.call_plugin_page((plugin.to_string(), page.to_string()), None, window, cx);
+    }
+
+    /// Sends a UI event to a page.
+    pub fn plugin_page_event(&mut self, plugin: &str, page: &str, event: String, window: &mut Window, cx: &mut Context<Self>) {
+        self.call_plugin_page((plugin.to_string(), page.to_string()), Some(event), window, cx);
+    }
+
+    fn call_plugin_page(&mut self, key: (String, String), event: Option<String>, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(host) = self.plugins.host.clone() else { return };
+        let session = self.plugins.sessions.entry(key.clone()).or_default();
+        if session.busy {
+            return;
+        }
+        session.busy = true;
+        let req = PageRequest { page_id: key.1.clone(), root: session.root.clone(), state: session.state.clone() };
+        let pid = key.0.clone();
+        let task = cx.background_spawn(async move {
+            let mut host = host.lock().map_err(|_| anyhow::anyhow!("plugin host poisoned"))?;
+            match &event {
+                Some(ev) => host.page_event(&pid, &req, ev),
+                None => host.render_page(&pid, &req),
+            }
+        });
+        cx.notify();
+        cx.spawn_in(window, async move |this, cx| {
+            let result = task.await;
+            this.update_in(cx, |this, window, cx| {
+                let Some(session) = this.plugins.sessions.get_mut(&key) else { return };
+                session.busy = false;
+                match result {
+                    Ok(update) => {
+                        session.view = Some(update.view);
+                        session.state = update.state;
+                        session.error = None;
+                        this.apply_page_actions(&key, update.actions, window, cx);
+                    }
+                    Err(e) => session.error = Some(format!("{e:#}").into()),
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// Handles page-only actions and forwards the rest.
+    fn apply_page_actions(&mut self, key: &(String, String), actions: Vec<Action>, window: &mut Window, cx: &mut Context<Self>) {
+        let mut rest = Vec::new();
+        for action in actions {
+            match action {
+                Action::SetRoot(dir) => self.set_page_root(key.clone(), dir, window, cx),
+                Action::ChooseRoot => {
+                    let rx = cx.prompt_for_paths(gpui_kit::PathPromptOptions {
+                        files: false,
+                        directories: true,
+                        multiple: false,
+                        prompt: Some("Choose".into()),
+                    });
+                    let key = key.clone();
+                    cx.spawn_in(window, async move |this, cx| {
+                        if let Ok(Ok(Some(paths))) = rx.await
+                            && let Some(dir) = paths.into_iter().next()
+                        {
+                            this.update_in(cx, |this, window, cx| this.set_page_root(key, dir, window, cx)).ok();
+                        }
+                    })
+                    .detach();
+                }
+                other => rest.push(other),
+            }
+        }
+        self.apply_plugin_actions(rest, window, cx);
+    }
+
+    fn set_page_root(&mut self, key: (String, String), dir: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+        if !dir.is_dir() {
+            window.push_notification(Notification::error(format!("Not a folder: {}", dir.display())), cx);
+            return;
+        }
+        self.plugins.sessions.entry(key.clone()).or_default().root = Some(dir);
+        self.call_plugin_page(key, None, window, cx);
+    }
+
     fn apply_plugin_actions(&mut self, actions: Vec<Action>, window: &mut Window, cx: &mut Context<Self>) {
         for action in actions {
             match action {
@@ -119,6 +242,7 @@ impl Workspace {
                     window.push_notification(Notification::success("Copied to clipboard"), cx);
                 }
                 Action::Notify(msg) => window.push_notification(Notification::info(msg), cx),
+                Action::ChooseRoot | Action::SetRoot(_) => {}
             }
         }
     }

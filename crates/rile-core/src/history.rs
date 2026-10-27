@@ -17,6 +17,8 @@ pub enum Location {
     Gallery,
     Dir(PathBuf),
     Remote { conn: String, path: String },
+    /// A custom page contributed by a plugin.
+    PluginPage { plugin: String, page: String, title: String },
 }
 
 impl History {

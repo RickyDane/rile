@@ -170,6 +170,16 @@ impl Workspace {
         });
     }
 
+    /// Leaves the header search field (Escape or a click elsewhere), handing
+    /// focus back to the active pane. The typed filter is kept.
+    pub(crate) fn dismiss_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.search_focus.0 {
+            return;
+        }
+        let focus = self.pane().read(cx).focus_handle.clone();
+        focus.focus(window, cx);
+    }
+
     pub(crate) fn focus_search(&mut self, _: &FocusSearch, window: &mut Window, cx: &mut Context<Self>) {
         self.search_input.update(cx, |i, cx| {
             i.focus(window, cx);

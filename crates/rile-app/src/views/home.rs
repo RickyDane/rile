@@ -204,7 +204,7 @@ fn panel_header(title: &'static str, subtitle: String, trailing: Option<AnyEleme
                 .gap(px(6.))
                 .min_w_0()
                 .child(div().text_size(px(12.)).font_weight(FontWeight::SEMIBOLD).text_color(ch.text).child(title))
-                .child(div().text_size(px(9.)).text_color(ch.text_faint).child(subtitle)),
+                .child(div().text_size(px(11.)).text_color(ch.text_faint).child(subtitle)),
         )
         .children(trailing)
         .into_any_element()
@@ -248,27 +248,6 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
         Width::Wide => (38., 42.),
     };
 
-    let heading = h_flex()
-        .flex_wrap()
-        .justify_between()
-        .gap(px(14.))
-        .mb(px(29.))
-        .child(
-            v_flex()
-                .flex_1()
-                .min_w(px(160.))
-                .child(div().text_size(px(8.)).text_color(ch.accent.opacity(0.75)).mb(px(9.)).child("YOUR WORKSPACE, AT A GLANCE"))
-                .child(
-                    h_flex()
-                        .text_size(px(if width <= Width::Phone { 26. } else { 29. }))
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(ch.text_strong)
-                        .child("Home")
-                        .child(div().text_color(ch.accent).child(".")),
-                )
-                .child(div().mt(px(9.)).text_size(px(11.)).text_color(ch.text_faint).child("A little perspective on everything you keep.")),
-        );
-
     // The slot's pane is not drawn here, so the page holds its focus: window
     // shortcuts (⌘F, ⌘T, ⌘L…) keep working while file shortcuts don't apply.
     let focus = ws.panes[slot].read(cx).focus_handle.clone();
@@ -291,7 +270,15 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
                 .px(px(pad_x))
                 .pt(px(pad_y))
                 .pb(px(22.))
-                .child(heading)
+                .child(
+                    h_flex()
+                        .mb(px(29.))
+                        .text_size(px(if width <= Width::Phone { 26. } else { 29. }))
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(ch.text_strong)
+                        .child("Home")
+                        .child(div().text_color(ch.accent).child(".")),
+                )
                 .when(!searching, |d| {
                     d.child(metrics(ws, stats.as_deref(), width, layout.metric_cols, cx))
                         .child(charts(stats.as_deref(), stacked, width, cx))
@@ -303,7 +290,7 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
                         .mt(px(24.))
                         .gap(px(7.))
                         .when(!stacked, |d| d.justify_center())
-                        .text_size(px(9.))
+                        .text_size(px(11.))
                         .text_color(ch.text_faint)
                         .child(crate::icons::icon(IconName::Info).size(px(12.)))
                         .child(
@@ -333,7 +320,7 @@ fn metric(label: &'static str, value: String, unit: Option<String>, detail: Stri
         .child(
             v_flex()
                 .min_w_0()
-                .child(div().text_size(px(10.)).text_color(ch.text_muted).mb(px(8.)).child(label))
+                .child(div().text_size(px(12.)).text_color(ch.text_muted).mb(px(8.)).child(label))
                 .child(
                     h_flex()
                         .items_baseline()
@@ -351,7 +338,7 @@ fn metric(label: &'static str, value: String, unit: Option<String>, detail: Stri
                         )
                         .children(unit.map(|u| div().text_size(px(12.)).text_color(ch.text_muted).child(u))),
                 )
-                .child(div().mt(px(7.)).text_size(px(9.)).text_color(ch.text_faint).child(detail)),
+                .child(div().mt(px(7.)).text_size(px(11.)).text_color(ch.text_faint).child(detail)),
         )
         .into_any_element()
 }
@@ -391,10 +378,10 @@ fn trophies(progress: Option<rile_services::rewards::Progress>, cols: usize, ch:
                         .child(crate::icons::icon(symbol).size(px(20.)).text_color(color)))
                     .child(v_flex().gap(px(4.))
                         .child(div().text_size(px(12.)).font_weight(FontWeight::SEMIBOLD).text_color(ch.text).child(track.name))
-                        .child(div().text_size(px(9.)).text_color(ch.text_faint).child(track.action)))
-                    .child(div().ml_auto().text_size(px(10.)).text_color(color).child(format!("{} / {}", track.earned(), track.targets.len()))),
+                        .child(div().text_size(px(11.)).text_color(ch.text_faint).child(track.action)))
+                    .child(div().ml_auto().text_size(px(12.)).text_color(color).child(format!("{} / {}", track.earned(), track.targets.len()))),
             )
-            .child(div().mt(px(14.)).text_size(px(10.)).text_color(ch.text_muted).child(
+            .child(div().mt(px(14.)).text_size(px(12.)).text_color(ch.text_muted).child(
                 if let Some(reason) = track.unavailable { reason.into() }
                 else if progress.is_none() { "Reading progress…".into() }
                 else if let Some(next) = track.next() { format!("{} / {} · next badge", track.label(track.count), track.label(next)) }
@@ -407,7 +394,7 @@ fn trophies(progress: Option<rile_services::rewards::Progress>, cols: usize, ch:
                 h_flex().gap(px(4.)).px(px(7.)).py(px(5.)).rounded(px(6.)).border_1()
                     .border_color(if unlocked { ch.accent.opacity(0.35) } else { ch.card_border })
                     .bg(if unlocked { ch.accent.opacity(0.09) } else { ch.text_faint.opacity(0.03) })
-                    .text_size(px(9.)).text_color(if unlocked { ch.accent } else { ch.text_faint })
+                    .text_size(px(11.)).text_color(if unlocked { ch.accent } else { ch.text_faint })
                     .child(crate::icons::icon(if unlocked { IconName::Check } else { IconName::Star }).size(px(11.)))
                     .child(track.label(target))
             })))
@@ -417,11 +404,11 @@ fn trophies(progress: Option<rile_services::rewards::Progress>, cols: usize, ch:
         .child(h_flex().gap(px(9.)).flex_wrap()
             .child(crate::icons::icon(IconName::Star).size(px(17.)).text_color(ch.accent))
             .child(div().text_size(px(13.)).font_weight(FontWeight::SEMIBOLD).text_color(ch.text).child("Trophy cabinet"))
-            .child(div().ml_auto().text_size(px(10.)).text_color(ch.text_faint).child(
+            .child(div().ml_auto().text_size(px(12.)).text_color(ch.text_faint).child(
                 if progress.is_some() { format!("{earned} of {total} badges earned · {upcoming} coming soon") } else { "Loading badges…".into() }
             )))
         .child(grid(cells, cols, 12.))
-        .child(div().text_size(px(9.)).text_color(ch.text_faint).child(
+        .child(div().text_size(px(11.)).text_color(ch.text_faint).child(
             "Explore, tag, collect. Counts and coverage show your personal best; earned badges stay unlocked. Photo coverage uses remembered photos, not every image on your disk. Coming-soon badges don't count toward your available total.",
         ))
         .into_any_element()
@@ -434,6 +421,9 @@ fn metrics(ws: &Workspace, stats: Option<&OverviewStats>, width: Width, cols: us
     let disks = ws.volumes.len();
     let external = ws.volumes.iter().filter(|v| v.removable).count();
     let (value, unit) = split_size(used);
+    let free = total.saturating_sub(used);
+    let (free_value, free_unit) = split_size(free);
+    let free_pct = if total == 0 { 0 } else { (free as u128 * 100 / total as u128) as u64 };
     let pending = || "Reading…".to_string();
     let cells = vec![
         metric(
@@ -486,6 +476,15 @@ fn metrics(ws: &Workspace, stats: Option<&OverviewStats>, width: Width, cols: us
             None,
             format!("{} internal · {external} external", disks - external),
             Art::Computer,
+            width,
+            &ch,
+        ),
+        metric(
+            "Free space",
+            free_value,
+            free_unit,
+            if total == 0 { "no disks found".into() } else { format!("{free_pct}% available{}", if free_pct < 10 { " · running low" } else { "" }) },
+            Art::FreeSpace,
             width,
             &ch,
         ),
@@ -589,7 +588,7 @@ fn charts(stats: Option<&OverviewStats>, stacked: bool, width: Width, cx: &mut C
         .justify_between()
         .flex_none()
         .w(px(22.))
-        .text_size(px(9.))
+        .text_size(px(11.))
         .text_color(ch.text_faint)
         .children([max, max / 2, 0].map(|v| div().text_right().child(v.to_string())));
 
@@ -608,7 +607,7 @@ fn charts(stats: Option<&OverviewStats>, stacked: bool, width: Width, cx: &mut C
                     .rounded(px(6.))
                     .border_1()
                     .border_color(ch.hairline)
-                    .text_size(px(9.))
+                    .text_size(px(11.))
                     .text_color(ch.text_muted)
                     .child("7 days")
                     .into_any_element(),
@@ -620,12 +619,12 @@ fn charts(stats: Option<&OverviewStats>, stacked: bool, width: Width, cx: &mut C
                 .mx(px(23.))
                 .mt(px(18.))
                 .gap(px(10.))
-                .child(div().text_size(px(25.)).font_weight(FontWeight::MEDIUM).text_color(ch.text_strong).child(if stats.is_some() { changed.to_string() } else { "—".into() }))
+                .child(div().text_size(px(20.)).font_weight(FontWeight::MEDIUM).text_color(ch.text_strong).child(if stats.is_some() { changed.to_string() } else { "—".into() }))
                 .child(
                     v_flex()
                         .gap(px(4.))
-                        .child(div().text_size(px(9.)).text_color(ch.text_muted).child("items modified"))
-                        .child(div().text_size(px(8.)).text_color(ch.text_faint).child("from file dates · no history kept")),
+                        .child(div().text_size(px(11.)).text_color(ch.text_muted).child("items modified"))
+                        .child(div().text_size(px(10.)).text_color(ch.text_faint).child("from file dates · no history kept")),
                 ),
         )
         .child(
@@ -647,7 +646,7 @@ fn charts(stats: Option<&OverviewStats>, stacked: bool, width: Width, cx: &mut C
                                     .flex()
                                     .items_center()
                                     .justify_center()
-                                    .text_size(px(10.))
+                                    .text_size(px(12.))
                                     .text_color(ch.text_faint)
                                     .child("Nothing changed in the last 7 days"),
                             )
@@ -657,7 +656,7 @@ fn charts(stats: Option<&OverviewStats>, stacked: bool, width: Width, cx: &mut C
                                 .mt(px(8.))
                                 .mb(px(14.))
                                 .justify_between()
-                                .text_size(px(9.))
+                                .text_size(px(11.))
                                 .text_color(ch.text_faint)
                                 .children(labels.into_iter().enumerate().filter(|(i, _)| width > Width::Phone || i % 2 == 0).map(|(_, l)| div().child(l))),
                         ),
@@ -721,13 +720,13 @@ fn charts(stats: Option<&OverviewStats>, stacked: bool, width: Width, cx: &mut C
                 .inset_0()
                 .items_center()
                 .justify_center()
-                .child(div().text_size(px(27.)).font_weight(FontWeight::MEDIUM).text_color(ch.text_strong).child(files.to_string()))
-                .child(div().mt(px(3.)).text_size(px(9.)).text_color(ch.text_faint).child("files")),
+                .child(div().text_size(px(22.)).font_weight(FontWeight::MEDIUM).text_color(ch.text_strong).child(files.to_string()))
+                .child(div().mt(px(3.)).text_size(px(11.)).text_color(ch.text_faint).child("files")),
         );
     let legend = v_flex().flex_1().max_w(px(if stacked { 360. } else { 170. })).gap(px(11.)).children(groups.iter().map(|(name, color, count)| {
         h_flex()
             .gap(px(8.))
-            .text_size(px(10.))
+            .text_size(px(12.))
             .text_color(ch.text_muted)
             .child(div().size(px(7.)).rounded_full().bg(rgba(*color)))
             .child(div().flex_1().child(*name))
@@ -788,15 +787,15 @@ fn storage(ws: &Workspace, width: Width, cols: usize, cx: &mut Context<Workspace
                                 .flex_1()
                                 .min_w_0()
                                 .gap(px(5.))
-                                .child(div().truncate().text_size(px(11.)).font_weight(FontWeight::MEDIUM).text_color(ch.text).child(vol.name.clone()))
-                                .child(div().truncate().text_size(px(9.)).text_color(ch.text_faint).child(format!("{desc} · {}", vol.mount_point.display()))),
+                                .child(div().truncate().text_size(px(12.)).font_weight(FontWeight::MEDIUM).text_color(ch.text).child(vol.name.clone()))
+                                .child(div().truncate().text_size(px(11.)).text_color(ch.text_faint).child(format!("{desc} · {}", vol.mount_point.display()))),
                         )
                         .when(width > Width::Compact || width <= Width::Phone, |d| {
                             d.child(
                                 h_flex()
                                     .flex_none()
                                     .gap(px(5.))
-                                    .text_size(px(8.))
+                                    .text_size(px(10.))
                                     .text_color(ch.success)
                                     .child(div().size(px(4.)).rounded_full().bg(ch.success))
                                     .child("Connected"),
@@ -808,7 +807,7 @@ fn storage(ws: &Workspace, width: Width, cols: usize, cx: &mut Context<Workspace
                     h_flex()
                         .mt(px(23.))
                         .justify_between()
-                        .text_size(px(9.))
+                        .text_size(px(11.))
                         .text_color(ch.text_faint)
                         .child(h_flex().gap(px(4.)).child(div().font_weight(FontWeight::MEDIUM).text_color(ch.text_muted).child(fmt(used))).child("used"))
                         .child(format!("{} free", fmt(vol.available))),
@@ -830,7 +829,7 @@ fn storage(ws: &Workspace, width: Width, cols: usize, cx: &mut Context<Workspace
                     h_flex()
                         .mt(px(9.))
                         .justify_between()
-                        .text_size(px(8.))
+                        .text_size(px(10.))
                         .text_color(ch.text_faint)
                         .child(format!("{:.0}% used", frac * 100.))
                         .child(format!("{} capacity", fmt(vol.total))),
@@ -839,7 +838,7 @@ fn storage(ws: &Workspace, width: Width, cols: usize, cx: &mut Context<Workspace
         })
         .collect();
     let body = if cards.is_empty() {
-        div().text_size(px(10.)).text_color(ch.text_faint).child("Reading disks…").into_any_element()
+        div().text_size(px(12.)).text_color(ch.text_faint).child("Reading disks…").into_any_element()
     } else {
         grid(cards, cols, if width <= Width::Narrow { 12. } else { 18. })
     };
@@ -850,7 +849,7 @@ fn storage(ws: &Workspace, width: Width, cols: usize, cx: &mut Context<Workspace
                 .justify_between()
                 .mb(px(13.))
                 .child(div().text_size(px(12.)).font_weight(FontWeight::SEMIBOLD).text_color(ch.text).child("Your storage"))
-                .child(div().text_size(px(9.)).text_color(ch.text_faint).child("Live disk usage")),
+                .child(div().text_size(px(11.)).text_color(ch.text_faint).child("Live disk usage")),
         )
         .child(body)
         .into_any_element()
@@ -903,17 +902,17 @@ fn bottom(ws: &Workspace, stats: Option<&OverviewStats>, query: &str, stacked: b
                         .flex_1()
                         .min_w_0()
                         .gap(px(5.))
-                        .child(div().truncate().text_size(px(10.)).text_color(ch.text).child(e.name.to_string()))
-                        .child(div().truncate().text_size(px(8.)).text_color(ch.text_faint).child(place_of(&e))),
+                        .child(div().truncate().text_size(px(12.)).text_color(ch.text).child(e.name.to_string()))
+                        .child(div().truncate().text_size(px(10.)).text_color(ch.text_faint).child(place_of(&e))),
                 )
-                .child(div().min_w(px(42.)).text_right().text_size(px(9.)).text_color(ch.text_muted).child(crate::views::list::format_size(&e)))
+                .child(div().min_w(px(42.)).text_right().text_size(px(11.)).text_color(ch.text_muted).child(crate::views::list::format_size(&e)))
                 .when(width > Width::Compact || width == Width::Narrow, |d| {
                     d.child(
                         div()
                             .ml(px(9.))
                             .min_w(px(70.))
                             .text_right()
-                            .text_size(px(8.))
+                            .text_size(px(10.))
                             .text_color(ch.text_faint)
                             .child(e.modified.map(|t| chrono::DateTime::<chrono::Local>::from(t).format("%b %-d, %Y").to_string()).unwrap_or_default()),
                     )
@@ -940,7 +939,7 @@ fn bottom(ws: &Workspace, stats: Option<&OverviewStats>, query: &str, stacked: b
                 .pb(px(10.))
                 .children(recent_rows)
                 .when(empty, |d| {
-                    d.child(div().px(px(13.)).py(px(23.)).text_size(px(10.)).text_color(ch.text_faint).child(match (stats.is_some(), searching) {
+                    d.child(div().px(px(13.)).py(px(23.)).text_size(px(12.)).text_color(ch.text_faint).child(match (stats.is_some(), searching) {
                         (false, _) => "Reading your places…".to_string(),
                         (true, true) => "Nothing at the top of your places matches. Open a folder and press ⏎ in search to look through its subfolders.".into(),
                         (true, false) => "No files at the top of your places yet.".into(),
@@ -966,7 +965,7 @@ fn bottom(ws: &Workspace, stats: Option<&OverviewStats>, query: &str, stacked: b
             .rounded(px(7.))
             .cursor_pointer()
             .hover(|s| s.bg(ch.hover_strong))
-            .text_size(px(10.))
+            .text_size(px(12.))
             .text_color(ch.text)
             .on_click(cx.listener(move |this, _, w, cx| this.open_path(path.clone(), w, cx)))
             .child(crate::icons::icon(icon_for_place(place.icon)).size(px(17.)).text_color(ch.accent))
@@ -985,7 +984,7 @@ fn bottom(ws: &Workspace, stats: Option<&OverviewStats>, query: &str, stacked: b
         ))
         .child(div().h(px(6.)))
         .children(shortcut_rows)
-        .child(div().mx(px(22.)).my(px(18.)).text_size(px(8.)).text_color(ch.text_faint).child("Browse directly. No indexing required."));
+        .child(div().mx(px(22.)).my(px(18.)).text_size(px(10.)).text_color(ch.text_faint).child("Browse directly. No indexing required."));
 
     let row = if stacked { v_flex().gap(px(14.)) } else { h_flex().gap(px(18.)).items_start() };
     row.child(recent).when(!searching, |d| d.child(shortcuts_panel)).into_any_element()
