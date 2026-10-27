@@ -18,15 +18,20 @@ fn setup(dir: &Path, cx: &mut TestAppContext) -> (AnyWindowHandle, Entity<Worksp
     setup_with(dir, "update_check_on_start = false\nplugins_enabled = false\nfavorites = []\n", None, cx)
 }
 
+/// RILE_CONFIG_DIR is process-global: `setup` holds this until the workspace has
+/// read it; tests that save and reload settings hold it across both.
+fn config_lock() -> std::sync::MutexGuard<'static, ()> {
+    static SETUP: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    SETUP.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 fn setup_with(
     dir: &Path,
     settings: &str,
     plugin: Option<&Path>,
     cx: &mut TestAppContext,
 ) -> (AnyWindowHandle, Entity<Workspace>) {
-    // RILE_CONFIG_DIR is process-global; hold a lock until the workspace has read it.
-    static SETUP: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    let _guard = SETUP.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = config_lock();
     let config = tempfile::tempdir().unwrap().keep();
     fs::write(config.join("settings.toml"), settings).unwrap();
     if let Some(plugin) = plugin {
@@ -1222,6 +1227,7 @@ async fn sidebar_sections_reorder_and_persist(cx: &mut TestAppContext) {
     fs::write(root.join("f"), "").unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &["f"]).await;
+    let _config = config_lock(); // keep RILE_CONFIG_DIR ours until the reload
     cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.move_sidebar_section(Favorites, Locations, window, cx)))
         .unwrap();
     cx.run_until_parked();

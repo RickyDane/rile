@@ -1,11 +1,11 @@
 //! Apple-Intelligence-style rainbow effects shown while an AI search runs:
-//! a flowing edge glow around the pane and a shimmering search field border.
+//! a calm glow along the bottom of the file list.
 
 use std::time::Duration;
 
 use gpui_kit::{
-    Animation, AnimationExt, AnyElement, BoxShadow, ElementId, Hsla, IntoElement, ParentElement, Styled, div, hsla,
-    linear_color_stop, linear_gradient, point, px,
+    Animation, AnimationExt, AnyElement, ElementId, Hsla, IntoElement, ParentElement, Styled, div, hsla,
+    linear_color_stop, linear_gradient, px,
 };
 
 /// Segments across the bottom edge; more = smoother hue flow.
@@ -94,18 +94,6 @@ pub fn bottom_glow(id: impl Into<ElementId>) -> AnyElement {
             |el, t| el.opacity(t),
         )
         .into_any_element()
-}
-
-/// Rainbow border + colored halo for the search field while AI works.
-pub fn search_halo<E: Styled + IntoElement + 'static>(el: E, id: impl Into<ElementId>) -> impl IntoElement {
-    el.with_animation(id, Animation::new(Duration::from_millis(6000)).repeat(), |el, t| {
-        let pulse = 0.5 + 0.5 * (t * std::f32::consts::TAU).sin();
-        el.border_color(rainbow(t, 0.75)).shadow(vec![
-            BoxShadow { color: rainbow(t, 0.22), offset: point(px(-2.), px(0.)), blur_radius: px(8. + 3. * pulse), spread_radius: px(0.), inset: false },
-            BoxShadow { color: rainbow(t + 0.33, 0.22), offset: point(px(2.), px(0.)), blur_radius: px(8. + 3. * pulse), spread_radius: px(0.), inset: false },
-            BoxShadow { color: rainbow(t + 0.66, 0.18), offset: point(px(0.), px(2.)), blur_radius: px(10.), spread_radius: px(0.), inset: false },
-        ])
-    })
 }
 
 #[cfg(test)]

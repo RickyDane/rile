@@ -140,7 +140,6 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
     let pane = ws.pane().read(cx);
     let (can_back, can_fwd) = (pane.history.can_go_back(), pane.history.can_go_forward());
     let location = pane.location.clone();
-    let ai_active = pane.ai_searching();
     let mac = cfg!(target_os = "macos");
     let lights = mac && !window.is_fullscreen();
     let sidebar_width = if ws.sidebar_visible { crate::sidebar::width(ws, window) } else { 0. };
@@ -255,9 +254,7 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
                 inset: false,
             }])
     };
-    let search: AnyElement = if ai_active {
-        crate::ai_glow::search_halo(focus_style(search, if focused { 1. } else { 0. }), "search-ai-halo").into_any_element()
-    } else if focus_serial == 0 {
+    let search: AnyElement = if focus_serial == 0 {
         search.into_any_element()
     } else {
         search

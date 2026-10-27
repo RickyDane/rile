@@ -32,13 +32,15 @@ const MAX_EXPLORE: usize = 4;
 const MAX_LISTING: usize = 60;
 
 const PLAN_INSTRUCTIONS: &str = r#"You help a file manager find files. Read the user's request and reply with ONLY a JSON object:
-{"keywords": [words likely in file or folder NAMES, lowercase, singular, max 5],
+{"keywords": [word stems likely in file or folder NAMES, lowercase, singular, max 8; include translations, especially German (e.g. "outgoing invoices" -> ["invoice","ausgangsrechnung","rechnung","faktura"])],
  "extensions": [lowercase extensions without dots, e.g. ["pdf"]; [] if any],
  "folders": [likely folders to look in, like "Documents", "Downloads", "Desktop", "Pictures", or a project name; max 3],
  "kind": "files" | "folders" | "any",
  "modified_within_days": number or null}
 Map concepts to extensions: photos/images -> jpg,jpeg,png,heic; videos -> mp4,mov; music -> mp3,m4a; documents -> pdf,docx,pages,txt,md; spreadsheets -> xlsx,csv,numbers; presentations -> pptx,key; code -> rs,js,ts,py,swift.
 Use kind "any" unless the user explicitly restricts results to files or folders. Do not infer an extension from a subject like "invoices": a folder with that meaning is also a valid result."#;
+
+const SEMANTIC_NOTE: &str = "semantic match from remembered names";
 
 const PICK_INSTRUCTIONS: &str = r#"You are browsing a user's files to find what they asked for. You see numbered CANDIDATES (with what is known about them) and FOLDERS you can open.
 Reply with ONLY one JSON object, either
@@ -94,7 +96,7 @@ pub struct Plan {
 pub fn parse_plan(reply: &str) -> Result<Plan> {
     let v = json_object(reply)?;
     Ok(Plan {
-        keywords: strings(&v, "keywords").into_iter().take(5).collect(),
+        keywords: strings(&v, "keywords").into_iter().take(8).collect(),
         extensions: strings(&v, "extensions"),
         folders: v
             .get("folders")
@@ -303,16 +305,20 @@ pub fn smart_search(request: &str, start: &Path, cancel: &AtomicBool, log: Log) 
     // different language. Folders can be useful routes as well as results.
     let memory_root = if start.starts_with(home()) { home() } else { start.to_path_buf() };
     let mut remembered = rile_services::index::remembered_paths(&memory_root);
-    remembered.sort_by(|(a, a_dir), (b, b_dir)| {
-        (!a.starts_with(start), !a_dir, a).cmp(&(!b.starts_with(start), !b_dir, b))
-    });
+    // Names containing a planned keyword (or its translation) go into the
+    // first batches, so the model sees them even in a huge cache.
+    let hits_keyword = |p: &Path| {
+        let name = p.file_name().map(|n| n.to_string_lossy().to_lowercase()).unwrap_or_default();
+        plan.keywords.iter().any(|k| k.chars().count() >= 3 && name.contains(k.as_str()))
+    };
+    remembered.sort_by_cached_key(|(p, dir)| (!hits_keyword(p), !p.starts_with(start), !dir, p.clone()));
     let mut remembered_folders = Vec::new();
     for entry in semantic_memory(request, &remembered, cancel, log, complete)? {
         if entry.is_dir {
             remembered_folders.push(entry.path.clone());
         }
-        if matches_plan(&entry, &plan) {
-            add(&mut candidates, entry, "semantic match from remembered names".into());
+        if entry.is_dir || matches_plan(&entry, &plan) {
+            add(&mut candidates, entry, SEMANTIC_NOTE.into());
         }
     }
 
@@ -371,8 +377,8 @@ pub fn smart_search(request: &str, start: &Path, cancel: &AtomicBool, log: Log) 
         if cancelled() {
             bail!("Cancelled");
         }
-        // Keep plan matches first, everything else after.
-        candidates.sort_by_key(|c| !matches_plan(&c.entry, &plan));
+        // Semantic memory matches, then plan matches, then the rest.
+        candidates.sort_by_key(|c| (c.note != SEMANTIC_NOTE, !matches_plan(&c.entry, &plan)));
         candidates.truncate(MAX_CANDIDATES * 2);
         let shown: Vec<&Candidate> = candidates.iter().take(MAX_CANDIDATES).collect();
         let closed: Vec<&PathBuf> = folders.iter().filter(|f| !opened.contains(*f)).take(12).collect();
@@ -430,6 +436,11 @@ pub fn smart_search(request: &str, start: &Path, cancel: &AtomicBool, log: Log) 
             }
             Step::Done(picks) => {
                 let mut out = Vec::new();
+                // The picker sometimes declines everything; trust the
+                // semantic memory review rather than returning nothing.
+                if picks.is_empty() {
+                    out.extend(shown.iter().filter(|c| c.note == SEMANTIC_NOTE).map(|c| c.entry.clone()));
+                }
                 for n in picks {
                     if let Some(c) = n.checked_sub(1).and_then(|i| shown.get(i))
                         && !out.iter().any(|e: &Entry| e.path == c.entry.path)
