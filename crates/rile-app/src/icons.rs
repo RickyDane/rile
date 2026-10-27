@@ -23,7 +23,7 @@ gpui_kit::assets::icon_assets!(
         CircleX, Puzzle, TriangleAlert,
         Activity, ArrowDownUp, Check,
         Archive, PackageOpen, AppWindow, ExternalLink, Images, Files, Link, FilePlus, WandSparkles,
-        LayoutDashboard, TextSearch, Brain, GripVertical, AppWindowMac,
+        LayoutDashboard, TextSearch, Brain, GripVertical, AppWindowMac, Gauge, Play,
     ]
 );
 

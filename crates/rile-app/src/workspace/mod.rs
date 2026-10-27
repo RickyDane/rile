@@ -10,6 +10,7 @@ pub mod preview;
 mod remote_ops;
 mod rewards;
 mod search;
+mod speedtest;
 mod tabs;
 pub mod text_edit;
 mod updates;
@@ -152,6 +153,7 @@ pub struct Workspace {
     resizing_sidebar: bool,
     _spring_task: Option<Task<()>>,
     _volumes_task: Option<Task<()>>,
+    _volume_watch_task: Option<Task<()>>,
     _index_task: Option<Task<()>>,
     _dialog_sub: Option<Subscription>,
     _pane_subs: std::collections::HashMap<gpui_kit::EntityId, [Subscription; 2]>,
@@ -238,6 +240,7 @@ impl Workspace {
             resizing_sidebar: false,
             _spring_task: None,
             _volumes_task: None,
+            _volume_watch_task: None,
             _index_task: None,
             _dialog_sub: None,
             _pane_subs: Default::default(),
@@ -252,6 +255,7 @@ impl Workspace {
         this._index_task = Some(Self::save_index_periodically(cx));
         this.rewards.task = Some(Self::watch_rewards(cx));
         this.refresh_volumes(cx);
+        this._volume_watch_task = Some(Self::watch_volumes(cx));
         this.load_plugins(cx);
         // Describe new photos in the background once the app has settled.
         cx.spawn_in(window, async move |this, cx| {
@@ -484,6 +488,33 @@ impl Workspace {
             })
             .ok();
         }));
+    }
+
+    /// Polls mounted volumes so drives attached/detached show up without a manual refresh.
+    fn watch_volumes(cx: &mut Context<Self>) -> Task<()> {
+        cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(std::time::Duration::from_secs(2)).await;
+                let volumes = cx.background_spawn(async { places::volumes() }).await;
+                let Ok(changed) = this.read_with(cx, |this, _| {
+                    this.volumes.len() != volumes.len()
+                        || this.volumes.iter().zip(&volumes).any(|(a, b)| a.mount_point != b.mount_point || a.name != b.name)
+                }) else {
+                    break;
+                };
+                if changed {
+                    let ok = this
+                        .update(cx, |this, cx| {
+                            this.volumes = volumes;
+                            cx.notify();
+                        })
+                        .is_ok();
+                    if !ok {
+                        break;
+                    }
+                }
+            }
+        })
     }
 
     pub fn save_settings(&self, window: &mut Window, cx: &mut App) {

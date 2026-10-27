@@ -200,7 +200,7 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
 
     let (focused, focus_serial) = ws.search_focus;
     let base_w = if width <= Width::Compact { 190. } else { 234. };
-    let grow_w = base_w + 76.;
+    let grow_w = base_w + 40.;
     let accent = ch.accent;
     let (search_border, search_bg) = (ch.search_border, ch.search_bg);
     let search = h_flex()
@@ -208,7 +208,7 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
         .flex_none()
         .when(!compact, |d| d.w(px(if focused { grow_w } else { base_w })))
         .when(compact, |d| d.flex_1().min_w(px(90.)))
-        .h(px(if focused { 34. } else { 30. }))
+        .h(px(if focused { 32. } else { 30. }))
         .pl(px(10.))
         .pr(px(6.))
         .gap(px(6.))
@@ -255,14 +255,14 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
     // Focus grows and highlights the field; leaving shrinks it back.
     let focus_style = move |el: gpui_kit::Stateful<gpui_kit::Div>, p: f32| {
         let el = if compact { el } else { el.w(px(base_w + (grow_w - base_w) * p)) };
-        el.h(px(30. + 4. * p))
-            .border_color(search_border.blend(accent.opacity(0.85 * p)))
+        el.h(px(30. + 2. * p))
+            .border_color(search_border.blend(accent.opacity(0.6 * p)))
             .bg(search_bg.blend(accent.opacity(0.06 * p)))
             .shadow(vec![gpui_kit::BoxShadow {
-                color: accent.opacity(0.35 * p),
+                color: accent.opacity(0.2 * p),
                 offset: gpui_kit::point(px(0.), px(0.)),
-                blur_radius: px(12. * p),
-                spread_radius: px(2. * p),
+                blur_radius: px(8. * p),
+                spread_radius: px(1. * p),
                 inset: false,
             }])
     };

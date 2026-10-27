@@ -801,6 +801,26 @@ fn storage(ws: &Workspace, width: Width, cols: usize, cx: &mut Context<Workspace
                                     .child("Connected"),
                             )
                         })
+                        .child({
+                            let vol = vol.clone();
+                            div()
+                                .id(("speedtest", ix))
+                                .flex_none()
+                                .size(px(26.))
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .rounded(px(6.))
+                                .cursor_pointer()
+                                .text_color(ch.text_muted)
+                                .hover(|s| s.bg(ch.hover_strong).text_color(ch.accent))
+                                .tooltip(|window, cx| gpui_kit::component::tooltip::Tooltip::new("Test drive speed").build(window, cx))
+                                .on_click(cx.listener(move |this, _, w, cx| {
+                                    cx.stop_propagation();
+                                    this.open_speedtest(vol.clone(), w, cx);
+                                }))
+                                .child(crate::icons::icon(IconName::Gauge).size(px(15.)))
+                        })
                         .when(width > Width::Narrow, |d| d.child(crate::icons::icon(IconName::ChevronRight).size(px(12.)).text_color(ch.text_faint))),
                 )
                 .child(

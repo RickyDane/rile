@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Rile tab mockups</title>
+<style>
+body{margin:0;font:13px -apple-system,system-ui;background:#e9e9ec;color:#222;padding:24px}
+h2{font-size:14px;margin:28px 0 4px}p.d{margin:0 0 10px;color:#666;font-size:12px}
+.win{border-radius:10px;overflow:hidden;box-shadow:0 8px 30px #0002;background:#fff;max-width:900px}
+.win.dark{background:#1e1f22;color:#ddd}
+.content{height:70px;padding:14px;color:#999;font-size:12px}
+.strip{display:flex;align-items:center;gap:6px;padding:6px;height:44px;box-sizing:border-box}
+.tab{display:flex;align-items:center;gap:8px;min-width:150px;max-width:200px;height:100%;padding:0 4px 0 11px;font-size:11px;cursor:pointer;box-sizing:border-box;position:relative}
+.tab .t{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.x{width:20px;height:20px;display:grid;place-items:center;border-radius:4px;opacity:0;font-size:12px}
+.tab:hover .x,.tab.a .x{opacity:.6}.x:hover{background:#0001;opacity:1}
+.plus{width:30px;height:30px;display:grid;place-items:center;border-radius:8px;font-size:17px;color:#888}
+.plus:hover{background:#0000000d}
+/* current */
+.s0{background:#f3f3f5;border-bottom:1px solid #ddd}
+.s0 .tab{border-radius:7px;border:1px solid transparent;color:#666}.s0 .tab:hover{background:#0000000a}
+.s0 .tab.a{background:#fff;border-color:#dcdce0;box-shadow:0 1px 2px #0001;color:#111}
+/* A: underline */
+.s1{background:#fff;border-bottom:1px solid #e6e6e9;padding:0 8px;height:38px;gap:0}
+.s1 .tab{color:#777;padding:0 6px 0 14px;border-right:1px solid #f0f0f2}
+.s1 .tab:hover{color:#333;background:#fafafa}
+.s1 .tab.a{color:#111;font-weight:500}
+.s1 .tab.a:after{content:"";position:absolute;left:10px;right:10px;bottom:0;height:2px;border-radius:2px;background:#3b82f6}
+/* B: connected folder tabs */
+.s2{background:#dfe0e4;padding:8px 8px 0;height:42px;gap:2px;align-items:flex-end}
+.s2 .tab{height:34px;border-radius:9px 9px 0 0;color:#555}
+.s2 .tab:hover{background:#ebecef}
+.s2 .tab.a{background:#fff;color:#111}
+.s2 .tab:not(.a)+.tab:not(.a):before{content:"";position:absolute;left:-1px;top:9px;bottom:9px;width:1px;background:#bfc0c6}
+.s2 + .content{background:#fff}
+/* C: dark segmented / compact pills */
+.s3{background:#1e1f22;border-bottom:1px solid #2c2d31;height:40px;padding:6px 8px}
+.s3 .tab{border-radius:999px;color:#9a9ba0;padding:0 4px 0 12px;min-width:130px}
+.s3 .tab:hover{background:#2a2b2f;color:#ddd}
+.s3 .tab.a{background:#3b82f633;color:#cfe0ff;box-shadow:inset 0 0 0 1px #3b82f666}
+.s3 .x:hover{background:#ffffff1a}.s3 .plus:hover{background:#ffffff14}
+.ico{opacity:.75}
+</style></head><body>
+<h1 style="font-size:18px">Tab strip — 3 revisions</h1>
+<script>
+const tabs=[["🏠","Home"],["📁","Documents"],["📁","rile — crates"],["🌐","server:/var/www"]];
+function strip(cls,active=1){return `<div class="strip ${cls}">${tabs.map(([i,t],k)=>`<div class="tab ${k==active?'a':''}" onclick="this.parentNode.querySelectorAll('.tab').forEach(e=>e.classList.remove('a'));this.classList.add('a')"><span class="ico">${i}</span><span class="t">${t}</span><span class="x">✕</span></div>`).join('')}<div class="plus">+</div></div>`}
+const v=[["s0","Current","Floating pills with border + shadow on the active tab."],
+["s1","A · Minimal underline","Flat, divider-separated tabs; active tab gets bold text and an accent underline. Quiet and editor-like."],
+["s2","B · Connected folder tabs","Chrome/Safari-style: active tab merges into the content below; separators between inactive tabs."],
+["s3","C · Accent pills (dark)","Compact rounded pills; active tab tinted with the accent color. Shown in dark theme."]];
+document.write(v.map(([c,n,d])=>`<h2>${n}</h2><p class="d">${d}</p><div class="win ${c=='s3'?'dark':''}">${strip(c)}<div class="content">…file list…</div></div>`).join(''));
+</script></body></html>

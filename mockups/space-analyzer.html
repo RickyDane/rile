@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rile — Space Analyzer</title>
+<link rel="stylesheet" href="explorer.css">
+<link rel="stylesheet" href="start.css">
+<link rel="stylesheet" href="native.css">
+<link rel="stylesheet" href="overview.css">
+<script src="icons.js"></script>
+<script src="overview-art.js"></script>
+<style>
+  /* Space Analyzer plugin page. Built from the Home page's components (start.css / overview.css);
+     only the few pieces Home has no equivalent for are defined here. */
+  .sa-switch { display:flex; gap:4px; }
+  .sa-switch .chart-period { cursor:pointer; }
+  .sa-switch .chart-period.active { color:#dce6f5; background:#ffffff0c; border-color:#ffffff14; }
+  .sa-share { margin-top:6px; height:3px; border-radius:2px; background:#ffffff08; overflow:hidden; }
+  .sa-share i { display:block; height:100%; border-radius:2px; background:var(--share-color,#5daaff); }
+  .sa-flag { margin-left:6px; font-size:8px; padding:1px 6px; border-radius:9px; color:#d9a46d; background:#d9a46d14; border:1px solid #d9a46d26; }
+  .sa-check { accent-color:#5daaff; margin:0 2px 0 0; }
+  .sa-actions { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:12px 11px 2px; font-size:9px; color:#7a90ab; }
+  .sa-actions button { border:1px solid #ffffff0a; background:#ffffff04; color:#adbed5; border-radius:6px; padding:6px 10px; font-size:9px; }
+  .sa-actions button.primary { background:#5daaff22; border-color:#5daaff40; color:#dce6f5; }
+  .sa-actions button:disabled { opacity:.4; }
+  .types-panel .file-type-chart li { cursor:pointer; }
+  .sa-toast { position:fixed; bottom:44px; left:50%; transform:translateX(-50%); background:#2a2e38; border:1px solid #ffffff14; color:#dce6f5; padding:8px 14px; border-radius:8px; opacity:0; transition:opacity .2s; font-size:10px; z-index:20; pointer-events:none; }
+  .sa-toast.on { opacity:1; }
+</style>
+</head>
+<body data-design="native">
+<div class="explorer">
+  <aside class="sidebar" aria-label="Sidebar">
+    <header class="sidebar-header"><div class="traffic-lights" aria-hidden="true"><i></i><i></i><i></i></div><span class="wordmark">rile<span>.</span></span></header>
+    <div class="workspace-label"><span class="workspace-mark">r</span><span>Personal<small>Local workspace</small></span><span class="local-dot" title="On this device"></span></div>
+    <nav class="places" aria-label="Places">
+      <div class="nav-section"><h2>Library</h2><button onclick="location.href='index.html'"><span data-icon="home"></span><span>Home</span></button><button><span data-icon="clock"></span><span>Recents</span></button><button><span data-icon="heart"></span><span>Favorites</span></button></div>
+      <div class="nav-section"><h2>Favorites</h2><button><span data-icon="desktop"></span><span>Desktop</span></button><button><span data-icon="file"></span><span>Documents</span></button><button><span data-icon="download"></span><span>Downloads</span><small>4</small></button><button><span data-icon="image"></span><span>Pictures</span></button><button><span data-icon="folder"></span><span>Projects</span></button></div>
+      <div class="nav-section"><h2>Devices</h2><button><span data-icon="laptop"></span><span>MacBook Pro</span><i class="device-dot"></i></button><button><span data-icon="drive"></span><span>Macintosh HD</span></button></div>
+      <div class="nav-section"><h2>Plugins</h2><button><span data-icon="grid"></span><span>Folder Sizes</span></button><button class="active"><span data-icon="drive"></span><span>Space Analyzer</span></button></div>
+    </nav>
+    <footer class="sidebar-footer"><div class="drive-summary"><span data-icon="drive"></span><span>Macintosh HD<small>123 GB available of 494 GB</small></span></div><div class="storage-track"><i style="width:75%"></i></div><div class="sidebar-footnote"><span class="local-dot"></span> On your device. Not in an index.</div></footer>
+  </aside>
+  <main class="main">
+    <header class="toolbar">
+      <div class="navigation-controls"><button class="icon-button" title="Toggle sidebar"><span data-icon="sidebar"></span></button><span class="toolbar-divider"></span><button id="up" class="icon-button" title="Up one folder"><span data-icon="left"></span></button><button class="icon-button" title="Forward" disabled><span data-icon="right"></span></button></div>
+      <div class="toolbar-path" id="toolbar-path"></div>
+    </header>
+    <div class="tab-strip"><div class="tabs" role="tablist"><div class="tab active"><button role="tab" aria-selected="true"><span data-icon="drive"></span><span>Space Analyzer</span></button></div><div class="tab"><button role="tab" onclick="location.href='index.html'"><span data-icon="home"></span><span>Home</span></button></div></div><button class="icon-button" title="New tab"><span data-icon="plus"></span></button></div>
+    <div class="content-body">
+      <section class="browser"><div class="file-area" id="file-area" data-view="start"></div></section>
+    </div>
+    <footer class="statusbar"><span id="item-count"></span></footer>
+  </main>
+</div>
+<div class="sa-toast" id="toast"></div>
+<script>
+const GB = 1e9, MB = 1e6;
+// Illustrative sample tree. Folders: {name, children}; files: {name, size, age (days since modified)}.
+const D = (name, children) => ({ name, children });
+const F = (name, size, age = 10) => ({ name, size, age });
+const tree = D("rickyperlick", [
+  D("Coding", [
+    D("rile", [D("target", [F("debug", 8.4*GB), F("release", 3.1*GB)]), D("crates", [F("lib.rs", 2*MB)]), F("Cargo.lock", 0.2*MB)]),
+    D("webshop", [D("node_modules", [F("deps", 1.9*GB)]), D(".next", [F("cache", 0.7*GB)]), F("README.md", 0.01*MB)]),
+    D("ml-experiments", [D(".venv", [F("site-packages", 2.6*GB)]), F("model-v1.ckpt", 4.2*GB, 540), F("dataset.parquet", 1.3*GB, 400)]),
+  ]),
+  D("Library", [D("Caches", [F("com.spotify.client", 3.4*GB), F("Homebrew", 1.8*GB)]), D("Developer", [D("DerivedData", [F("builds", 11.2*GB)])])]),
+  D("Downloads", [F("Xcode_16.xip", 7.9*GB, 420), F("ubuntu-24.04.iso", 5.7*GB, 600), F("installer.dmg", 0.9*GB, 200), F("photos-2023.zip", 2.2*GB, 700), F("invoice.pdf", 0.3*MB)]),
+  D("Movies", [F("vacation-4k.mov", 18.4*GB, 800), F("screen-recording.mov", 2.7*GB, 30)]),
+  D("Pictures", [D("Photos Library.photoslibrary", [F("originals", 46*GB)])]),
+  D("Documents", [F("taxes.pdf", 4*MB), F("backup-2022.tar", 6.1*GB, 900)]),
+  D(".Trash", [F("old-project", 3.3*GB)]),
+]);
+const JUNK = { node_modules:"npm dependencies", target:"Rust build output", ".next":"Next.js build", ".venv":"Python virtualenv", Caches:"Application caches", DerivedData:"Xcode build data", ".Trash":"Trash" };
+const JUNK_EXT = ["log","tmp","dmg","iso","zip","xip","tar","pkg"];
+const PALETTE = ["#64adf4","#9d8de0","#65b8a6","#d9a46d","#d27c9a","#7a90ab"];
+const DISK = { name:"Macintosh HD", description:"Internal · APFS", total:494*GB, used:371*GB };
+
+const $ = id => document.getElementById(id);
+const size = n => n.children ? n.children.reduce((s, c) => s + size(c), 0) : n.size;
+const fmt = b => b >= GB ? (b/GB).toFixed(1)+" GB" : b >= MB ? (b/MB).toFixed(1)+" MB" : Math.round(b/1e3)+" KB";
+const [num, unit] = [b => fmt(b).split(" ")[0], b => fmt(b).split(" ")[1]];
+const ext = n => n.includes(".") ? n.split(".").pop().toLowerCase() : "";
+const fileIcon = n => ["mov","mp4"].includes(ext(n)) ? "image" : ["zip","xip","tar","iso","dmg"].includes(ext(n)) ? "box" : ["rs","py","ckpt"].includes(ext(n)) ? "code" : "file";
+const ago = days => days >= 365 ? `${Math.round(days/365)} yr ago` : days >= 30 ? `${Math.round(days/30)} mo ago` : `${days} days ago`;
+function walk(n, path, out) {
+  for (const c of n.children || []) {
+    const p = path + "/" + c.name;
+    if (c.children) { out.folders++; if (JUNK[c.name]) out.junk.push({ path:p, name:c.name, reason:JUNK[c.name], size:size(c) }); else walk(c, p, out); }
+    else out.files.push({ path:p, name:c.name, size:c.size, age:c.age });
+  }
+  return out;
+}
+
+let stack = [tree], view = "overview";
+const checked = new Set();
+const cur = () => stack[stack.length - 1];
+const pathStr = () => ["~", ...stack.slice(1).map(n => n.name)].join("/");
+const rel = p => p.slice(pathStr().length + 1);
+const parentOf = p => p.split("/").slice(0, -1).join("/") || "~";
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("on"), 1600); }
+
+const metric = (name, value, u, detail, art) => `<article class="start-metric"><span class="metric-icon">${overviewArt(art, `sa-${art}`)}</span><div><p>${name}</p><strong>${value}<small>${u}</small></strong><span>${detail}</span></div></article>`;
+const panel = (title, sub, aside, body, cls = "") => `<section class="start-panel ${cls}"><header><div><h2>${title}</h2><p>${sub}</p></div>${aside}</header>${body}</section>`;
+const row = ({ ico, name, sub, size, share, color, flag, attrs, check }) => `
+  <button class="start-recent-row" ${attrs}>
+    ${check !== undefined ? `<input type="checkbox" class="sa-check" data-check="${check}" ${checked.has(check) ? "checked" : ""}>` : ""}
+    <span class="recent-file-icon">${icon(ico)}</span>
+    <span class="recent-file-name"><strong>${name}${flag ? `<span class="sa-flag">${flag}</span>` : ""}</strong><small>${sub}</small>${share !== undefined ? `<div class="sa-share" style="--share-color:${color}"><i style="width:${Math.max(1, share*100)}%"></i></div>` : ""}</span>
+    <span class="recent-file-size">${fmt(size)}</span>${icon("right")}
+  </button>`;
+
+function render() {
+  const node = cur(), total = size(node), scan = walk(node, pathStr(), { files:[], junk:[], folders:0 });
+  const items = node.children.map(c => ({ name:c.name, size:size(c), dir:!!c.children, junk:!!(c.children && JUNK[c.name]) })).sort((a,b) => b.size - a.size);
+  const stale = scan.files.filter(f => f.size >= 50*MB && f.age > 365);
+  const archives = scan.files.filter(f => f.size >= MB && JUNK_EXT.includes(ext(f.name)) && !stale.includes(f));
+  const candidates = [...scan.junk, ...stale, ...archives];
+  const reclaim = candidates.reduce((s, x) => s + x.size, 0);
+  const title = node.name;
+
+  const parts = pathStr().split("/");
+  $("toolbar-path").innerHTML = icon("right") + parts.map((p, i) => i === parts.length - 1 ? `<strong>${p}</strong>` : `<button data-depth="${i}">${p}</button>`).join(icon("right"));
+  $("up").disabled = stack.length === 1;
+
+  const tabs = `<div class="sa-switch" role="tablist">${[["overview","Overview"],["files","Largest files"],["cleanup","Clean up"]].map(([id,l]) => `<button class="chart-period ${view===id?"active":""}" data-view="${id}">${l}</button>`).join("")}</div>`;
+  let html = `<div class="start-page overview-page">
+    <header class="start-heading"><div><p class="start-eyebrow">SPACE ANALYZER · ${pathStr().toUpperCase()}</p><h1>${title}<span>.</span></h1><p>See what takes up room — and what you can let go.</p></div>${tabs}</header>
+    <section class="start-metrics" aria-label="Folder statistics">
+      ${metric("Folder size", num(total), unit(total), `${(total/DISK.used*100).toFixed(0)}% of used space on ${DISK.name}`, "drive")}
+      ${metric("Files scanned", scan.files.length, "", `${scan.files.filter(f => f.size >= GB).length} larger than 1 GB`, "files")}
+      ${metric("Folders", scan.folders, "", `${items.filter(i => i.dir).length} at the top level`, "folder")}
+      ${metric("Reclaimable", num(reclaim), unit(reclaim), `across ${candidates.length} suggestions`, "ssd")}
+    </section>`;
+
+  if (view === "overview") {
+    const top = items.slice(0, 5), restSize = items.slice(5).reduce((s, i) => s + i.size, 0);
+    const groups = [...top.map((i, n) => ({ name:i.name, count:i.size/GB, size:i.size, color:i.junk ? "#d9a46d" : PALETTE[n], dir:i.dir })), ...(restSize ? [{ name:"Everything else", count:restSize/GB, size:restSize, color:PALETTE[5] }] : [])];
+    const donut = overviewDonut(groups, total/GB).replace(/<strong>[^<]*<\/strong><span>files<\/span>/, `<strong>${num(total)}</strong><span>${unit(total)}</span>`);
+    html += `<div class="start-charts">
+      ${panel("Biggest items", "Sorted by size · open a folder to look inside", `<span class="chart-period">${items.length} items</span>`,
+        `<div class="recent-files">${items.map((it, n) => row({ ico: it.dir ? "folder" : fileIcon(it.name), name: it.name, sub: `${it.dir ? "Folder" : "File"} · ${(it.size/total*100).toFixed(1)}% of this folder`, size: it.size, share: it.size/items[0].size, color: it.junk ? "#d9a46d" : "#5daaff", flag: it.junk ? JUNK[it.name] : "", attrs: it.dir ? `data-open="${it.name}"` : `data-reveal="${pathStr()}/${it.name}"` })).join("")}</div>`, "start-recent")}
+      ${panel("A closer look", "Where the space goes", icon("grid"),
+        `<div class="file-type-chart">${donut}<ul>${groups.map(g => `<li ${g.dir ? `data-open="${g.name}"` : ""}><i style="background:${g.color}"></i><span>${g.name}</span><strong>${fmt(g.size)}</strong></li>`).join("")}</ul></div>`, "types-panel")}
+    </div>
+    <section class="start-storage"><div class="start-section-heading"><h2>On this disk</h2><span>Illustrative disk usage</span></div><div class="storage-cards">
+      <div class="storage-card"><div class="storage-card-top"><span class="volume-icon" style="--volume-color:#5daaff">${overviewArt("devices","sa-disk")}</span><span><strong>${DISK.name}</strong><small>${DISK.description}</small></span><span class="volume-status"><i></i>Connected</span></div>
+        <div class="volume-usage"><span><strong>${fmt(total)}</strong> in ${title}</span><span>${fmt(DISK.total-DISK.used)} free</span></div>
+        <div class="volume-meter" style="--volume-color:#5daaff"><i style="width:${total/DISK.total*100}%"></i></div>
+        <div class="volume-caption"><span>${(total/DISK.total*100).toFixed(0)}% of disk · ${fmt(DISK.used)} used overall</span><span>${fmt(DISK.total)} capacity</span></div></div>
+      <div class="storage-card" data-view="cleanup"><div class="storage-card-top"><span class="volume-icon" style="--volume-color:#d9a46d">${overviewArt("ssd","sa-reclaim")}</span><span><strong>Ready to clean up</strong><small>${candidates.length} suggestions · review first</small></span>${icon("right")}</div>
+        <div class="volume-usage"><span><strong>${fmt(reclaim)}</strong> reclaimable</span><span>${(reclaim/total*100).toFixed(0)}% of ${title}</span></div>
+        <div class="volume-meter" style="--volume-color:#d9a46d"><i style="width:${reclaim/total*100}%"></i></div>
+        <div class="volume-caption"><span>Build output, caches, old downloads</span><span>Nothing deleted automatically</span></div></div>
+    </div></section>`;
+  } else if (view === "files") {
+    const top = [...scan.files].sort((a,b) => b.size - a.size).slice(0, 12);
+    const old = top.filter(f => f.age > 365);
+    html += `<div class="start-bottom">
+      ${panel("Largest files", `The ${top.length} biggest files below ${title}`, `<span class="chart-period">${fmt(top.reduce((s,f)=>s+f.size,0))}</span>`,
+        `<div class="recent-files">${top.map(f => row({ ico: fileIcon(f.name), name: f.name, sub: `${parentOf(rel(f.path)) === "~" ? title : parentOf(rel(f.path))} · modified ${ago(f.age)}`, size: f.size, share: f.size/top[0].size, color: f.age > 365 ? "#d9a46d" : "#5daaff", flag: f.age > 365 ? "untouched" : "", attrs: `data-reveal="${f.path}"` })).join("")}</div>`, "start-recent")}
+      ${panel("Worth a look", "Large files nobody opened in a year", icon("clock"),
+        `${old.map(f => `<button data-reveal="${f.path}">${icon(fileIcon(f.name))}<span>${f.name} · ${fmt(f.size)}</span>${icon("right")}</button>`).join("") || ""}<p>${old.length ? `${fmt(old.reduce((s,f)=>s+f.size,0))} hasn’t changed in over a year.` : "Everything here was touched recently."}</p>`, "start-shortcuts")}
+    </div>`;
+  } else {
+    const group = (title, sub, list, why, ico) => panel(title, sub, `<span class="chart-period">${fmt(list.reduce((s,x)=>s+x.size,0))}</span>`,
+      `<div class="recent-files">${list.sort((a,b)=>b.size-a.size).map(x => row({ ico: ico(x), name: x.name, sub: `${rel(x.path)} · ${why(x)}`, size: x.size, attrs: `data-reveal="${x.path}"`, check: x.path })).join("") || `<p class="start-empty">Nothing found.</p>`}</div>`, "start-recent");
+    const sel = candidates.filter(x => checked.has(x.path));
+    html += `<div class="start-bottom">
+      ${group("Regenerable folders", "Rebuilt automatically by the tools that made them", scan.junk, x => x.reason, () => "folder")}
+      <div style="display:grid;gap:18px;align-content:start">
+        ${group("Untouched for a year", "Large files that haven’t changed since", stale, x => `modified ${ago(x.age)}`, x => fileIcon(x.name))}
+        ${group("Installers & archives", "Disk images, archives and downloads", archives, x => ext(x.name).toUpperCase(), () => "box")}
+      </div>
+    </div>
+    <div class="sa-actions"><span>${sel.length} selected · ${fmt(sel.reduce((s,x)=>s+x.size,0))}</span><button id="select-all">Select all</button><button id="copy-paths" ${sel.length ? "" : "disabled"}>Copy paths</button><button class="primary" id="trash" ${sel.length ? "" : "disabled"}>Move to Trash…</button></div>`;
+  }
+  html += `<footer class="start-footnote">${icon("info")} Space Analyzer plugin preview. Sizes come from sample data; nothing is deleted without your confirmation.</footer></div>`;
+  $("file-area").innerHTML = html;
+  $("item-count").textContent = `${fmt(total)} · ${scan.files.length} files scanned · ${fmt(reclaim)} reclaimable`;
+  render.candidates = candidates;
+}
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-check],[data-view],[data-open],[data-reveal],[data-depth],#up,#select-all,#copy-paths,#trash");
+  if (!t) return;
+  if (t.dataset.check !== undefined) { e.stopPropagation(); checked[t.checked ? "add" : "delete"](t.dataset.check); return render(); }
+  if (t.dataset.view && t.id !== "file-area") view = t.dataset.view;
+  else if (t.dataset.open) { const c = cur().children.find(c => c.name === t.dataset.open); if (c?.children) { stack.push(c); view = "overview"; } }
+  else if (t.dataset.reveal) return toast(`Reveal in Rile: ${t.dataset.reveal}`);
+  else if (t.dataset.depth) stack = stack.slice(0, +t.dataset.depth + 1);
+  else if (t.id === "up" && stack.length > 1) stack.pop();
+  else if (t.id === "select-all") render.candidates.forEach(x => checked.add(x.path));
+  else if (t.id === "copy-paths") return toast(`Copied ${checked.size} paths`);
+  else if (t.id === "trash") { if (!confirm(`Move ${checked.size} items to the Trash?`)) return; toast(`Moved ${checked.size} items to the Trash (preview)`); checked.clear(); }
+  else return;
+  render();
+});
+document.querySelectorAll("[data-icon]").forEach(el => el.innerHTML = icon(el.dataset.icon));
+render();
+</script>
+</body>
+</html>

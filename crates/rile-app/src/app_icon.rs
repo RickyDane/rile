@@ -2,7 +2,6 @@
 
 use rile_core::settings::Accent;
 
-#[cfg(any(target_os = "macos", test))]
 fn icon_bytes(accent: Accent) -> &'static [u8] {
     match accent {
         Accent::Blue => include_bytes!("../assets/app-icons/blue.icns"),
@@ -14,6 +13,28 @@ fn icon_bytes(accent: Accent) -> &'static [u8] {
         Accent::Teal => include_bytes!("../assets/app-icons/teal.icns"),
         Accent::Graphite => include_bytes!("../assets/app-icons/graphite.icns"),
     }
+}
+
+/// The embedded PNG (512pt@2x if present) for an accent, for drawing in the UI.
+pub fn png(accent: Accent) -> Option<std::sync::Arc<gpui_kit::Image>> {
+    let bytes = icon_bytes(accent);
+    let mut best: Option<&[u8]> = None;
+    let mut i = 8;
+    while i + 8 <= bytes.len() {
+        let tag = &bytes[i..i + 4];
+        let len = u32::from_be_bytes(bytes[i + 4..i + 8].try_into().ok()?) as usize;
+        if len < 8 || i + len > bytes.len() {
+            break;
+        }
+        let data = &bytes[i + 8..i + len];
+        if data.starts_with(b"\x89PNG") && matches!(tag, b"ic10" | b"ic09" | b"ic14" | b"ic08") {
+            if best.is_none_or(|b| data.len() > b.len()) {
+                best = Some(data);
+            }
+        }
+        i += len;
+    }
+    best.map(|d| std::sync::Arc::new(gpui_kit::Image::from_bytes(gpui_kit::ImageFormat::Png, d.to_vec())))
 }
 
 // Tests use GPUI's simulated app, not the actual NSApplication.

@@ -194,7 +194,7 @@ enum Tab {
     Programs,
     Plugins,
     Ai,
-    Updates,
+    About,
 }
 
 /// Settings dialog content with tabs. Re-renders when the workspace changes.
@@ -319,9 +319,9 @@ impl Render for SettingsView {
             (Tab::Programs, "Programs", IconName::AppWindow),
             (Tab::Plugins, "Plugins", IconName::Puzzle),
             (Tab::Ai, "AI", IconName::Sparkles),
-            (Tab::Updates, "Updates", IconName::RotateCw),
+            (Tab::About, "About", IconName::Info),
         ];
-        let nav = v_flex().w(px(170.)).flex_none().gap(px(2.)).children(tabs.into_iter().map(|(t, label, icon)| {
+        let tab_list = v_flex().gap(px(2.)).children(tabs.into_iter().map(|(t, label, icon)| {
             let active = self.tab == t;
             h_flex()
                 .id(label)
@@ -341,6 +341,45 @@ impl Render for SettingsView {
                     cx.notify();
                 }))
         }));
+        let ws_check = self.ws.clone();
+        let ws_show = self.ws.clone();
+        let nav = v_flex()
+            .w(px(170.))
+            .flex_none()
+            .self_stretch()
+            .justify_between()
+            .child(tab_list)
+            .child({
+                let has_update = update_available.is_some();
+                let (icon, label) = if update_checking {
+                    (IconName::RotateCw, "Checking…".to_string())
+                } else if let Some(v) = &update_available {
+                    (IconName::Download, format!("Update to {v}"))
+                } else {
+                    (IconName::RotateCw, "Check for Updates".to_string())
+                };
+                let color = if has_update { ch.accent } else { ch.text_muted };
+                h_flex()
+                    .id("upd-check")
+                    .justify_center()
+                    .h(px(28.))
+                    .px(px(10.))
+                    .gap(px(8.))
+                    .rounded(px(7.))
+                    .text_size(px(12.))
+                    .text_color(color)
+                    .cursor_pointer()
+                    .hover(|d| d.bg(ch.hover_strong).text_color(if has_update { ch.accent } else { ch.text }))
+                    .child(crate::icons::icon(icon).size(px(13.)).text_color(color))
+                    .child(label)
+                    .on_click(move |_, window, cx| {
+                        if has_update {
+                            ws_show.update(cx, |ws, cx| ws.open_update_dialog(window, cx));
+                        } else if !update_checking {
+                            ws_check.update(cx, |ws, cx| ws.check_for_updates(true, window, cx));
+                        }
+                    })
+            });
 
         let section = |title: &'static str, items: Vec<(SharedString, SharedString, AnyElement)>, cx: &App| {
             v_flex().gap(px(8.)).child(kit::caption(title, cx)).child(kit::rows(items, cx))
@@ -419,6 +458,15 @@ impl Render for SettingsView {
                             },
                         ),
                         r("Confirm before moving to Trash", "Ask before trashing items", self.switch("s-trash", s.confirm_trash, |s, v| s.confirm_trash = v)),
+                    ],
+                    cx,
+                ))
+                .child(section(
+                    "UPDATES",
+                    vec![
+                        r("Check on launch", "Look for a new release when Rile starts", self.switch("s-upd", s.update_check_on_start, |s, v| s.update_check_on_start = v)),
+                        r("Include pre-releases", "Offer beta versions", self.switch("s-pre", s.update_prereleases, |s, v| s.update_prereleases = v)),
+                        r("Release source", "GitHub repository (owner/repo)", div().w(px(200.)).child(Input::new(&self.repo_input).small()).into_any_element()),
                     ],
                     cx,
                 ))
@@ -752,33 +800,43 @@ impl Render for SettingsView {
                     cx,
                 ))
                 .into_any_element(),
-            Tab::Updates => {
-                let ws_check = self.ws.clone();
-                let ws_show = self.ws.clone();
+            Tab::About => {
+                let repo = s.update_repo.trim().to_string();
+                let url = format!("https://github.com/{repo}");
                 v_flex()
                     .gap(px(16.))
+                    .child(
+                        v_flex()
+                            .items_center()
+                            .gap(px(6.))
+                            .py(px(16.))
+                            .child(match crate::app_icon::png(s.accent) {
+                                Some(image) => { use gpui_kit::StyledImage; gpui_kit::img(image).size(px(96.)).object_fit(gpui_kit::ObjectFit::Contain).into_any_element() }
+                                None => crate::icons::icon(IconName::Folder).size(px(56.)).text_color(ch.accent).into_any_element(),
+                            })
+                            .child(div().text_size(px(20.)).font_weight(gpui_kit::FontWeight::SEMIBOLD).text_color(ch.text_strong).child("Rile"))
+                            .child(div().text_size(px(12.)).text_color(ch.text_muted).child(format!("Version {}", env!("CARGO_PKG_VERSION"))))
+                            .child(div().text_size(px(12.)).text_color(ch.text).child("A fast, native file explorer.")),
+                    )
                     .child(section(
-                        "UPDATES",
+                        "INFO",
                         vec![
-                            r("Check on launch", "Look for a new release when Rile starts", self.switch("s-upd", s.update_check_on_start, |s, v| s.update_check_on_start = v)),
-                            r("Include pre-releases", "Offer beta versions", self.switch("s-pre", s.update_prereleases, |s, v| s.update_prereleases = v)),
-                            r("Release source", "GitHub repository (owner/repo)", div().w(px(200.)).child(Input::new(&self.repo_input).small()).into_any_element()),
+                            r("Version", "Installed release", div().text_size(px(12.)).child(env!("CARGO_PKG_VERSION")).into_any_element()),
+                            (
+                                SharedString::from("Source"),
+                                SharedString::from(if repo.is_empty() { "Not set".to_string() } else { repo.clone() }),
+                                Button::new("about-gh")
+                                    .cursor_pointer()
+                                    .small()
+                                    .outline()
+                                    .label("Open on GitHub")
+                                    .disabled(repo.is_empty())
+                                    .on_click(move |_, _, cx| cx.open_url(&url))
+                                    .into_any_element(),
+                            ),
                         ],
                         cx,
                     ))
-                    .child(
-                        h_flex()
-                            .gap(px(10.))
-                            .child(div().flex_1().text_size(px(12.)).text_color(ch.text_muted).child(format!("You're on Rile {}", env!("CARGO_PKG_VERSION"))))
-                            .child(Button::new("upd-check").cursor_pointer().small().outline().label("Check Now").loading(update_checking).on_click(move |_, window, cx| {
-                                ws_check.update(cx, |ws, cx| ws.check_for_updates(true, window, cx));
-                            }))
-                            .when_some(update_available, |d, v| {
-                                d.child(Button::new("upd-show").cursor_pointer().small().primary().label(format!("Install {v}")).on_click(move |_, window, cx| {
-                                    ws_show.update(cx, |ws, cx| ws.open_update_dialog(window, cx));
-                                }))
-                            }),
-                    )
                     .into_any_element()
             }
         };

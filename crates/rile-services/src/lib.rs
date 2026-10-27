@@ -16,6 +16,7 @@ pub mod preview;
 pub mod properties;
 pub mod rewards;
 pub mod search;
+pub mod speedtest;
 pub mod tags;
 pub mod updater;
 pub mod vision;
