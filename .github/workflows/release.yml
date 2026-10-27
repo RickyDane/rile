@@ -1,0 +1,131 @@
+name: Release
+
+# Push a tag `vX.Y.Z` (matching the workspace version in Cargo.toml) to build,
+# bundle and publish a GitHub release. Asset names follow the in-app updater's
+# convention (crates/rile-services/src/updater.rs):
+#   rile-<triple>.app.zip   app bundle (preferred by the updater when running from Rile.app)
+#   rile-<triple>.tar.gz    bare binary
+#   Rile-<version>-<arch>.dmg  for manual installs
+#   SHA256SUMS              checksums verified by the updater
+#
+# Optional secrets (without them the app is ad-hoc signed and not notarized):
+#   MACOS_CERT_P12        base64 of a "Developer ID Application" .p12
+#   MACOS_CERT_PASSWORD   password of that .p12
+#   APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD   for notarization
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build, e.g. v0.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            arch: arm64
+            flags: ""
+          - target: x86_64-apple-darwin
+            arch: x86_64
+            # On-device AI (Foundation Models) is Apple Silicon only.
+            flags: "--no-default-features"
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0 # build number = commit count
+
+      - name: Check tag matches Cargo version
+        run: |
+          VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -1)
+          [[ "v$VERSION" == "$TAG" ]] || { echo "::error::Tag $TAG != Cargo.toml version $VERSION"; exit 1; }
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Import signing certificate
+        env:
+          P12: ${{ secrets.MACOS_CERT_P12 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        if: env.P12 != ''
+        run: |
+          KC="$RUNNER_TEMP/build.keychain-db"; KC_PW=$(uuidgen)
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KC_PW" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KC_PW" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$KC_PW" "$KC"
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+
+      - name: Set up notarization
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          P12: ${{ secrets.MACOS_CERT_P12 }}
+        if: env.APPLE_ID != '' && env.P12 != ''
+        run: |
+          xcrun notarytool store-credentials rile-ci --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD"
+          echo "NOTARY_PROFILE=rile-ci" >> "$GITHUB_ENV"
+
+      - name: Build, bundle, sign
+        env:
+          TARGET: ${{ matrix.target }}
+          CARGO_FLAGS: ${{ matrix.flags }}
+          DMG: "1"
+        run: scripts/bundle-macos.sh
+
+      - name: Package assets
+        run: |
+          mkdir -p out
+          ditto -c -k --keepParent dist/Rile.app "out/rile-${{ matrix.target }}.app.zip"
+          tar -czf "out/rile-${{ matrix.target }}.tar.gz" -C "target/${{ matrix.target }}/release" rile
+          mv "dist/Rile-$VERSION.dmg" "out/Rile-$VERSION-${{ matrix.arch }}.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rile-${{ matrix.target }}
+          path: out/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Checksums
+        run: cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/* --clobber
+          else
+            PRE=$([[ "$TAG" == *-* ]] && echo --prerelease || true)
+            gh release create "$TAG" out/* --title "$TAG" --generate-notes $PRE
+          fi

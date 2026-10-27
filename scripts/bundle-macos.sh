@@ -8,6 +8,7 @@
 #   NOTARY_PROFILE  notarytool keychain profile; if set, notarizes + staples
 #                   (create once: xcrun notarytool store-credentials <name> --apple-id ... --team-id 4T73YMH6PG)
 #   DMG=1           also produce dist/Rile-<version>.dmg
+#   CARGO_FLAGS     extra cargo build flags, e.g. "--no-default-features" (x86_64 has no on-device AI)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -29,17 +30,17 @@ echo "==> Building $BIN $VERSION ($BUILD)"
 if [[ "$TARGET" == universal ]]; then
   for t in aarch64-apple-darwin x86_64-apple-darwin; do
     rustup target add "$t" >/dev/null
-    cargo build --release -p rile-app --bin "$BIN" --target "$t"
+    cargo build --release -p rile-app --bin "$BIN" ${CARGO_FLAGS:-} --target "$t"
   done
   mkdir -p target/universal/release
   lipo -create -output "target/universal/release/$BIN" \
     "target/aarch64-apple-darwin/release/$BIN" "target/x86_64-apple-darwin/release/$BIN"
   BIN_PATH="target/universal/release/$BIN"
 elif [[ -n "$TARGET" ]]; then
-  cargo build --release -p rile-app --bin "$BIN" --target "$TARGET"
+  cargo build --release -p rile-app --bin "$BIN" ${CARGO_FLAGS:-} --target "$TARGET"
   BIN_PATH="target/$TARGET/release/$BIN"
 else
-  cargo build --release -p rile-app --bin "$BIN"
+  cargo build --release -p rile-app --bin "$BIN" ${CARGO_FLAGS:-}
   BIN_PATH="target/release/$BIN"
 fi
 
