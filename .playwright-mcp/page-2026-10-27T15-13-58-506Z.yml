@@ -1,0 +1,169 @@
+- generic [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - generic [ref=f1e3]:
+      - generic [ref=f1e4]: rile.
+      - generic [ref=f1e5]: Icon explorations / Round 03
+    - heading "Ten more ways to stand out." [level=1] [ref=f1e6]
+    - paragraph [ref=f1e7]: "A wider exploration: architectural marks, tactile folders, a quick-footed mascot, and new monograms. Ten original suggestions, numbered 07–16 to follow the previous six."
+    - generic [ref=f1e8]:
+      - group "Preview background" [ref=f1e9]:
+        - button "Dark" [ref=f1e10] [cursor=pointer]
+        - button "Light" [active] [pressed] [ref=f1e11] [cursor=pointer]
+      - generic [ref=f1e12]:
+        - text: 48, 32 & 16 px previews ·
+        - link "Compare the previous six ↗" [ref=f1e13] [cursor=pointer]:
+          - /url: ../round-2/
+  - main [ref=f1e14]:
+    - article [ref=f1e15]:
+      - img "Portal app icon" [ref=f1e17]
+      - generic [ref=f1e18]:
+        - generic [ref=f1e19]:
+          - generic [ref=f1e20]: "07"
+          - heading "Portal" [level=2] [ref=f1e21]
+        - paragraph [ref=f1e22]: A new perspective
+        - paragraph [ref=f1e23]: An open doorway in electric blue. A simple invitation to explore what is inside.
+        - generic "Small size previews" [ref=f1e24]:
+          - img "Portal at 48 pixels" [ref=f1e25]
+          - img "Portal at 32 pixels" [ref=f1e26]
+          - img "Portal at 16 pixels" [ref=f1e27]
+          - link "Download Portal SVG" [ref=f1e28] [cursor=pointer]:
+            - /url: 07-portal.svg
+            - text: Download SVG ↗
+    - article [ref=f1e29]:
+      - img "Index app icon" [ref=f1e31]
+      - generic [ref=f1e32]:
+        - generic [ref=f1e33]:
+          - generic [ref=f1e34]: "08"
+          - heading "Index" [level=2] [ref=f1e35]
+        - paragraph [ref=f1e36]: Order, beautifully
+        - paragraph [ref=f1e37]: Three tactile index dividers, each with its own tab. A warm, analog take on digital organization.
+        - generic "Small size previews" [ref=f1e38]:
+          - img "Index at 48 pixels" [ref=f1e39]
+          - img "Index at 32 pixels" [ref=f1e40]
+          - img "Index at 16 pixels" [ref=f1e41]
+          - link "Download Index SVG" [ref=f1e42] [cursor=pointer]:
+            - /url: 08-index.svg
+            - text: Download SVG ↗
+    - article [ref=f1e43]:
+      - img "Orbit app icon" [ref=f1e45]
+      - generic [ref=f1e46]:
+        - generic [ref=f1e47]:
+          - generic [ref=f1e48]: "09"
+          - heading "Orbit" [level=2] [ref=f1e49]
+        - paragraph [ref=f1e50]: All your places
+        - paragraph [ref=f1e51]: A central home with satellite files. Local disks, remote servers, and favorite places in one orbit.
+        - generic "Small size previews" [ref=f1e52]:
+          - img "Orbit at 48 pixels" [ref=f1e53]
+          - img "Orbit at 32 pixels" [ref=f1e54]
+          - img "Orbit at 16 pixels" [ref=f1e55]
+          - link "Download Orbit SVG" [ref=f1e56] [cursor=pointer]:
+            - /url: 09-orbit.svg
+            - text: Download SVG ↗
+    - article [ref=f1e57]:
+      - img "Cutout app icon" [ref=f1e59]
+      - generic [ref=f1e60]:
+        - generic [ref=f1e61]:
+          - generic [ref=f1e62]: "10"
+          - heading "Cutout" [level=2] [ref=f1e63]
+        - paragraph [ref=f1e64]: Pure identity
+        - paragraph [ref=f1e65]: A bold lowercase r cut into a porcelain tile. No folder metaphor; just a confident, lasting mark.
+        - generic "Small size previews" [ref=f1e66]:
+          - img "Cutout at 48 pixels" [ref=f1e67]
+          - img "Cutout at 32 pixels" [ref=f1e68]
+          - img "Cutout at 16 pixels" [ref=f1e69]
+          - link "Download Cutout SVG" [ref=f1e70] [cursor=pointer]:
+            - /url: 10-cutout.svg
+            - text: Download SVG ↗
+    - article [ref=f1e71]:
+      - img "Lens app icon" [ref=f1e73]
+      - generic [ref=f1e74]:
+        - generic [ref=f1e75]:
+          - generic [ref=f1e76]: "11"
+          - heading "Lens" [level=2] [ref=f1e77]
+        - paragraph [ref=f1e78]: Look a little closer
+        - paragraph [ref=f1e79]: A soft glass lens over a tiny file grid. A search-first direction with a cool, luminous finish.
+        - generic "Small size previews" [ref=f1e80]:
+          - img "Lens at 48 pixels" [ref=f1e81]
+          - img "Lens at 32 pixels" [ref=f1e82]
+          - img "Lens at 16 pixels" [ref=f1e83]
+          - link "Download Lens SVG" [ref=f1e84] [cursor=pointer]:
+            - /url: 11-lens.svg
+            - text: Download SVG ↗
+    - article [ref=f1e85]:
+      - img "Fox app icon" [ref=f1e87]
+      - generic [ref=f1e88]:
+        - generic [ref=f1e89]:
+          - generic [ref=f1e90]: "12"
+          - heading "Fox" [level=2] [ref=f1e91]
+        - paragraph [ref=f1e92]: Quick by nature
+        - paragraph [ref=f1e93]: An angular fox face in burnt orange. An expressive mascot for a nimble, lightweight explorer.
+        - generic "Small size previews" [ref=f1e94]:
+          - img "Fox at 48 pixels" [ref=f1e95]
+          - img "Fox at 32 pixels" [ref=f1e96]
+          - img "Fox at 16 pixels" [ref=f1e97]
+          - link "Download Fox SVG" [ref=f1e98] [cursor=pointer]:
+            - /url: 12-fox.svg
+            - text: Download SVG ↗
+    - article [ref=f1e99]:
+      - img "Pathline app icon" [ref=f1e101]
+      - generic [ref=f1e102]:
+        - generic [ref=f1e103]:
+          - generic [ref=f1e104]: "13"
+          - heading "Pathline" [level=2] [ref=f1e105]
+        - paragraph [ref=f1e106]: One continuous thought
+        - paragraph [ref=f1e107]: One unbroken route, ending in a bright waypoint. Minimal geometry with a sense of forward movement.
+        - generic "Small size previews" [ref=f1e108]:
+          - img "Pathline at 48 pixels" [ref=f1e109]
+          - img "Pathline at 32 pixels" [ref=f1e110]
+          - img "Pathline at 16 pixels" [ref=f1e111]
+          - link "Download Pathline SVG" [ref=f1e112] [cursor=pointer]:
+            - /url: 13-path.svg
+            - text: Download SVG ↗
+    - article [ref=f1e113]:
+      - img "Prism app icon" [ref=f1e115]
+      - generic [ref=f1e116]:
+        - generic [ref=f1e117]:
+          - generic [ref=f1e118]: "14"
+          - heading "Prism" [level=2] [ref=f1e119]
+        - paragraph [ref=f1e120]: A different dimension
+        - paragraph [ref=f1e121]: An isometric filing cube with an open corner. Architectural, precise, and quietly technical.
+        - generic "Small size previews" [ref=f1e122]:
+          - img "Prism at 48 pixels" [ref=f1e123]
+          - img "Prism at 32 pixels" [ref=f1e124]
+          - img "Prism at 16 pixels" [ref=f1e125]
+          - link "Download Prism SVG" [ref=f1e126] [cursor=pointer]:
+            - /url: 14-prism.svg
+            - text: Download SVG ↗
+    - article [ref=f1e127]:
+      - img "Keepsake app icon" [ref=f1e129]
+      - generic [ref=f1e130]:
+        - generic [ref=f1e131]:
+          - generic [ref=f1e132]: "15"
+          - heading "Keepsake" [level=2] [ref=f1e133]
+        - paragraph [ref=f1e134]: Find it again
+        - paragraph [ref=f1e135]: A deep red folder and a cream bookmark. A warmer direction centered on favorites and things worth keeping.
+        - generic "Small size previews" [ref=f1e136]:
+          - img "Keepsake at 48 pixels" [ref=f1e137]
+          - img "Keepsake at 32 pixels" [ref=f1e138]
+          - img "Keepsake at 16 pixels" [ref=f1e139]
+          - link "Download Keepsake SVG" [ref=f1e140] [cursor=pointer]:
+            - /url: 15-bookmark.svg
+            - text: Download SVG ↗
+    - article [ref=f1e141]:
+      - img "Current app icon" [ref=f1e143]
+      - generic [ref=f1e144]:
+        - generic [ref=f1e145]:
+          - generic [ref=f1e146]: "16"
+          - heading "Current" [level=2] [ref=f1e147]
+        - paragraph [ref=f1e148]: Effortlessly in motion
+        - paragraph [ref=f1e149]: Two fluid bands interlock into an abstract r. A vivid blue-green symbol for files that move freely.
+        - generic "Small size previews" [ref=f1e150]:
+          - img "Current at 48 pixels" [ref=f1e151]
+          - img "Current at 32 pixels" [ref=f1e152]
+          - img "Current at 16 pixels" [ref=f1e153]
+          - link "Download Current SVG" [ref=f1e154] [cursor=pointer]:
+            - /url: 16-current.svg
+            - text: Download SVG ↗
+  - contentinfo [ref=f1e155]:
+    - generic [ref=f1e156]: 1024 × 1024 vector artwork · Original SVGs · No external assets
+    - generic [ref=f1e157]: Suggestions only — the app icon is unchanged.

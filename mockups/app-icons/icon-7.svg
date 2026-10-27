@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Rile — Seek</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#6f7cf2"/><stop offset=".6" stop-color="#3f47b8"/><stop offset="1" stop-color="#252a78"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="fBack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b9c6f5"/><stop offset="1" stop-color="#93a3e6"/>
+    </linearGradient>
+    <linearGradient id="fFront" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dbe2fb"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4a4a50"/><stop offset="1" stop-color="#1c1c1f"/>
+    </linearGradient>
+    <radialGradient id="lens" cx=".38" cy=".32" r=".8">
+      <stop offset="0" stop-color="#e8f3ff" stop-opacity=".95"/><stop offset=".6" stop-color="#9fc8f4" stop-opacity=".75"/><stop offset="1" stop-color="#5b8fd0" stop-opacity=".8"/>
+    </radialGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity=".35"/>
+    </filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#10123d" flood-opacity=".5"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#gloss)"/>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="184" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="3"/>
+  <g filter="url(#soft)">
+    <path d="M206 300Q206 262 244 262H376Q400 262 416 280L440 306H690Q728 306 728 344V650Q728 688 690 688H244Q206 688 206 650Z" fill="url(#fBack)"/>
+    <path d="M198 388Q198 354 232 354H704Q738 354 738 388V658Q738 696 700 696H236Q198 696 198 658Z" fill="url(#fFront)"/>
+  </g>
+  <g filter="url(#soft)">
+    <path d="M716 716L812 812" stroke="url(#ring)" stroke-width="74" stroke-linecap="round"/>
+    <circle cx="606" cy="606" r="150" fill="url(#lens)"/>
+    <circle cx="606" cy="606" r="150" fill="none" stroke="url(#ring)" stroke-width="44"/>
+    <path d="M520 560A100 100 0 0 1 592 506" fill="none" stroke="#fff" stroke-width="20" stroke-linecap="round" stroke-opacity=".9"/>
+  </g>
+</svg>

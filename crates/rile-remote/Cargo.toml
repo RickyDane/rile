@@ -1,0 +1,36 @@
+[package]
+name = "rile-remote"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+serde = { version = "1", features = ["derive"] }
+dirs = "6"
+log = "0.4"
+# FTP / FTPS (explicit TLS via rustls, ring crypto provider -> no system libs, no cmake)
+suppaftp = { version = "12.2", features = ["rustls-ring"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+webpki-roots = "1"
+ring = "0.17"
+# SFTP: pure-Rust SSH (ring crypto), driven by a private tokio runtime hidden behind the sync API
+russh = { version = "0.65", default-features = false, features = ["ring", "rsa"] }
+russh-sftp = "3.0"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "io-util", "sync"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3.6", features = ["apple-native"] }
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3.6", features = ["windows-native"] }
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+keyring = { version = "3.6", features = ["async-secret-service", "tokio", "crypto-rust"] }
+
+[dev-dependencies]
+tempfile = "3"
+async-trait = "0.1"
+libunftp = { version = "0.23", default-features = false, features = ["ring"] }
+unftp-sbe-fs = "0.4"
+unftp-core = "0.1"
+rcgen = { version = "0.14", default-features = false, features = ["ring", "pem", "crypto"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "fs", "io-util", "sync"] }

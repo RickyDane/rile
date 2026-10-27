@@ -1,0 +1,181 @@
+- generic [ref=f6e16]:
+  - banner [ref=f6e17]:
+    - link "Rile design studio" [ref=f6e18] [cursor=pointer]:
+      - /url: "#glass"
+      - text: rile / design studio
+    - generic [ref=f6e19]: Interactive concepts · not live files
+  - main [ref=f6e21]:
+    - generic [ref=f6e22]:
+      - generic [ref=f6e23]:
+        - paragraph [ref=f6e24]: FAMILIAR STRUCTURE / DISTINCT PERSONALITIES
+        - heading "A file explorer. Find your own point of view." [level=1] [ref=f6e25]
+      - paragraph [ref=f6e26]: Traditional layouts. Different points of view.Sidebars, columns, twin panes and previews.Find the right balance for your workflow.
+    - navigation "Design direction" [ref=f6e27]:
+      - button "Obsidian design" [pressed] [ref=f6e28] [cursor=pointer]:
+        - strong [ref=f6e30]: Obsidian
+      - button "Aurora design" [ref=f6e31] [cursor=pointer]:
+        - strong [ref=f6e33]: Aurora
+      - button "Atelier design" [ref=f6e34] [cursor=pointer]:
+        - strong [ref=f6e36]: Atelier
+      - button "Carbon design" [ref=f6e37] [cursor=pointer]:
+        - strong [ref=f6e39]: Carbon
+      - button "Signal design" [ref=f6e40] [cursor=pointer]:
+        - strong [ref=f6e42]: Signal
+      - button "Atlas design" [ref=f6e43] [cursor=pointer]:
+        - strong [ref=f6e45]: Atlas
+      - button "Ledger design" [ref=f6e46] [cursor=pointer]:
+        - strong [ref=f6e48]: Ledger
+      - button "Harbor design" [ref=f6e49] [cursor=pointer]:
+        - strong [ref=f6e51]: Harbor
+    - region "Interactive file explorer mockup" [ref=f6e52]:
+      - generic [ref=f6e53]:
+        - generic [ref=f6e54]:
+          - generic [ref=f6e59]: rile
+          - group "Open locations" [ref=f6e1]:
+            - button "Projects" [active] [pressed] [ref=f6e2] [cursor=pointer]: Forma Studio
+            - button "Downloads" [ref=f6e6] [cursor=pointer]
+            - button "Pictures" [ref=f6e10] [cursor=pointer]
+          - button "Ask Rile ⌘ K" [ref=f6e60] [cursor=pointer]:
+            - text: Ask Rile
+            - generic [ref=f6e64]: ⌘ K
+        - generic [ref=f6e65]:
+          - complementary "Locations" [ref=f6e66]:
+            - generic [ref=f6e67]:
+              - generic [ref=f6e68]: r.
+              - generic [ref=f6e69]:
+                - text: Personal workspace
+                - generic [ref=f6e70]: Local. Fast. Yours.
+            - generic [ref=f6e71]:
+              - paragraph [ref=f6e72]: WORKSPACE
+              - button "Home" [ref=f6e73] [cursor=pointer]
+              - button "Recents" [ref=f6e78] [cursor=pointer]:
+                - text: Recents
+                - generic [ref=f6e83]: "12"
+            - generic [ref=f6e84]:
+              - paragraph [ref=f6e85]:
+                - text: FAVORITES
+                - generic [ref=f6e86]: −
+              - button "Projects" [ref=f6e87] [cursor=pointer]
+              - button "Documents" [ref=f6e92] [cursor=pointer]
+              - button "Downloads" [ref=f6e97] [cursor=pointer]:
+                - text: Downloads
+                - generic [ref=f6e101]: "8"
+              - button "Pictures" [ref=f6e102] [cursor=pointer]
+            - generic [ref=f6e108]:
+              - paragraph [ref=f6e109]:
+                - text: LOCATIONS
+                - generic [ref=f6e110]: −
+              - button "Macintosh HD" [ref=f6e111] [cursor=pointer]
+              - button "Studio SSD" [ref=f6e116] [cursor=pointer]:
+                - text: Studio SSD
+                - generic [ref=f6e121]: ⏏
+            - generic [ref=f6e122]:
+              - generic [ref=f6e127]:
+                - text: Macintosh HD
+                - generic [ref=f6e128]: 284 GB of 512 GB used
+              - generic [ref=f6e131]: All files stay on your device
+          - generic [ref=f6e133]:
+            - generic [ref=f6e134]:
+              - generic [ref=f6e135]:
+                - button "Back" [ref=f6e136] [cursor=pointer]
+                - generic [ref=f6e140]: Workspace
+                - button "Projects" [ref=f6e256] [cursor=pointer]
+                - strong [ref=f6e260]: Forma Studio
+              - button "Toggle preview" [pressed] [ref=f6e145] [cursor=pointer]
+            - generic [ref=f6e149]:
+              - generic [ref=f6e150]:
+                - heading "Forma Studio" [level=2] [ref=f6e261]
+                - paragraph [ref=f6e152]: A home for ideas taking shape.
+              - button "New folder" [ref=f6e153] [cursor=pointer]
+            - generic [ref=f6e157]:
+              - group "File view" [ref=f6e158]:
+                - button "Signature layout" [ref=f6e159] [cursor=pointer]: ✦
+                - button "Grid view" [ref=f6e160] [cursor=pointer]
+                - button "List view" [ref=f6e167] [cursor=pointer]
+                - button "Column view" [ref=f6e171] [cursor=pointer]
+                - button "Dual-pane view" [ref=f6e176] [cursor=pointer]
+              - generic [ref=f6e181]:
+                - searchbox "Filter files" [ref=f6e186]
+                - generic [ref=f6e187]: /
+              - button "Sort by name" [ref=f6e188] [cursor=pointer]: Name
+            - generic [ref=f6e262]:
+              - generic [ref=f6e263]:
+                - generic [ref=f6e264]: Folders
+                - generic [ref=f6e265]: "3"
+              - generic [ref=f6e266]:
+                - button "Select Brand assets" [ref=f6e267] [cursor=pointer]:
+                  - generic [ref=f6e270]: Brand assets
+                  - generic [ref=f6e271]: 12 items
+                - button "Select Explorations" [ref=f6e272] [cursor=pointer]:
+                  - generic [ref=f6e275]: Explorations
+                  - generic [ref=f6e276]: 6 items
+                - button "Select References" [ref=f6e277] [cursor=pointer]:
+                  - generic [ref=f6e280]: References
+                  - generic [ref=f6e281]: 18 items
+              - generic [ref=f6e282]:
+                - generic [ref=f6e283]: Files
+                - generic [ref=f6e284]: "5"
+              - generic [ref=f6e285]:
+                - button "Select Color explorations.png" [ref=f6e286] [cursor=pointer]:
+                  - generic [ref=f6e293]: Color explorations.png
+                  - generic [ref=f6e294]: 840 KB
+                - button "Select Forma — Brand poster.png" [pressed] [ref=f6e295] [cursor=pointer]:
+                  - generic [aria-hidden] [ref=f6e296]: ✓
+                  - generic [aria-hidden] [ref=f6e297]:
+                    - generic [ref=f6e298]: forma
+                    - generic [ref=f6e299]: ROOM FOR POSSIBILITY
+                  - generic [ref=f6e300]: Forma — Brand poster.png
+                  - generic [ref=f6e301]: 2.4 MB
+                - button "Select Project brief.pdf" [ref=f6e302] [cursor=pointer]:
+                  - generic [ref=f6e304]: The brief.
+                  - generic [ref=f6e312]: Project brief.pdf
+                  - generic [ref=f6e313]: 128 KB
+                - button "Select Quiet landscapes.jpg" [ref=f6e314] [cursor=pointer]:
+                  - generic [ref=f6e316]: Quiet landscapes.jpg
+                  - generic [ref=f6e317]: 3.1 MB
+                - button "Select README.md" [ref=f6e318] [cursor=pointer]:
+                  - generic [ref=f6e320]: "# Forma Studio ideas.take_shape(); → a little space → a new perspective → make something good"
+                  - generic [ref=f6e321]: README.md
+                  - generic [ref=f6e322]: 4 KB
+            - generic [ref=f6e218]:
+              - generic [ref=f6e219]: 8 items
+              - generic [ref=f6e220]: Index-free. Instantly yours.
+              - generic [ref=f6e222]: 1 selected · 2.4 MB
+          - complementary "File preview" [ref=f6e223]:
+            - generic [ref=f6e323]:
+              - text: PREVIEW
+              - button "Close preview" [ref=f6e324] [cursor=pointer]: ×
+            - generic [aria-hidden] [ref=f6e325]:
+              - generic [ref=f6e326]: forma
+              - generic [ref=f6e327]: ROOM FOR POSSIBILITY
+            - heading "Forma — Brand poster.png" [level=3] [ref=f6e328]
+            - text: PNG image · 2.4 MB
+            - generic [ref=f6e329]:
+              - generic [ref=f6e330]:
+                - term [ref=f6e331]: Size
+                - definition [ref=f6e332]: 2.4 MB
+              - generic [ref=f6e333]:
+                - term [ref=f6e334]: Dimensions
+                - definition [ref=f6e335]: 2400 × 3200
+              - generic [ref=f6e336]:
+                - term [ref=f6e337]: Modified
+                - definition [ref=f6e338]: Today, 10:42
+              - generic [ref=f6e339]:
+                - term [ref=f6e340]: Created
+                - definition [ref=f6e341]: Oct 18, 2026
+            - paragraph [ref=f6e342]: TAGS
+            - generic [ref=f6e343]: Forma
+            - generic [ref=f6e344]: Work in progress
+            - generic [ref=f6e345]:
+              - generic [ref=f6e346]: Space
+              - text: Quick look
+      - generic [ref=f6e248]:
+        - generic [ref=f6e249]: 08 — OBSIDIAN
+        - generic [ref=f6e250]: Graphite chrome / blue folders / location tabs / live inspector
+        - generic [ref=f6e251]: DESKTOP CONCEPT · SIGNATURE LAYOUT
+    - generic [ref=f6e252]:
+      - paragraph [ref=f6e253]:
+        - strong [ref=f6e254]: Everything in its place. Nothing in your way.
+        - text: "Finder’s familiar structure meets Spacedrive-inspired depth: quiet graphite surfaces, luminous blue folders, tabbed locations and a persistent inspector. A focused home for your files."
+      - generic [ref=f6e255]: Try the views, select a file, or press ⌘ KSample data only. Your files are untouched.
+  - status

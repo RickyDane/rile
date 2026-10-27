@@ -1,0 +1,71 @@
+use std::path::PathBuf;
+
+/// Browser-style back/forward navigation stack.
+#[derive(Debug, Clone, Default)]
+pub struct History {
+    back: Vec<Location>,
+    forward: Vec<Location>,
+}
+
+/// A place the pane can show: the home page, the photo library, a local
+/// directory, or a directory on a remote connection (FTP/SFTP), identified
+/// by connection id.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Location {
+    Home,
+    /// Every image on this Mac, as a photo library.
+    Gallery,
+    Dir(PathBuf),
+    Remote { conn: String, path: String },
+}
+
+impl History {
+    /// Records `from` before navigating somewhere new; clears forward stack.
+    pub fn push(&mut self, from: Location) {
+        if self.back.last() != Some(&from) {
+            self.back.push(from);
+        }
+        self.forward.clear();
+    }
+
+    pub fn go_back(&mut self, current: Location) -> Option<Location> {
+        let prev = self.back.pop()?;
+        self.forward.push(current);
+        Some(prev)
+    }
+
+    pub fn go_forward(&mut self, current: Location) -> Option<Location> {
+        let next = self.forward.pop()?;
+        self.back.push(current);
+        Some(next)
+    }
+
+    pub fn can_go_back(&self) -> bool {
+        !self.back.is_empty()
+    }
+
+    pub fn can_go_forward(&self) -> bool {
+        !self.forward.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn back_and_forward() {
+        let a = Location::Dir("/a".into());
+        let b = Location::Dir("/b".into());
+        let c = Location::Dir("/c".into());
+        let mut h = History::default();
+        h.push(a.clone());
+        h.push(b.clone());
+        assert_eq!(h.go_back(c.clone()), Some(b.clone()));
+        assert_eq!(h.go_back(b.clone()), Some(a.clone()));
+        assert!(!h.can_go_back());
+        assert_eq!(h.go_forward(a.clone()), Some(b.clone()));
+        h.push(b);
+        assert!(!h.can_go_forward());
+    }
+}

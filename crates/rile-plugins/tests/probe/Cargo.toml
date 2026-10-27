@@ -1,0 +1,19 @@
+# Test-only plugin used by the rile-plugins integration tests to probe the
+# sandbox (file access outside the selection, runaway execution).
+[package]
+name = "rile-plugin-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = "0.57"
+
+[profile.release]
+opt-level = "s"
+strip = true

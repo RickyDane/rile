@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Rile — Portal</title>
+  <desc id="desc">An open doorway in electric blue. A simple invitation to explore what is inside.</desc>
+  <defs>
+    <linearGradient id="tile" x2=".25" y2="1"><stop stop-color="#142a54"/><stop offset="1" stop-color="#080f26"/></linearGradient>
+    <linearGradient id="ink" x2=".2" y2="1"><stop stop-color="#b2e7ff"/><stop offset="1" stop-color="#4889ff"/></linearGradient>
+    <linearGradient id="gloss" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="20" stdDeviation="20" flood-color="#070d18" flood-opacity=".24"/></filter>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="16" stdDeviation="14" flood-color="#081321" flood-opacity=".25"/></filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#tile)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#gloss)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="3"/>
+  <g filter="url(#lift)"><path d="M298 742V332Q298 292 338 292H686Q726 292 726 332V742H620V398H404V742Z" fill="url(#ink)"/><path d="M404 398L620 332V676L404 742Z" fill="#3681f4"/><path d="M404 398L620 332V676L404 742Z" fill="url(#gloss)"/><circle cx="570" cy="535" r="13" fill="#c8f3ff"/></g><path d="M288 758H736" stroke="#6dabff" stroke-opacity=".25" stroke-width="9" stroke-linecap="round"/>
+</svg>

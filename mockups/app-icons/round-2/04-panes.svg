@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Rile — Parallel</title>
+  <desc id="desc">Two offset panes and a forward-moving cut. A nod to dual-pane browsing and effortless transfers.</desc>
+  <defs>
+    <linearGradient id="tile" x2=".25" y2="1"><stop stop-color="#464889"/><stop offset="1" stop-color="#222142"/></linearGradient>
+    <linearGradient id="blue" x2=".2" y2="1"><stop stop-color="#91d2ff"/><stop offset="1" stop-color="#397cce"/></linearGradient>
+    <linearGradient id="lilac" x2=".2" y2="1"><stop stop-color="#f2efff"/><stop offset="1" stop-color="#bdb8ed"/></linearGradient>
+    <linearGradient id="sheen" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".16"/><stop offset=".65" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="20" stdDeviation="20" flood-color="#070d18" flood-opacity=".24"/></filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="16" stdDeviation="14" flood-color="#081321" flood-opacity=".24"/></filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#tile)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#sheen)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="3"/>
+  <g filter="url(#soft)"><rect x="240" y="286" width="344" height="432" rx="54" fill="#a3a4f7"/><path d="M240 378H584" stroke="#d6d7ff" stroke-width="5"/><circle cx="284" cy="332" r="10" fill="#f0ecff"/><circle cx="318" cy="332" r="10" fill="#f0ecff" opacity=".6"/><rect x="440" y="364" width="344" height="392" rx="54" fill="url(#lilac)"/><path d="M440 456H784" stroke="#fff" stroke-opacity=".6" stroke-width="5"/><path d="M340 558H652M600 506L652 558L600 610" fill="none" stroke="#28274e" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/></g>
+</svg>

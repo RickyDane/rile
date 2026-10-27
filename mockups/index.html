@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>rile — Files, in focus.</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='11' fill='%23252a34'/%3E%3Ctext x='11' y='30' font-family='sans-serif' font-weight='bold' font-size='32' fill='%2366baff'%3Er%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="explorer.css">
+  <link rel="stylesheet" href="start.css">
+  <link rel="stylesheet" href="native.css">
+  <link rel="stylesheet" href="overview.css">
+  <script src="overview-art.js" defer></script>
+  <script src="start.js" defer></script>
+  <script src="explorer.js" defer></script>
+</head>
+<body data-design="native">
+  <div class="explorer">
+    <aside class="sidebar" aria-label="Sidebar">
+      <header class="sidebar-header"><div class="traffic-lights" aria-hidden="true"><i></i><i></i><i></i></div><span class="wordmark">rile<span>.</span></span></header>
+      <div class="workspace-label"><span class="workspace-mark">r</span><span>Personal<small>Local workspace</small></span><span class="local-dot" title="On this device"></span></div>
+      <nav class="places" aria-label="Places">
+        <div class="nav-section"><h2>Library</h2><button data-location="start"><span data-icon="home"></span><span>Home</span></button><button data-location="recents"><span data-icon="clock"></span><span>Recents</span></button><button data-location="favorites"><span data-icon="heart"></span><span>Favorites</span></button></div>
+        <div class="nav-section"><h2>Favorites</h2><button data-location="desktop"><span data-icon="desktop"></span><span>Desktop</span></button><button data-location="documents"><span data-icon="file"></span><span>Documents</span></button><button data-location="downloads"><span data-icon="download"></span><span>Downloads</span><small>4</small></button><button data-location="pictures"><span data-icon="image"></span><span>Pictures</span></button><button data-location="projects"><span data-icon="folder"></span><span>Projects</span></button></div>
+        <div class="nav-section"><h2>Devices</h2><button data-location="mac"><span data-icon="laptop"></span><span>MacBook Pro</span><i class="device-dot"></i></button><button data-location="disk"><span data-icon="drive"></span><span>Macintosh HD</span></button><button data-location="ssd"><span data-icon="drive"></span><span>Studio SSD</span><small class="device-caption">USB</small></button></div>
+        <div class="nav-section tag-navigation"><h2>Tags</h2><button data-location="tag-work"><i class="tag-dot blue"></i><span>Work</span></button><button data-location="tag-personal"><i class="tag-dot violet"></i><span>Personal</span></button><button data-location="tag-important"><i class="tag-dot orange"></i><span>Important</span></button></div>
+      </nav>
+      <footer class="sidebar-footer"><div class="drive-summary"><span data-icon="drive"></span><span>Macintosh HD<small>228 GB available of 512 GB</small></span></div><div class="storage-track"><i></i></div><div class="sidebar-footnote"><span class="local-dot"></span> On your device. Not in an index.</div></footer>
+    </aside>
+    <main class="main">
+      <header class="toolbar">
+        <div class="navigation-controls"><button id="sidebar-toggle" class="icon-button" aria-label="Toggle sidebar" aria-pressed="true" title="Toggle sidebar"><span data-icon="sidebar"></span></button><span class="toolbar-divider"></span><button id="back" class="icon-button" aria-label="Back" title="Back"><span data-icon="left"></span></button><button id="forward" class="icon-button" aria-label="Forward" title="Forward"><span data-icon="right"></span></button></div>
+        <div class="toolbar-path" id="toolbar-path"></div>
+        <label class="search"><span data-icon="search"></span><input id="search" type="search" placeholder="Search this folder" aria-label="Search this folder" autocomplete="off"><kbd>⌘ F</kbd></label>
+        <button id="inspector-toggle" class="icon-button active" aria-label="Toggle inspector" aria-pressed="true" title="Toggle inspector"><span data-icon="inspector"></span></button>
+      </header>
+      <div class="tab-strip"><div class="tabs" id="tabs" role="tablist" aria-label="Open folders"></div><button id="new-tab" class="icon-button" aria-label="New tab" title="New tab"><span data-icon="plus"></span></button></div>
+      <div class="content-body">
+        <section class="browser" aria-label="File browser">
+          <header class="browser-toolbar"><div class="location-heading"><span data-icon="folder" id="location-icon"></span><h1 id="location-title">rile</h1><span id="location-count"></span></div><div class="browser-actions"><button id="new-folder" class="icon-button" aria-label="New folder" title="New folder"><span data-icon="folder-plus"></span></button><div class="view-switch" role="group" aria-label="View"><button class="icon-button active" data-view="grid" aria-label="Icon view" aria-pressed="true" title="Icon view"><span data-icon="grid"></span></button><button class="icon-button" data-view="list" aria-label="List view" aria-pressed="false" title="List view"><span data-icon="list"></span></button><button class="icon-button" data-view="columns" aria-label="Column view" aria-pressed="false" title="Column view"><span data-icon="columns"></span></button></div><div class="popover-anchor"><button id="sort-toggle" class="icon-button" aria-label="Sort files" aria-expanded="false" title="Sort files"><span data-icon="sort"></span></button><div id="sort-menu" class="popover" hidden><p>Sort by</p><button data-sort="name" aria-pressed="true">Name <span>✓</span></button><button data-sort="modified" aria-pressed="false">Date modified <span></span></button><button data-sort="type" aria-pressed="false">Kind <span></span></button><hr><button id="sort-direction">Ascending <span>↑</span></button></div></div><div class="popover-anchor"><button id="more-toggle" class="icon-button" aria-label="More options" aria-expanded="false" title="More options"><span data-icon="more"></span></button><div id="more-menu" class="popover" hidden><button id="copy-path">Copy folder path</button><button id="hidden-files" aria-pressed="false">Show hidden files <span></span></button></div></div></div></header>
+          <div class="file-area" id="file-area" role="tabpanel" tabindex="0" aria-label="Files"></div>
+          <div class="path-bar" id="path-bar" aria-label="Folder path"></div>
+        </section>
+        <aside class="inspector" id="inspector" aria-label="File inspector"></aside>
+      </div>
+      <footer class="statusbar"><span id="item-count"></span><span class="status-selection" id="selection-status"></span><span class="prototype-note">Design preview · sample files</span><div class="zoom-control"><span data-icon="grid"></span><input id="zoom" type="range" min="105" max="180" value="134" aria-label="Icon size"><span data-icon="grid"></span></div></footer>
+    </main>
+  </div>
+  <dialog id="folder-dialog"><form id="folder-form"><div class="dialog-icon" data-icon="folder-plus"></div><h2>New folder</h2><p id="folder-parent"></p><label for="folder-name">Name</label><input id="folder-name" required maxlength="80" placeholder="Untitled folder" autocomplete="off"><div class="dialog-actions"><button type="button" id="cancel-folder">Cancel</button><button type="submit" class="primary-button">Create folder</button></div><small>Sample workspace only. Your files are untouched.</small></form></dialog>
+  <dialog id="quicklook"><header><span id="quicklook-name"></span><button id="close-quicklook" class="icon-button" aria-label="Close Quick Look"><span data-icon="close"></span></button></header><div id="quicklook-content"></div><footer id="quicklook-meta"></footer></dialog>
+  <div class="toast" id="toast" role="status"></div>
+</body>
+</html>

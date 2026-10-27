@@ -1,0 +1,5 @@
+[-2106259ms] [WARNING] []Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader flag to opt in to lower security guarantees for trusted content. @ https://spacedrive.com/:0
+[-2106256ms] [WARNING] [.WebGL-0x10c00449e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ https://spacedrive.com/:0
+[-2106243ms] [WARNING] [.WebGL-0x10c00449e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ https://spacedrive.com/:0
+[-2105978ms] [WARNING] [.WebGL-0x10c00449e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ https://spacedrive.com/:0
+[-2105973ms] [WARNING] [.WebGL-0x10c00449e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat) @ https://spacedrive.com/:0

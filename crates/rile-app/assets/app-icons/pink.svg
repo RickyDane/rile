@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Rile — Pathline Pink</title>
+  <desc id="desc">One unbroken route, ending in a bright waypoint. Minimal geometry with a sense of forward movement.</desc>
+  <defs>
+    <linearGradient id="tile" x2=".25" y2="1"><stop stop-color="#4b303e"/><stop offset="1" stop-color="#281822"/></linearGradient>
+    <linearGradient id="ink" x2=".2" y2="1"><stop stop-color="#ffd7e9"/><stop offset="1" stop-color="#e99abb"/></linearGradient>
+    <linearGradient id="gloss" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="20" stdDeviation="20" flood-color="#070d18" flood-opacity=".24"/></filter>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="16" stdDeviation="14" flood-color="#081321" flood-opacity=".25"/></filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#tile)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#gloss)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="3"/>
+  <path d="M298 700V410Q298 328 380 328H598Q680 328 680 410V448Q680 530 598 530H454Q408 530 408 576V700" fill="none" stroke="#0a1a1f" stroke-width="84" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 14)" filter="url(#lift)"/><path d="M298 700V410Q298 328 380 328H598Q680 328 680 410V448Q680 530 598 530H454Q408 530 408 576V700" fill="none" stroke="url(#ink)" stroke-width="70" stroke-linecap="round" stroke-linejoin="round"/><circle cx="680" cy="700" r="57" fill="#f1c97a"/>
+</svg>

@@ -1,0 +1,254 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - complementary "Sidebar" [ref=f1e3]:
+      - generic [ref=f1e4]: rile.
+      - generic [ref=f1e10]:
+        - generic [ref=f1e11]: r
+        - generic [ref=f1e12]:
+          - text: Personal
+          - generic [ref=f1e13]: Local workspace
+        - generic "On this device" [ref=f1e14]
+      - navigation "Places" [ref=f1e15]:
+        - generic [ref=f1e16]:
+          - heading "Library" [level=2] [ref=f1e17]
+          - button "Home" [ref=f1e18] [cursor=pointer]
+          - button "Recents" [ref=f1e24] [cursor=pointer]
+          - button "Favorites" [ref=f1e30] [cursor=pointer]
+        - generic [ref=f1e35]:
+          - heading "Favorites" [level=2] [ref=f1e36]
+          - button "Desktop" [ref=f1e37] [cursor=pointer]
+          - button "Documents" [ref=f1e43] [cursor=pointer]
+          - button "Downloads" [ref=f1e49] [cursor=pointer]:
+            - generic [ref=f1e54]: "4"
+          - button "Pictures" [ref=f1e55] [cursor=pointer]
+          - button "Projects" [ref=f1e62] [cursor=pointer]
+        - generic [ref=f1e67]:
+          - heading "Devices" [level=2] [ref=f1e68]
+          - button "MacBook Pro" [ref=f1e69] [cursor=pointer]
+          - button "Macintosh HD" [ref=f1e76] [cursor=pointer]
+          - button "Studio SSD" [ref=f1e82] [cursor=pointer]:
+            - generic [ref=f1e88]: USB
+        - generic [ref=f1e89]:
+          - heading "Tags" [level=2] [ref=f1e90]
+          - button "Work" [ref=f1e91] [cursor=pointer]
+          - button "Personal" [ref=f1e94] [cursor=pointer]
+          - button "Important" [ref=f1e97] [cursor=pointer]
+      - generic [ref=f1e100]:
+        - generic [ref=f1e106]:
+          - text: Macintosh HD
+          - generic [ref=f1e107]: 228 GB available of 512 GB
+        - generic [ref=f1e110]: On your device. Not in an index.
+    - main [ref=f1e112]:
+      - generic [ref=f1e113]:
+        - generic [ref=f1e114]:
+          - button "Toggle sidebar" [pressed] [ref=f1e115] [cursor=pointer]
+          - button "Back" [disabled] [ref=f1e121]
+          - button "Forward" [disabled] [ref=f1e125]
+        - generic [ref=f1e129]:
+          - button "MacBook Pro" [ref=f1e130] [cursor=pointer]
+          - button "Projects" [ref=f1e133] [cursor=pointer]
+          - strong [ref=f1e136]: rile
+        - generic [ref=f1e137]:
+          - searchbox "Search this folder" [ref=f1e142]
+          - generic [ref=f1e143]: ⌘ F
+        - button "Toggle inspector" [pressed] [ref=f1e144] [cursor=pointer]
+      - generic [ref=f1e148]:
+        - tablist "Open folders" [ref=f1e149]:
+          - tab "Home" [ref=f1e150] [cursor=pointer]
+          - button "Close Home tab" [ref=f1e155] [cursor=pointer]
+          - tab "rile" [selected] [ref=f1e158] [cursor=pointer]
+          - button "Close rile tab" [ref=f1e162] [cursor=pointer]
+        - button "New tab" [ref=f1e165] [cursor=pointer]
+      - generic [ref=f1e169]:
+        - region "File browser" [ref=f1e170]:
+          - generic [ref=f1e171]:
+            - generic [ref=f1e172]:
+              - heading "rile" [level=1] [ref=f1e176]
+              - generic [ref=f1e177]: 15 items
+            - generic [ref=f1e178]:
+              - button "New folder" [ref=f1e179] [cursor=pointer]
+              - group "View" [ref=f1e184]:
+                - button "Icon view" [ref=f1e185] [cursor=pointer]
+                - button "List view" [active] [pressed] [ref=f1e192] [cursor=pointer]
+                - button "Column view" [ref=f1e196] [cursor=pointer]
+              - button "Sort files" [ref=f1e202] [cursor=pointer]
+              - button "More options" [ref=f1e207] [cursor=pointer]
+          - tabpanel "rile" [ref=f1e213]:
+            - table [ref=f1e417]:
+              - rowgroup [ref=f1e418]:
+                - row [ref=f1e419]:
+                  - columnheader "Name" [ref=f1e420]
+                  - columnheader "Date modified" [ref=f1e421]
+                  - columnheader "Size" [ref=f1e422]
+                  - columnheader "Kind" [ref=f1e423]
+              - rowgroup [ref=f1e424]:
+                - row [ref=f1e425]:
+                  - cell [ref=f1e426]:
+                    - button "Select assets" [ref=f1e427] [cursor=pointer]:
+                      - generic [ref=f1e432]: assets
+                  - cell "Oct 27, 2026" [ref=f1e433]
+                  - cell "—" [ref=f1e434]
+                  - cell "Folder" [ref=f1e435]
+                - row [ref=f1e436]:
+                  - cell [ref=f1e437]:
+                    - button "Select docs" [ref=f1e438] [cursor=pointer]:
+                      - generic [ref=f1e441]: docs
+                  - cell "Oct 27, 2026" [ref=f1e442]
+                  - cell "—" [ref=f1e443]
+                  - cell "Folder" [ref=f1e444]
+                - row [ref=f1e445]:
+                  - cell [ref=f1e446]:
+                    - button "Select plugins" [ref=f1e447] [cursor=pointer]:
+                      - generic [ref=f1e450]: plugins
+                  - cell "Oct 27, 2026" [ref=f1e451]
+                  - cell "—" [ref=f1e452]
+                  - cell "Folder" [ref=f1e453]
+                - row [ref=f1e454]:
+                  - cell [ref=f1e455]:
+                    - button "Select src" [ref=f1e456] [cursor=pointer]:
+                      - generic [ref=f1e459]: src
+                  - cell "Oct 27, 2026" [ref=f1e460]
+                  - cell "—" [ref=f1e461]
+                  - cell "Folder" [ref=f1e462]
+                - row [ref=f1e463]:
+                  - cell [ref=f1e464]:
+                    - button "Select tests" [ref=f1e465] [cursor=pointer]:
+                      - generic [ref=f1e468]: tests
+                  - cell "Oct 27, 2026" [ref=f1e469]
+                  - cell "—" [ref=f1e470]
+                  - cell "Folder" [ref=f1e471]
+                - row [ref=f1e472]:
+                  - cell [ref=f1e473]:
+                    - button "Select alpine-lake.jpg" [pressed] [ref=f1e474] [cursor=pointer]:
+                      - generic [ref=f1e479]: alpine-lake.jpg
+                  - cell "Oct 27, 2026" [ref=f1e480]
+                  - cell "4.3 MB" [ref=f1e481]
+                  - cell "JPEG image" [ref=f1e482]
+                - row [ref=f1e483]:
+                  - cell [ref=f1e484]:
+                    - button "Select App.tsx" [ref=f1e485] [cursor=pointer]:
+                      - generic [ref=f1e488]: App.tsx
+                  - cell "Oct 26, 2026" [ref=f1e489]
+                  - cell "2.9 KB" [ref=f1e490]
+                  - cell "TypeScript JSX" [ref=f1e491]
+                - row [ref=f1e492]:
+                  - cell [ref=f1e493]:
+                    - button "Select Cargo.toml" [ref=f1e494] [cursor=pointer]:
+                      - generic [ref=f1e497]: Cargo.toml
+                  - cell "Oct 26, 2026" [ref=f1e498]
+                  - cell "1.1 KB" [ref=f1e499]
+                  - cell "TOML document" [ref=f1e500]
+                - row [ref=f1e501]:
+                  - cell [ref=f1e502]:
+                    - button "Select CHANGELOG.md" [ref=f1e503] [cursor=pointer]:
+                      - generic [ref=f1e507]: CHANGELOG.md
+                  - cell "Oct 26, 2026" [ref=f1e508]
+                  - cell "4.8 KB" [ref=f1e509]
+                  - cell "Markdown" [ref=f1e510]
+                - row [ref=f1e511]:
+                  - cell [ref=f1e512]:
+                    - button "Select main.rs" [ref=f1e513] [cursor=pointer]:
+                      - generic [ref=f1e516]: main.rs
+                  - cell "Oct 26, 2026" [ref=f1e517]
+                  - cell "4.3 KB" [ref=f1e518]
+                  - cell "Rust source" [ref=f1e519]
+                - row [ref=f1e520]:
+                  - cell [ref=f1e521]:
+                    - button "Select README.md" [ref=f1e522] [cursor=pointer]:
+                      - generic [ref=f1e526]: README.md
+                  - cell "Oct 26, 2026" [ref=f1e527]
+                  - cell "6.7 KB" [ref=f1e528]
+                  - cell "Markdown" [ref=f1e529]
+                - row [ref=f1e530]:
+                  - cell [ref=f1e531]:
+                    - button "Select roadmap.pdf" [ref=f1e532] [cursor=pointer]:
+                      - generic [ref=f1e536]: roadmap.pdf
+                  - cell "Oct 26, 2026" [ref=f1e537]
+                  - cell "1.8 MB" [ref=f1e538]
+                  - cell "PDF document" [ref=f1e539]
+                - row [ref=f1e540]:
+                  - cell [ref=f1e541]:
+                    - button "Select schema.json" [ref=f1e542] [cursor=pointer]:
+                      - generic [ref=f1e545]: schema.json
+                  - cell "Oct 26, 2026" [ref=f1e546]
+                  - cell "856 B" [ref=f1e547]
+                  - cell "JSON document" [ref=f1e548]
+                - row [ref=f1e549]:
+                  - cell [ref=f1e550]:
+                    - button "Select screenshot.png" [ref=f1e551] [cursor=pointer]:
+                      - generic [ref=f1e556]: screenshot.png
+                  - cell "Oct 26, 2026" [ref=f1e557]
+                  - cell "2.4 MB" [ref=f1e558]
+                  - cell "PNG image" [ref=f1e559]
+                - row [ref=f1e560]:
+                  - cell [ref=f1e561]:
+                    - button "Select styles.css" [ref=f1e562] [cursor=pointer]:
+                      - generic [ref=f1e565]: styles.css
+                  - cell "Oct 26, 2026" [ref=f1e566]
+                  - cell "3.4 KB" [ref=f1e567]
+                  - cell "CSS stylesheet" [ref=f1e568]
+          - generic "Folder path" [ref=f1e282]:
+            - button "Macintosh HD" [ref=f1e283] [cursor=pointer]
+            - button "Users" [ref=f1e289] [cursor=pointer]
+            - button "rickyperlick" [ref=f1e294] [cursor=pointer]
+            - button "Projects" [ref=f1e300] [cursor=pointer]
+            - button "rile" [ref=f1e305] [cursor=pointer]
+        - complementary "File inspector" [ref=f1e308]:
+          - generic [ref=f1e569]:
+            - generic [ref=f1e570]: Inspector
+            - button "Close inspector" [ref=f1e571] [cursor=pointer]
+          - generic [ref=f1e588]:
+            - heading "alpine-lake.jpg" [level=2] [ref=f1e589]
+            - paragraph [ref=f1e590]: JPEG image · 4.3 MB
+          - generic [ref=f1e591]:
+            - button "Remove from favorites" [pressed] [ref=f1e592] [cursor=pointer]
+            - button "Show in folder" [ref=f1e595] [cursor=pointer]
+            - button "Quick Look" [ref=f1e598] [cursor=pointer]
+          - generic [ref=f1e601]:
+            - heading "Details" [level=3] [ref=f1e602]
+            - generic [ref=f1e606]:
+              - generic [ref=f1e607]:
+                - term [ref=f1e608]: Size
+                - definition [ref=f1e609]: 4.3 MB
+              - generic [ref=f1e610]:
+                - term [ref=f1e611]: Extension
+                - definition [ref=f1e612]: jpg
+              - generic [ref=f1e613]:
+                - term [ref=f1e614]: Kind
+                - definition [ref=f1e615]: JPEG image
+              - generic [ref=f1e616]:
+                - term [ref=f1e617]: Location
+                - definition [ref=f1e618]: rile
+          - generic [ref=f1e619]:
+            - heading "Dates" [level=3] [ref=f1e620]
+            - generic [ref=f1e624]:
+              - generic [ref=f1e625]:
+                - term [ref=f1e626]: Created
+                - definition [ref=f1e627]: Oct 18, 2026
+              - generic [ref=f1e628]:
+                - term [ref=f1e629]: Modified
+                - definition [ref=f1e630]: Oct 27, 2026
+              - generic [ref=f1e631]:
+                - term [ref=f1e632]: Accessed
+                - definition [ref=f1e633]: Oct 27, 2026
+          - generic [ref=f1e634]:
+            - heading "Image" [level=3] [ref=f1e635]
+            - generic [ref=f1e640]:
+              - generic [ref=f1e641]:
+                - term [ref=f1e642]: Dimensions
+                - definition [ref=f1e643]: 3840 × 2560
+              - generic [ref=f1e644]:
+                - term [ref=f1e645]: Color space
+                - definition [ref=f1e646]: sRGB
+          - generic [ref=f1e647]:
+            - heading "Tags" [level=3] [ref=f1e648]
+            - button "Personal" [ref=f1e653] [cursor=pointer]
+          - button "Quick Look Space" [ref=f1e655] [cursor=pointer]:
+            - text: Quick Look
+            - generic [ref=f1e658]: Space
+      - generic [ref=f1e399]:
+        - generic [ref=f1e400]: 15 items
+        - generic [ref=f1e401]: 1 selected · 4.3 MB
+        - generic [ref=f1e402]: Design preview · sample files
+        - slider "Icon size" [ref=f1e410] [cursor=pointer]: "134"
+  - status

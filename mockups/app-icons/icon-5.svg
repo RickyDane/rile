@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Rile — Compass Rose</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#2c4a6e"/><stop offset=".6" stop-color="#1a2b42"/><stop offset="1" stop-color="#0f1826"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".12"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity=".35"/>
+    </filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".5"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#gloss)"/>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="184" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="3"/>
+  <circle cx="512" cy="512" r="236" fill="none" stroke="#9fc8f4" stroke-opacity=".28" stroke-width="14"/>
+  <g filter="url(#soft)">
+    <!-- diagonal minor points -->
+    <g transform="rotate(45 512 512)">
+      <path d="M512 330L548 512H476Z" fill="#6f8fb3"/><path d="M512 330L548 512H512Z" fill="#4c6a8e"/>
+      <path d="M512 694L548 512H476Z" fill="#6f8fb3"/><path d="M512 694L476 512H512Z" fill="#4c6a8e"/>
+      <path d="M330 512L512 476V548Z" fill="#6f8fb3"/><path d="M330 512L512 548V512Z" fill="#4c6a8e"/>
+      <path d="M694 512L512 476V548Z" fill="#6f8fb3"/><path d="M694 512L512 476V512Z" fill="#4c6a8e"/>
+    </g>
+    <!-- cardinal points: north in accent blue -->
+    <path d="M512 196L578 512H446Z" fill="#9fc8f4"/><path d="M512 196L578 512H512Z" fill="#4f86c4"/>
+    <path d="M512 828L578 512H446Z" fill="#f2f3f5"/><path d="M512 828L446 512H512Z" fill="#b5b9c1"/>
+    <path d="M196 512L512 446V578Z" fill="#f2f3f5"/><path d="M196 512L512 578V512Z" fill="#b5b9c1"/>
+    <path d="M828 512L512 446V578Z" fill="#f2f3f5"/><path d="M828 512L512 446V512Z" fill="#b5b9c1"/>
+  </g>
+  <circle cx="512" cy="512" r="34" fill="#f4f5f7"/>
+  <circle cx="512" cy="512" r="14" fill="#3f72aa"/>
+</svg>

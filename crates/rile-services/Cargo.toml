@@ -1,0 +1,78 @@
+[package]
+name = "rile-services"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rile-core.workspace = true
+anyhow.workspace = true
+# search
+ignore = "0.4.23"
+globset = { version = "0.4.16", default-features = false }
+regex = "1.11"
+grep-searcher = "0.1.14"
+grep-regex = "0.1.13"
+grep-matcher = "0.1.7"
+# properties / preview
+mime_guess = { version = "2.0.5", default-features = false }
+infer = { version = "0.19", default-features = false, features = ["std"] }
+# updater
+ureq = { version = "3.0", default-features = false, features = ["rustls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+semver = "1.0"
+sha2 = "0.10"
+self-replace = "1.5"
+flate2 = "1.0"
+tar = { version = "0.4", default-features = false }
+zip = { version = "2.4", default-features = false, features = ["deflate"] }
+tempfile = "3"
+# archives
+sevenz-rust2 = { version = "0.20", default-features = false, features = ["compress"] }
+brotli = "8"
+zstd = "0.13"
+# syntax highlighting
+syntect = { version = "5.2", default-features = false, features = ["default-fancy"] }
+
+[target.'cfg(unix)'.dependencies]
+uzers = { version = "0.12", default-features = false, features = ["cache"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies.objc2]
+version = "0.6"
+
+[target.'cfg(target_os = "macos")'.dependencies.objc2-foundation]
+version = "0.3"
+default-features = false
+features = ["std", "NSString", "NSData", "NSDictionary", "NSGeometry", "NSArray", "NSURL", "NSFileManager", "NSBundle", "NSError", "NSObject", "NSValue", "NSEnumerator"]
+
+[target.'cfg(target_os = "macos")'.dependencies.objc2-app-kit]
+version = "0.3"
+default-features = false
+features = ["std", "NSWorkspace", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphicsContext", "objc2-core-graphics"]
+
+[target.'cfg(target_os = "macos")'.dependencies.objc2-core-graphics]
+version = "0.3"
+default-features = false
+features = ["std", "CGImage", "CGColorSpace", "CGContext", "CGBitmapContext", "CGGradient", "CGPDFDocument", "CGPDFPage", "CGPDFContext"]
+
+[target.'cfg(target_os = "macos")'.dependencies.objc2-vision]
+version = "0.3"
+default-features = false
+features = ["std", "VNRequest", "VNRequestHandler", "VNClassifyImageRequest", "VNRecognizeTextRequest", "VNObservation", "VNTypes"]
+
+[target.'cfg(target_os = "macos")'.dependencies.objc2-core-foundation]
+version = "0.3"
+default-features = false
+features = ["std", "CFCGTypes", "CFURL", "CFData", "CFString", "CFDictionary"]
+
+[target.'cfg(target_os = "macos")'.dependencies.objc2-image-io]
+version = "0.3"
+default-features = false
+features = ["std", "CGImageSource", "CGImageProperties"]

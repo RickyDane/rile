@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rile App Icons</title>
+<style>
+  :root { --bg:#202020; --panel:#2a2a2d; --text:#ededee; --muted:#9a9a9e; --accent:#6296cf; --line:#ffffff12; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  header { padding:40px 24px 8px; max-width:1200px; margin:0 auto; }
+  h1 { margin:0 0 6px; font-size:26px; font-weight:650; letter-spacing:-.01em; }
+  header p { margin:0; color:var(--muted); max-width:70ch; }
+  .note { margin-top:14px; padding:12px 14px; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:8px; background:#ffffff06; color:#d2d2d6; }
+  .note code { background:#00000040; padding:1px 5px; border-radius:4px; font-size:12.5px; }
+  main { max-width:1200px; margin:0 auto; padding:16px 24px 64px; display:grid; gap:20px; }
+  .icon { background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  .meta { padding:16px 18px 12px; display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; }
+  .meta h2 { margin:0; font-size:17px; font-weight:620; }
+  .meta .num { color:var(--accent); font-weight:700; font-variant-numeric:tabular-nums; }
+  .meta p { margin:0; color:var(--muted); flex-basis:100%; }
+  .meta a { color:#9fc8f4; font-size:12px; text-decoration:none; margin-left:auto; }
+  .stage { display:grid; grid-template-columns:1fr; }
+  .bg { display:flex; align-items:flex-end; gap:20px; padding:20px; overflow-x:auto; }
+  .bg.light { background:#ececef; }
+  .bg.dark { background:#141416; }
+  .bg figure { margin:0; display:flex; flex-direction:column; align-items:center; gap:6px; flex:none; }
+  .bg figcaption { font-size:11px; color:#8c8c91; font-variant-numeric:tabular-nums; }
+  .bg img.s512 { width:512px; height:512px; max-width:calc(100vw - 88px); max-height:calc(100vw - 88px); }
+  .bg img.s128 { width:128px; height:128px; }
+  .bg img.s64 { width:64px; height:64px; }
+  .bg img.s32 { width:32px; height:32px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Rile app icon concepts</h1>
+  <p>Eight directions on the macOS Big Sur+ grid (1024 canvas, 824 rounded-square body, 100 px margin, soft drop shadow). Each is shown at 512, 128, 64 and 32 px on light and dark backgrounds. Colors are taken from the Native chrome: graphite #202022–#3a3a3e, accent #6296cf → #3f72aa, highlight #9fc8f4.</p>
+  <div class="note">Once one is picked, export it to <code>.icns</code>: render PNGs at 16, 32, 64, 128, 256, 512, 1024 (e.g. <code>rsvg-convert -w N icon-X.svg</code>) into <code>Rile.iconset/</code> with the <code>icon_NxN.png</code> / <code>icon_NxN@2x.png</code> names, then run <code>iconutil -c icns Rile.iconset</code>.</div>
+</header>
+<main>
+  <section class="icon">
+    <div class="meta"><span class="num">01</span><h2>Monogram Folder</h2><a href="icon-1.svg">icon-1.svg</a><p>A classic blue folder carrying a bold rounded R on graphite. Reads instantly as a file manager and as Rile.</p></div>
+    <div class="stage">
+      <div class="bg light"><figure><img class="s512" src="icon-1.svg" alt="Monogram Folder at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-1.svg" alt="Monogram Folder at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-1.svg" alt="Monogram Folder at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-1.svg" alt="Monogram Folder at 32px"><figcaption>32 px</figcaption></figure></div>
+      <div class="bg dark"><figure><img class="s512" src="icon-1.svg" alt="Monogram Folder at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-1.svg" alt="Monogram Folder at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-1.svg" alt="Monogram Folder at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-1.svg" alt="Monogram Folder at 32px"><figcaption>32 px</figcaption></figure></div>
+    </div>
+  </section>
+  <section class="icon">
+    <div class="meta"><span class="num">02</span><h2>Bolt Folder</h2><a href="icon-2.svg">icon-2.svg</a><p>A white folder struck by an amber bolt with speed lines. Puts speed first, which is the main selling point.</p></div>
+    <div class="stage">
+      <div class="bg light"><figure><img class="s512" src="icon-2.svg" alt="Bolt Folder at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-2.svg" alt="Bolt Folder at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-2.svg" alt="Bolt Folder at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-2.svg" alt="Bolt Folder at 32px"><figcaption>32 px</figcaption></figure></div>
+      <div class="bg dark"><figure><img class="s512" src="icon-2.svg" alt="Bolt Folder at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-2.svg" alt="Bolt Folder at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-2.svg" alt="Bolt Folder at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-2.svg" alt="Bolt Folder at 32px"><figcaption>32 px</figcaption></figure></div>
+    </div>
+  </section>
+  <section class="icon">
+    <div class="meta"><span class="num">03</span><h2>Card Stack</h2><a href="icon-3.svg">icon-3.svg</a><p>Fanned file cards in accent blue, graphite and paper on a light silver tile. About the files more than the folders.</p></div>
+    <div class="stage">
+      <div class="bg light"><figure><img class="s512" src="icon-3.svg" alt="Card Stack at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-3.svg" alt="Card Stack at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-3.svg" alt="Card Stack at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-3.svg" alt="Card Stack at 32px"><figcaption>32 px</figcaption></figure></div>
+      <div class="bg dark"><figure><img class="s512" src="icon-3.svg" alt="Card Stack at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-3.svg" alt="Card Stack at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-3.svg" alt="Card Stack at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-3.svg" alt="Card Stack at 32px"><figcaption>32 px</figcaption></figure></div>
+    </div>
+  </section>
+  <section class="icon">
+    <div class="meta"><span class="num">04</span><h2>Rill</h2><a href="icon-4.svg">icon-4.svg</a><p>Three flowing bands, Rile as in rill: files moving smoothly. The most abstract choice, and still legible at 32 px.</p></div>
+    <div class="stage">
+      <div class="bg light"><figure><img class="s512" src="icon-4.svg" alt="Rill at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-4.svg" alt="Rill at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-4.svg" alt="Rill at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-4.svg" alt="Rill at 32px"><figcaption>32 px</figcaption></figure></div>
+      <div class="bg dark"><figure><img class="s512" src="icon-4.svg" alt="Rill at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-4.svg" alt="Rill at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-4.svg" alt="Rill at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-4.svg" alt="Rill at 32px"><figcaption>32 px</figcaption></figure></div>
+    </div>
+  </section>
+  <section class="icon">
+    <div class="meta"><span class="num">05</span><h2>Compass Rose</h2><a href="icon-5.svg">icon-5.svg</a><p>A faceted eight-point rose with a blue north point on deep navy. Explorer as navigation, without imitating Safari's dial.</p></div>
+    <div class="stage">
+      <div class="bg light"><figure><img class="s512" src="icon-5.svg" alt="Compass Rose at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-5.svg" alt="Compass Rose at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-5.svg" alt="Compass Rose at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-5.svg" alt="Compass Rose at 32px"><figcaption>32 px</figcaption></figure></div>
+      <div class="bg dark"><figure><img class="s512" src="icon-5.svg" alt="Compass Rose at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-5.svg" alt="Compass Rose at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-5.svg" alt="Compass Rose at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-5.svg" alt="Compass Rose at 32px"><figcaption>32 px</figcaption></figure></div>
+    </div>
+  </section>
+  <section class="icon">
+    <div class="meta"><span class="num">06</span><h2>Miller Panes</h2><a href="icon-6.svg">icon-6.svg</a><p>A graphite Rile window whose blue selections step across three columns. Shows the column and dual-pane navigation.</p></div>
+    <div class="stage">
+      <div class="bg light"><figure><img class="s512" src="icon-6.svg" alt="Miller Panes at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-6.svg" alt="Miller Panes at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-6.svg" alt="Miller Panes at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-6.svg" alt="Miller Panes at 32px"><figcaption>32 px</figcaption></figure></div>
+      <div class="bg dark"><figure><img class="s512" src="icon-6.svg" alt="Miller Panes at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-6.svg" alt="Miller Panes at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-6.svg" alt="Miller Panes at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-6.svg" alt="Miller Panes at 32px"><figcaption>32 px</figcaption></figure></div>
+    </div>
+  </section>
+  <section class="icon">
+    <div class="meta"><span class="num">07</span><h2>Seek</h2><a href="icon-7.svg">icon-7.svg</a><p>A magnifier over a folder on indigo. Says fast search; the cooler hue stands apart from Finder blue in the Dock.</p></div>
+    <div class="stage">
+      <div class="bg light"><figure><img class="s512" src="icon-7.svg" alt="Seek at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-7.svg" alt="Seek at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-7.svg" alt="Seek at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-7.svg" alt="Seek at 32px"><figcaption>32 px</figcaption></figure></div>
+      <div class="bg dark"><figure><img class="s512" src="icon-7.svg" alt="Seek at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-7.svg" alt="Seek at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-7.svg" alt="Seek at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-7.svg" alt="Seek at 32px"><figcaption>32 px</figcaption></figure></div>
+    </div>
+  </section>
+  <section class="icon">
+    <div class="meta"><span class="num">08</span><h2>Glyph</h2><a href="icon-8.svg">icon-8.svg</a><p>A geometric R built from a white stem, a blue tab-like bowl and a slanted leg. Minimal, ownable, and sharp when small.</p></div>
+    <div class="stage">
+      <div class="bg light"><figure><img class="s512" src="icon-8.svg" alt="Glyph at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-8.svg" alt="Glyph at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-8.svg" alt="Glyph at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-8.svg" alt="Glyph at 32px"><figcaption>32 px</figcaption></figure></div>
+      <div class="bg dark"><figure><img class="s512" src="icon-8.svg" alt="Glyph at 512px"><figcaption>512 px</figcaption></figure><figure><img class="s128" src="icon-8.svg" alt="Glyph at 128px"><figcaption>128 px</figcaption></figure><figure><img class="s64" src="icon-8.svg" alt="Glyph at 64px"><figcaption>64 px</figcaption></figure><figure><img class="s32" src="icon-8.svg" alt="Glyph at 32px"><figcaption>32 px</figcaption></figure></div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

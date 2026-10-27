@@ -1,0 +1,164 @@
+- generic [active] [ref=f13e70]:
+  - generic [ref=f13e71]:
+    - complementary "Sidebar" [ref=f13e72]:
+      - generic [ref=f13e73]: rile.
+      - generic [ref=f13e79]:
+        - generic [ref=f13e80]: r
+        - generic [ref=f13e81]:
+          - text: Personal
+          - generic [ref=f13e82]: Local workspace
+        - generic "On this device" [ref=f13e83]
+      - navigation "Places" [ref=f13e84]:
+        - generic [ref=f13e85]:
+          - heading "Library" [level=2] [ref=f13e86]
+          - button "Home" [ref=f13e87] [cursor=pointer]
+          - button "Recents" [ref=f13e93] [cursor=pointer]
+          - button "Favorites" [ref=f13e99] [cursor=pointer]
+        - generic [ref=f13e104]:
+          - heading "Favorites" [level=2] [ref=f13e105]
+          - button "Desktop" [ref=f13e106] [cursor=pointer]
+          - button "Documents" [ref=f13e112] [cursor=pointer]
+          - button "Downloads" [ref=f13e118] [cursor=pointer]:
+            - generic [ref=f13e123]: "4"
+          - button "Pictures" [ref=f13e124] [cursor=pointer]
+          - button "Projects" [ref=f13e131] [cursor=pointer]
+        - generic [ref=f13e136]:
+          - heading "Devices" [level=2] [ref=f13e137]
+          - button "MacBook Pro" [ref=f13e138] [cursor=pointer]
+          - button "Macintosh HD" [ref=f13e145] [cursor=pointer]
+          - button "Studio SSD" [ref=f13e151] [cursor=pointer]:
+            - generic [ref=f13e157]: USB
+        - generic [ref=f13e158]:
+          - heading "Tags" [level=2] [ref=f13e159]
+          - button "Work" [ref=f13e160] [cursor=pointer]
+          - button "Personal" [ref=f13e163] [cursor=pointer]
+          - button "Important" [ref=f13e166] [cursor=pointer]
+      - generic [ref=f13e169]:
+        - generic [ref=f13e175]:
+          - text: Macintosh HD
+          - generic [ref=f13e176]: 228 GB available of 512 GB
+        - generic [ref=f13e179]: On your device. Not in an index.
+    - main [ref=f13e181]:
+      - generic [ref=f13e182]:
+        - generic [ref=f13e183]:
+          - button "Toggle sidebar" [pressed] [ref=f13e184] [cursor=pointer]
+          - button "Back" [disabled] [ref=f13e190]
+          - button "Forward" [ref=f13e194] [cursor=pointer]
+        - generic [ref=f13e198]:
+          - button "MacBook Pro" [ref=f13e375] [cursor=pointer]
+          - strong [ref=f13e378]: Home
+        - generic [ref=f13e206]:
+          - searchbox "Search sample workspace" [ref=f13e379]
+          - generic [ref=f13e212]: ⌘ F
+        - button "Toggle inspector" [disabled] [ref=f13e213]
+      - generic [ref=f13e217]:
+        - tablist "Open folders" [ref=f13e218]:
+          - tab "Home" [selected] [ref=f13e380] [cursor=pointer]
+          - button "Close Home tab" [ref=f13e385] [cursor=pointer]
+          - tab "rile" [ref=f13e388] [cursor=pointer]
+          - button "Close rile tab" [ref=f13e392] [cursor=pointer]
+        - button "New tab" [ref=f13e233] [cursor=pointer]
+      - region "File browser" [ref=f13e238]:
+        - tabpanel "Home" [ref=f13e395]:
+          - generic [ref=f13e396]:
+            - generic [ref=f13e397]:
+              - generic [ref=f13e398]:
+                - paragraph [ref=f13e399]: YOUR WORKSPACE, AT A GLANCE
+                - heading "Home." [level=1] [ref=f13e400]
+                - paragraph [ref=f13e401]: A more visual way to find your things.
+              - generic [ref=f13e402]:
+                - generic [ref=f13e403]: Sample workspace
+                - group "Home page mockups" [ref=f13e405]:
+                  - button "Overview" [ref=f13e406] [cursor=pointer]
+                  - button "Storage" [ref=f13e407] [cursor=pointer]
+                  - button "Activity" [ref=f13e408] [cursor=pointer]
+                  - button "Library" [pressed] [ref=f13e409] [cursor=pointer]
+            - generic [ref=f13e410]:
+              - generic [ref=f13e411]:
+                - text: YOUR LIBRARY
+                - heading "Everything, in its place." [level=2] [ref=f13e412]
+                - paragraph [ref=f13e413]: Explore the sample workspace by the kind of file you need.
+              - generic [ref=f13e414]:
+                - strong [ref=f13e415]: "33"
+                - generic [ref=f13e416]: files across4 collections
+            - generic [ref=f13e417]:
+              - generic [ref=f13e418]:
+                - heading "Browse by kind" [level=2] [ref=f13e419]
+                - paragraph [ref=f13e420]: Collections are created from sample file types
+              - generic [ref=f13e421]: 4 collections
+            - generic [ref=f13e422]:
+              - button "Browse image files" [ref=f13e423] [cursor=pointer]:
+                - generic [ref=f13e443]:
+                  - generic [ref=f13e444]:
+                    - strong [ref=f13e445]: Images
+                    - generic [ref=f13e446]: Photos, screenshots & artwork
+                  - generic [ref=f13e447]:
+                    - strong [ref=f13e448]: "8"
+                    - generic [ref=f13e449]: sample files
+              - generic [ref=f13e452]:
+                - button "Browse code files" [ref=f13e453] [cursor=pointer]:
+                  - generic [ref=f13e457]:
+                    - strong [ref=f13e458]: Code
+                    - generic [ref=f13e459]: Source & configuration
+                  - generic [ref=f13e460]:
+                    - strong [ref=f13e461]: "12"
+                    - generic [ref=f13e462]: files
+                - button "Browse documents files" [ref=f13e465] [cursor=pointer]:
+                  - generic [ref=f13e470]:
+                    - strong [ref=f13e471]: Documents
+                    - generic [ref=f13e472]: Notes, text & PDFs
+                  - generic [ref=f13e473]:
+                    - strong [ref=f13e474]: "11"
+                    - generic [ref=f13e475]: files
+                - button "Browse archives files" [ref=f13e478] [cursor=pointer]:
+                  - generic [ref=f13e483]:
+                    - strong [ref=f13e484]: Archives
+                    - generic [ref=f13e485]: Compressed files
+                  - generic [ref=f13e486]:
+                    - strong [ref=f13e487]: "2"
+                    - generic [ref=f13e488]: files
+            - generic [ref=f13e491]:
+              - generic [ref=f13e492]:
+                - generic [ref=f13e493]:
+                  - generic [ref=f13e494]:
+                    - heading "Recently modified" [level=2] [ref=f13e495]
+                    - paragraph [ref=f13e496]: Across all collections
+                  - button "View all" [ref=f13e497] [cursor=pointer]
+                - button "Show alpine-lake.jpg in folder" [ref=f13e500] [cursor=pointer]:
+                  - generic [ref=f13e506]:
+                    - strong [ref=f13e507]: alpine-lake.jpg
+                    - generic [ref=f13e508]: rile
+                  - generic [ref=f13e509]: 4.3 MB
+                - button "Show Cargo.toml in folder" [ref=f13e512] [cursor=pointer]:
+                  - generic [ref=f13e516]:
+                    - strong [ref=f13e517]: Cargo.toml
+                    - generic [ref=f13e518]: rile
+                  - generic [ref=f13e519]: 1.1 KB
+                - button "Show CHANGELOG.md in folder" [ref=f13e522] [cursor=pointer]:
+                  - generic [ref=f13e527]:
+                    - strong [ref=f13e528]: CHANGELOG.md
+                    - generic [ref=f13e529]: rile
+                  - generic [ref=f13e530]: 4.8 KB
+                - button "Show App.tsx in folder" [ref=f13e533] [cursor=pointer]:
+                  - generic [ref=f13e537]:
+                    - strong [ref=f13e538]: App.tsx
+                    - generic [ref=f13e539]: rile
+                  - generic [ref=f13e540]: 2.9 KB
+                - button "Show main.rs in folder" [ref=f13e543] [cursor=pointer]:
+                  - generic [ref=f13e547]:
+                    - strong [ref=f13e548]: main.rs
+                    - generic [ref=f13e549]: rile
+                  - generic [ref=f13e550]: 4.3 KB
+              - generic [ref=f13e553]:
+                - generic [ref=f13e555]:
+                  - heading "Favorite places" [level=2] [ref=f13e556]
+                  - paragraph [ref=f13e557]: Get there in one click
+                - button "Projects" [ref=f13e560] [cursor=pointer]
+                - button "Downloads" [ref=f13e566] [cursor=pointer]
+                - button "Pictures" [ref=f13e572] [cursor=pointer]
+                - button "rickyperlick" [ref=f13e580] [cursor=pointer]
+            - generic [ref=f13e587]: Design preview · file counts reflect sample data; disk usage and discovery history are illustrative.
+      - generic [ref=f13e358]:
+        - generic [ref=f13e359]: 33 sample files · 2 disks
+        - generic [ref=f13e360]: Design preview · sample files
+  - status

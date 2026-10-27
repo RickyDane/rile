@@ -1,0 +1,173 @@
+- generic [ref=f8e1]:
+  - generic [ref=f8e2]:
+    - complementary "Sidebar" [ref=f8e3]:
+      - generic [ref=f8e4]: rile.
+      - generic [ref=f8e10]:
+        - generic [ref=f8e11]: r
+        - generic [ref=f8e12]:
+          - text: Personal
+          - generic [ref=f8e13]: Local workspace
+        - generic "On this device" [ref=f8e14]
+      - navigation "Places" [ref=f8e15]:
+        - generic [ref=f8e16]:
+          - heading "Library" [level=2] [ref=f8e17]
+          - button "Home" [ref=f8e18] [cursor=pointer]
+          - button "Recents" [ref=f8e24] [cursor=pointer]
+          - button "Favorites" [ref=f8e30] [cursor=pointer]
+        - generic [ref=f8e35]:
+          - heading "Favorites" [level=2] [ref=f8e36]
+          - button "Desktop" [ref=f8e37] [cursor=pointer]
+          - button "Documents" [ref=f8e43] [cursor=pointer]
+          - button "Downloads" [ref=f8e49] [cursor=pointer]:
+            - generic [ref=f8e54]: "4"
+          - button "Pictures" [ref=f8e55] [cursor=pointer]
+          - button "Projects" [ref=f8e62] [cursor=pointer]
+        - generic [ref=f8e67]:
+          - heading "Devices" [level=2] [ref=f8e68]
+          - button "MacBook Pro" [ref=f8e69] [cursor=pointer]
+          - button "Macintosh HD" [ref=f8e76] [cursor=pointer]
+          - button "Studio SSD" [ref=f8e82] [cursor=pointer]:
+            - generic [ref=f8e88]: USB
+        - generic [ref=f8e89]:
+          - heading "Tags" [level=2] [ref=f8e90]
+          - button "Work" [ref=f8e91] [cursor=pointer]
+          - button "Personal" [ref=f8e94] [cursor=pointer]
+          - button "Important" [ref=f8e97] [cursor=pointer]
+      - generic [ref=f8e100]:
+        - generic [ref=f8e106]:
+          - text: Macintosh HD
+          - generic [ref=f8e107]: 228 GB available of 512 GB
+        - generic [ref=f8e110]: On your device. Not in an index.
+    - main [ref=f8e112]:
+      - generic [ref=f8e113]:
+        - generic [ref=f8e114]:
+          - button "Toggle sidebar" [pressed] [ref=f8e115] [cursor=pointer]
+          - button "Back" [disabled] [ref=f8e121]
+          - button "Forward" [disabled] [ref=f8e125]
+        - generic [ref=f8e129]:
+          - button "MacBook Pro" [ref=f8e130] [cursor=pointer]
+          - button "Projects" [ref=f8e133] [cursor=pointer]
+          - strong [ref=f8e136]: rile
+        - generic [ref=f8e137]:
+          - searchbox "Search this folder" [ref=f8e142]
+          - generic [ref=f8e143]: ⌘ F
+        - button "Toggle inspector" [pressed] [ref=f8e144] [cursor=pointer]
+      - generic [ref=f8e148]:
+        - tablist "Open folders" [ref=f8e149]:
+          - tab "rile" [selected] [ref=f8e150] [cursor=pointer]
+          - button "Close rile tab" [ref=f8e154] [cursor=pointer]
+          - tab "Downloads" [ref=f8e157] [cursor=pointer]
+          - button "Close Downloads tab" [ref=f8e161] [cursor=pointer]
+        - button "New tab" [ref=f8e164] [cursor=pointer]
+      - generic [ref=f8e168]:
+        - region "File browser" [ref=f8e169]:
+          - generic [ref=f8e170]:
+            - generic [ref=f8e171]:
+              - heading "rile" [level=1] [ref=f8e175]
+              - generic [ref=f8e176]: 15 items
+            - generic [ref=f8e177]:
+              - button "New folder" [ref=f8e178] [cursor=pointer]
+              - group "View" [ref=f8e183]:
+                - button "Icon view" [ref=f8e184] [cursor=pointer]
+                - button "List view" [ref=f8e191] [cursor=pointer]
+                - button "Column view" [pressed] [ref=f8e195] [cursor=pointer]
+              - button "Sort files" [ref=f8e201] [cursor=pointer]
+              - button "More options" [ref=f8e206] [cursor=pointer]
+          - tabpanel "rile" [ref=f8e212]:
+            - generic [ref=f8e579]:
+              - region "Parent folders" [ref=f8e580]:
+                - paragraph [ref=f8e581]: Projects
+                - button "Open rile" [ref=f8e582] [cursor=pointer]:
+                  - generic [ref=f8e585]: rile
+                - button "Open website" [ref=f8e588] [cursor=pointer]:
+                  - generic [ref=f8e591]: website
+                - button "Open experiments" [ref=f8e594] [cursor=pointer]:
+                  - generic [ref=f8e597]: experiments
+              - region "Current folder" [ref=f8e600]:
+                - paragraph [ref=f8e601]: rile
+                - button "Select assets" [ref=f8e602] [cursor=pointer]:
+                  - generic [ref=f8e607]: assets
+                - button "Select docs" [active] [pressed] [ref=f8e610] [cursor=pointer]:
+                  - generic [ref=f8e613]: docs
+                - button "Select plugins" [ref=f8e616] [cursor=pointer]:
+                  - generic [ref=f8e619]: plugins
+                - button "Select src" [ref=f8e622] [cursor=pointer]:
+                  - generic [ref=f8e625]: src
+                - button "Select tests" [ref=f8e628] [cursor=pointer]:
+                  - generic [ref=f8e631]: tests
+                - button "Select alpine-lake.jpg" [ref=f8e634] [cursor=pointer]:
+                  - generic [ref=f8e639]: alpine-lake.jpg
+                - button "Select App.tsx" [ref=f8e640] [cursor=pointer]:
+                  - generic [ref=f8e643]: App.tsx
+                - button "Select Cargo.toml" [ref=f8e644] [cursor=pointer]:
+                  - generic [ref=f8e647]: Cargo.toml
+                - button "Select CHANGELOG.md" [ref=f8e648] [cursor=pointer]:
+                  - generic [ref=f8e652]: CHANGELOG.md
+                - button "Select main.rs" [ref=f8e653] [cursor=pointer]:
+                  - generic [ref=f8e656]: main.rs
+                - button "Select README.md" [ref=f8e657] [cursor=pointer]:
+                  - generic [ref=f8e661]: README.md
+                - button "Select roadmap.pdf" [ref=f8e662] [cursor=pointer]:
+                  - generic [ref=f8e666]: roadmap.pdf
+                - button "Select schema.json" [ref=f8e667] [cursor=pointer]:
+                  - generic [ref=f8e670]: schema.json
+                - button "Select screenshot.png" [ref=f8e671] [cursor=pointer]:
+                  - generic [ref=f8e676]: screenshot.png
+                - button "Select styles.css" [ref=f8e677] [cursor=pointer]:
+                  - generic [ref=f8e680]: styles.css
+              - region "Selection" [ref=f8e681]:
+                - strong [ref=f8e694]: docs
+                - paragraph [ref=f8e695]: Folder · 2 items
+          - generic "Folder path" [ref=f8e281]:
+            - button "Macintosh HD" [ref=f8e282] [cursor=pointer]
+            - button "Users" [ref=f8e288] [cursor=pointer]
+            - button "rickyperlick" [ref=f8e293] [cursor=pointer]
+            - button "Projects" [ref=f8e299] [cursor=pointer]
+            - button "rile" [ref=f8e304] [cursor=pointer]
+        - complementary "File inspector" [ref=f8e307]:
+          - generic [ref=f8e696]:
+            - generic [ref=f8e697]: Inspector
+            - button "Close inspector" [ref=f8e698] [cursor=pointer]
+          - generic [ref=f8e702]:
+            - heading "docs" [level=2] [ref=f8e703]
+            - paragraph [ref=f8e704]: Folder
+          - generic [ref=f8e705]:
+            - button "Add to favorites" [ref=f8e706] [cursor=pointer]
+            - button "Show in folder" [ref=f8e709] [cursor=pointer]
+            - button "Open folder" [ref=f8e712] [cursor=pointer]
+          - generic [ref=f8e715]:
+            - heading "Details" [level=3] [ref=f8e716]
+            - generic [ref=f8e720]:
+              - generic [ref=f8e721]:
+                - term [ref=f8e722]: Contains
+                - definition [ref=f8e723]: 2 items
+              - generic [ref=f8e724]:
+                - term [ref=f8e725]: Kind
+                - definition [ref=f8e726]: Folder
+              - generic [ref=f8e727]:
+                - term [ref=f8e728]: Location
+                - definition [ref=f8e729]: rile
+          - generic [ref=f8e730]:
+            - heading "Dates" [level=3] [ref=f8e731]
+            - generic [ref=f8e735]:
+              - generic [ref=f8e736]:
+                - term [ref=f8e737]: Created
+                - definition [ref=f8e738]: Oct 18, 2026
+              - generic [ref=f8e739]:
+                - term [ref=f8e740]: Modified
+                - definition [ref=f8e741]: Oct 27, 2026
+              - generic [ref=f8e742]:
+                - term [ref=f8e743]: Accessed
+                - definition [ref=f8e744]: Oct 27, 2026
+          - generic [ref=f8e745]:
+            - heading "Tags" [level=3] [ref=f8e746]
+            - generic [ref=f8e750]: No tags
+          - button "Open folder ↵" [ref=f8e752] [cursor=pointer]:
+            - text: Open folder
+            - generic [ref=f8e755]: ↵
+      - generic [ref=f8e398]:
+        - generic [ref=f8e399]: 15 items
+        - generic [ref=f8e400]: 1 selected · 2 items
+        - generic [ref=f8e401]: Design preview · sample files
+        - slider "Icon size" [ref=f8e409] [cursor=pointer]: "134"
+  - status

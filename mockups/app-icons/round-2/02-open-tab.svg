@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Rile — Open Tab</title>
+  <desc id="desc">An open blue folder with a crisp paper inset. Native file-manager DNA, stripped to the essentials.</desc>
+  <defs>
+    <linearGradient id="tile" x2=".25" y2="1"><stop stop-color="#edf4fb"/><stop offset="1" stop-color="#bccddd"/></linearGradient>
+    <linearGradient id="blue" x2=".2" y2="1"><stop stop-color="#91d2ff"/><stop offset="1" stop-color="#397cce"/></linearGradient>
+    <linearGradient id="lilac" x2=".2" y2="1"><stop stop-color="#f2efff"/><stop offset="1" stop-color="#bdb8ed"/></linearGradient>
+    <linearGradient id="sheen" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".16"/><stop offset=".65" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="20" stdDeviation="20" flood-color="#070d18" flood-opacity=".24"/></filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="16" stdDeviation="14" flood-color="#081321" flood-opacity=".24"/></filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#tile)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#sheen)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="3"/>
+  <g filter="url(#soft)"><path d="M244 370Q244 326 288 326H428L482 382H736Q780 382 780 426V700Q780 744 736 744H288Q244 744 244 700Z" fill="#326bab"/><rect x="294" y="376" width="428" height="284" rx="28" fill="#b7d7f6" transform="rotate(-6 508 518)"/><rect x="308" y="402" width="428" height="284" rx="28" fill="#f6fbff" transform="rotate(4 522 544)"/><path d="M228 478Q228 438 268 438H756Q796 438 792 482L770 708Q766 752 722 752H294Q250 752 246 708Z" fill="url(#blue)"/><path d="M270 450H750" stroke="#c8ecff" stroke-width="6" stroke-linecap="round"/><path d="M458 572H566M512 572V672" stroke="#eefaff" stroke-width="30" stroke-linecap="round" transform="rotate(90 512 622)"/></g>
+</svg>

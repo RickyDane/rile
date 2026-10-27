@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+members = ["crates/rile-core", "crates/rile-services", "crates/rile-plugins", "crates/rile-remote", "crates/rile-app"]
+exclude = ["plugins"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+rile-core = { path = "crates/rile-core" }
+rile-services = { path = "crates/rile-services" }
+rile-plugins = { path = "crates/rile-plugins" }
+rile-remote = { path = "crates/rile-remote" }
+gpui-kit = "0.8.1"
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+dirs = "6"
+notify = "8"
+trash = "5"
+open = "5"
+sysinfo = "0.37"
+rayon = "1"
+smol = "2"
+humansize = "2"
+chrono = "0.4"
+tempfile = "3"
+
+# Keep build output small: line tables are enough for backtraces.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 2
+debug = false
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

@@ -1,0 +1,137 @@
+- generic [active] [ref=f14e1]:
+  - generic [ref=f14e2]:
+    - complementary "Sidebar" [ref=f14e3]:
+      - generic [ref=f14e4]: rile.
+      - generic [ref=f14e6]:
+        - generic [ref=f14e7]: r
+        - generic [ref=f14e348]:
+          - text: Personal
+          - generic [ref=f14e349]: Local workspace
+        - generic "On this device" [ref=f14e350]
+      - navigation "Places" [ref=f14e8]:
+        - generic [ref=f14e9]:
+          - heading "Library" [level=2] [ref=f14e10]
+          - button "Home" [ref=f14e11] [cursor=pointer]
+          - button "Recents" [ref=f14e16] [cursor=pointer]
+          - button "Favorites" [ref=f14e21] [cursor=pointer]
+        - generic [ref=f14e25]:
+          - heading "Favorites" [level=2] [ref=f14e26]
+          - button "Desktop" [ref=f14e27] [cursor=pointer]
+          - button "Documents" [ref=f14e32] [cursor=pointer]
+          - button "Downloads" [ref=f14e37] [cursor=pointer]:
+            - generic [ref=f14e357]: "4"
+          - button "Pictures" [ref=f14e41] [cursor=pointer]
+          - button "Projects" [ref=f14e47] [cursor=pointer]
+        - generic [ref=f14e51]:
+          - heading "Devices" [level=2] [ref=f14e52]
+          - button "MacBook Pro" [ref=f14e53] [cursor=pointer]
+          - button "Macintosh HD" [ref=f14e58] [cursor=pointer]
+          - button "Studio SSD" [ref=f14e63] [cursor=pointer]:
+            - generic [ref=f14e364]: USB
+        - generic [ref=f14e365]:
+          - heading "Tags" [level=2] [ref=f14e366]
+          - button "Work" [ref=f14e367] [cursor=pointer]
+          - button "Personal" [ref=f14e370] [cursor=pointer]
+          - button "Important" [ref=f14e373] [cursor=pointer]
+      - generic [ref=f14e376]:
+        - generic [ref=f14e382]:
+          - text: Macintosh HD
+          - generic [ref=f14e383]: 228 GB available of 512 GB
+        - generic [ref=f14e386]: On your device. Not in an index.
+    - main [ref=f14e68]:
+      - generic [ref=f14e69]:
+        - generic [ref=f14e70]:
+          - button "Toggle sidebar" [pressed] [ref=f14e71] [cursor=pointer]
+          - button "Back" [ref=f14e77] [cursor=pointer]
+          - button "Forward" [disabled] [ref=f14e81]
+        - generic [ref=f14e1419]:
+          - button "MacBook Pro" [ref=f14e1420] [cursor=pointer]
+          - button "Studio SSD" [ref=f14e1423] [cursor=pointer]
+          - strong [ref=f14e1426]: Backups
+        - generic [ref=f14e85]:
+          - searchbox "Search this folder" [ref=f14e1427]
+          - generic [ref=f14e388]: ⌘ F
+        - button "Toggle inspector" [pressed] [ref=f14e91] [cursor=pointer]
+      - generic [ref=f14e95]:
+        - tablist "Open folders" [ref=f14e96]:
+          - tab "Backups" [selected] [ref=f14e1428] [cursor=pointer]
+          - button "Close Backups tab" [ref=f14e1432] [cursor=pointer]
+          - tab "rile" [ref=f14e1435] [cursor=pointer]
+          - button "Close rile tab" [ref=f14e1439] [cursor=pointer]
+        - button "New tab" [ref=f14e112] [cursor=pointer]
+      - generic [ref=f14e116]:
+        - region "File browser" [ref=f14e117]:
+          - generic [ref=f14e1442]:
+            - generic [ref=f14e1443]:
+              - heading "Backups" [level=1] [ref=f14e1447]
+              - generic [ref=f14e1448]: 1 item
+            - generic [ref=f14e1449]:
+              - button "New folder" [ref=f14e1450] [cursor=pointer]
+              - group "View" [ref=f14e1455]:
+                - button "Icon view" [pressed] [ref=f14e1456] [cursor=pointer]
+                - button "List view" [ref=f14e1463] [cursor=pointer]
+                - button "Column view" [ref=f14e1467] [cursor=pointer]
+              - button "Sort files" [ref=f14e1473] [cursor=pointer]
+              - button "More options" [ref=f14e1478] [cursor=pointer]
+          - tabpanel "Backups" [ref=f14e1484]:
+            - button "Select rile-backup.zip" [pressed] [ref=f14e1486] [cursor=pointer]:
+              - generic [aria-hidden]:
+                - generic: ZIP
+              - generic [ref=f14e1487]: rile-backup.zip
+              - generic [ref=f14e1488]: 48.2 MB
+          - generic "Folder path" [ref=f14e1490]:
+            - button "Studio SSD" [ref=f14e1491] [cursor=pointer]
+            - button "Backups" [ref=f14e1497] [cursor=pointer]
+        - complementary "File inspector" [ref=f14e1500]:
+          - generic [ref=f14e1501]:
+            - generic [ref=f14e1502]: Inspector
+            - button "Close inspector" [ref=f14e1503] [cursor=pointer]
+          - generic [ref=f14e1506]:
+            - generic [aria-hidden]:
+              - generic: ZIP
+          - generic [ref=f14e1507]:
+            - heading "rile-backup.zip" [level=2] [ref=f14e1508]
+            - paragraph [ref=f14e1509]: ZIP archive · 48.2 MB
+          - generic [ref=f14e1510]:
+            - button "Add to favorites" [ref=f14e1511] [cursor=pointer]
+            - button "Show in folder" [ref=f14e1514] [cursor=pointer]
+            - button "Quick Look" [ref=f14e1517] [cursor=pointer]
+          - generic [ref=f14e1520]:
+            - heading "Details" [level=3] [ref=f14e1521]
+            - generic [ref=f14e1525]:
+              - generic [ref=f14e1526]:
+                - term [ref=f14e1527]: Size
+                - definition [ref=f14e1528]: 48.2 MB
+              - generic [ref=f14e1529]:
+                - term [ref=f14e1530]: Extension
+                - definition [ref=f14e1531]: zip
+              - generic [ref=f14e1532]:
+                - term [ref=f14e1533]: Kind
+                - definition [ref=f14e1534]: ZIP archive
+              - generic [ref=f14e1535]:
+                - term [ref=f14e1536]: Location
+                - definition [ref=f14e1537]: Backups
+          - generic [ref=f14e1538]:
+            - heading "Dates" [level=3] [ref=f14e1539]
+            - generic [ref=f14e1543]:
+              - generic [ref=f14e1544]:
+                - term [ref=f14e1545]: Created
+                - definition [ref=f14e1546]: Oct 18, 2026
+              - generic [ref=f14e1547]:
+                - term [ref=f14e1548]: Modified
+                - definition [ref=f14e1549]: Oct 26, 2026
+              - generic [ref=f14e1550]:
+                - term [ref=f14e1551]: Accessed
+                - definition [ref=f14e1552]: Oct 27, 2026
+          - generic [ref=f14e1553]:
+            - heading "Tags" [level=3] [ref=f14e1554]
+            - generic [ref=f14e1558]: No tags
+          - button "Quick Look Space" [ref=f14e1560] [cursor=pointer]:
+            - text: Quick Look
+            - generic [ref=f14e1563]: Space
+      - generic [ref=f14e342]:
+        - generic [ref=f14e343]: 1 item
+        - generic [ref=f14e1564]: 1 selected · 48.2 MB
+        - generic [ref=f14e1565]: Design preview · sample files
+        - slider "Icon size" [ref=f14e1573] [cursor=pointer]: "134"
+  - status

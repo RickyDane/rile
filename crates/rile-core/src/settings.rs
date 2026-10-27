@@ -1,0 +1,471 @@
+use std::fs;
+use std::path::PathBuf;
+
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+
+use crate::{SortKey, SortOrder};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ThemeMode {
+    #[default]
+    System,
+    Light,
+    Dark,
+}
+
+/// Accent color presets of the design system.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Accent {
+    #[default]
+    Blue,
+    Purple,
+    Pink,
+    Red,
+    Orange,
+    Green,
+    Teal,
+    Graphite,
+}
+
+impl Accent {
+    pub const ALL: [Accent; 8] = [
+        Accent::Blue,
+        Accent::Purple,
+        Accent::Pink,
+        Accent::Red,
+        Accent::Orange,
+        Accent::Green,
+        Accent::Teal,
+        Accent::Graphite,
+    ];
+
+    /// Hue (degrees) and saturation (0..1) of the accent.
+    pub fn hue_sat(self) -> (f32, f32) {
+        match self {
+            Accent::Blue => (212., 0.92),
+            Accent::Purple => (268., 0.75),
+            Accent::Pink => (330., 0.80),
+            Accent::Red => (0., 0.80),
+            Accent::Orange => (28., 0.95),
+            Accent::Green => (142., 0.65),
+            Accent::Teal => (178., 0.70),
+            Accent::Graphite => (220., 0.08),
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Accent::Blue => "Blue",
+            Accent::Purple => "Purple",
+            Accent::Pink => "Pink",
+            Accent::Red => "Red",
+            Accent::Orange => "Orange",
+            Accent::Green => "Green",
+            Accent::Teal => "Teal",
+            Accent::Graphite => "Graphite",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Density {
+    Compact,
+    #[default]
+    Comfortable,
+    Spacious,
+}
+
+impl Density {
+    pub fn row_height(self) -> f32 {
+        match self {
+            Density::Compact => 22.,
+            Density::Comfortable => 26.,
+            Density::Spacious => 32.,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ViewKind {
+    #[default]
+    List,
+    Grid,
+    Columns,
+}
+
+/// Sections of the sidebar, which the user can reorder by dragging.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SidebarSection {
+    Library,
+    Favorites,
+    Locations,
+    Devices,
+    Network,
+}
+
+impl SidebarSection {
+    pub const ALL: [Self; 5] = [Self::Library, Self::Favorites, Self::Locations, Self::Devices, Self::Network];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Library => "Library",
+            Self::Favorites => "Favorites",
+            Self::Locations => "Locations",
+            Self::Devices => "Devices",
+            Self::Network => "Network",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum StartLocation {
+    #[default]
+    Home,
+    LastVisited,
+    /// [`Settings::start_dir`]
+    Custom,
+}
+
+/// Icon styles the UI can be drawn with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum IconSet {
+    /// Lucide outlines (the original look).
+    #[default]
+    Outline,
+    /// Solid Phosphor glyphs.
+    Filled,
+    /// Phosphor two-tone: outline plus a translucent fill.
+    Duotone,
+    /// Thin Phosphor strokes.
+    Light,
+}
+
+impl IconSet {
+    pub const ALL: [IconSet; 4] = [IconSet::Outline, IconSet::Filled, IconSet::Duotone, IconSet::Light];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            IconSet::Outline => "Outline",
+            IconSet::Filled => "Filled",
+            IconSet::Duotone => "Duotone",
+            IconSet::Light => "Light",
+        }
+    }
+
+    /// Asset folder of the set (None: the built-in Lucide icons).
+    pub fn dir(self) -> Option<&'static str> {
+        match self {
+            IconSet::Outline => None,
+            IconSet::Filled => Some("fill"),
+            IconSet::Duotone => Some("duotone"),
+            IconSet::Light => Some("light"),
+        }
+    }
+}
+
+/// File types a default program can be chosen for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FileCategory {
+    Code,
+    Text,
+    Images,
+    Videos,
+    Audio,
+    Documents,
+    Spreadsheets,
+    Archives,
+}
+
+impl FileCategory {
+    pub const ALL: [FileCategory; 8] = [
+        FileCategory::Code,
+        FileCategory::Text,
+        FileCategory::Images,
+        FileCategory::Videos,
+        FileCategory::Audio,
+        FileCategory::Documents,
+        FileCategory::Spreadsheets,
+        FileCategory::Archives,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            FileCategory::Code => "Code",
+            FileCategory::Text => "Text",
+            FileCategory::Images => "Images",
+            FileCategory::Videos => "Videos",
+            FileCategory::Audio => "Audio",
+            FileCategory::Documents => "Documents",
+            FileCategory::Spreadsheets => "Spreadsheets",
+            FileCategory::Archives => "Archives",
+        }
+    }
+
+    /// Lowercase extensions (without dot) belonging to the category.
+    pub fn extensions(self) -> &'static [&'static str] {
+        match self {
+            FileCategory::Code => &[
+                "rs", "js", "mjs", "cjs", "ts", "tsx", "jsx", "py", "go", "c", "h", "cc", "cpp", "hpp", "java", "kt", "swift",
+                "rb", "php", "sh", "zsh", "bash", "fish", "json", "toml", "yaml", "yml", "html", "css", "scss", "lua", "sql",
+                "xml", "zig", "cs", "dart", "vue", "svelte", "ini", "conf", "gradle", "make", "cmake", "dockerfile",
+            ],
+            FileCategory::Text => &["txt", "md", "markdown", "log", "rtf", "csv", "tsv"],
+            FileCategory::Images => &["png", "jpg", "jpeg", "gif", "webp", "heic", "heif", "svg", "bmp", "tif", "tiff", "ico", "avif", "raw", "psd"],
+            FileCategory::Videos => &["mp4", "mov", "mkv", "avi", "webm", "m4v", "wmv", "flv"],
+            FileCategory::Audio => &["mp3", "wav", "flac", "aac", "m4a", "ogg", "aiff", "opus"],
+            FileCategory::Documents => &["pdf", "doc", "docx", "pages", "odt", "epub", "ppt", "pptx", "key"],
+            FileCategory::Spreadsheets => &["xls", "xlsx", "numbers", "ods"],
+            FileCategory::Archives => &["zip", "7z", "tar", "gz", "tgz", "br", "zst", "tzst", "bz2", "xz", "rar"],
+        }
+    }
+
+    /// The category of a file by its extension (case-insensitive).
+    pub fn of_extension(ext: &str) -> Option<FileCategory> {
+        let ext = ext.to_ascii_lowercase();
+        // Text formats that are also data (csv) count as text; code wins over text.
+        Self::ALL.into_iter().find(|c| c.extensions().contains(&ext.as_str()))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Settings {
+    pub show_hidden: bool,
+    pub theme: ThemeMode,
+    pub accent: Accent,
+    pub density: Density,
+    pub sort_key: SortKey,
+    pub sort_order: SortOrder,
+    pub confirm_trash: bool,
+    pub favorites: Vec<PathBuf>,
+    pub default_view: ViewKind,
+    pub grid_icon_size: f32,
+    pub show_thumbnails: bool,
+    pub dual_pane: bool,
+    pub show_preview_panel: bool,
+    pub start_location: StartLocation,
+    /// Folder opened on launch with [`StartLocation::Custom`].
+    pub start_dir: Option<PathBuf>,
+    pub last_location: Option<PathBuf>,
+    /// Icon style of the whole UI.
+    pub icon_set: IconSet,
+    /// Translucent, blurred sidebar and header (popups remain opaque).
+    pub glass: bool,
+    /// Glass tint hue in degrees; zero uses the theme's neutral frost.
+    pub glass_hue: u16,
+    /// Percentage of the background visible through the glass (0–100).
+    pub glass_translucency: u8,
+    /// Sidebar width chosen by dragging its edge (None: automatic).
+    pub sidebar_width: Option<f32>,
+    // Search
+    pub search_respect_gitignore: bool,
+    pub search_max_results: usize,
+    pub search_use_spotlight: bool,
+    /// Remember the contents of opened folders for instant search.
+    pub index_discovered: bool,
+    // AI
+    pub ai_enabled: bool,
+    /// Describe images and documents on device so AI search and the photo
+    /// library can find them by content.
+    pub ai_smart_tags: bool,
+    // Updates
+    pub update_check_on_start: bool,
+    pub update_repo: String,
+    pub update_prereleases: bool,
+    // Plugins
+    pub plugins_enabled: bool,
+    pub disabled_plugins: Vec<String>,
+    /// Built-in FTP/SFTP provider (Network section in the sidebar).
+    pub remote_enabled: bool,
+    /// Order of the sidebar sections (see [`Settings::sidebar_order`]).
+    pub sidebar_sections: Vec<SidebarSection>,
+    /// Default program per file type (application bundle paths). Keys are
+    /// a category, or a single extension as ".ext" which takes precedence.
+    pub default_apps: std::collections::BTreeMap<String, PathBuf>,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            show_hidden: false,
+            theme: ThemeMode::System,
+            sort_key: SortKey::Name,
+            sort_order: SortOrder::Ascending,
+            confirm_trash: false,
+            accent: Accent::Blue,
+            density: Density::Comfortable,
+            default_view: ViewKind::List,
+            grid_icon_size: 64.,
+            show_thumbnails: true,
+            dual_pane: false,
+            show_preview_panel: true,
+            start_location: StartLocation::Home,
+            start_dir: None,
+            last_location: None,
+            icon_set: IconSet::Outline,
+            glass: false,
+            glass_hue: 0,
+            glass_translucency: 50,
+            sidebar_width: None,
+            search_respect_gitignore: false,
+            search_max_results: 5000,
+            search_use_spotlight: false,
+            index_discovered: true,
+            ai_enabled: true,
+            ai_smart_tags: true,
+            update_check_on_start: true,
+            update_repo: "RickyDane/rile".into(),
+            update_prereleases: false,
+            plugins_enabled: true,
+            disabled_plugins: Vec::new(),
+            remote_enabled: true,
+            sidebar_sections: SidebarSection::ALL.to_vec(),
+            default_apps: Default::default(),
+            favorites: dirs::home_dir()
+                .into_iter()
+                .chain(dirs::desktop_dir())
+                .chain(dirs::download_dir())
+                .collect(),
+        }
+    }
+}
+
+impl Settings {
+    /// The sidebar sections in display order: the saved order without
+    /// duplicates, followed by any section it doesn't mention.
+    pub fn sidebar_order(&self) -> Vec<SidebarSection> {
+        let mut order: Vec<SidebarSection> = Vec::new();
+        for s in self.sidebar_sections.iter().chain(SidebarSection::ALL.iter()) {
+            if !order.contains(s) {
+                order.push(*s);
+            }
+        }
+        order
+    }
+
+    /// Moves `section` to where `target` is: after it when dragged
+    /// downwards, before it when dragged upwards.
+    pub fn move_sidebar_section(&mut self, section: SidebarSection, target: SidebarSection) {
+        let mut order = self.sidebar_order();
+        let (Some(from), Some(to)) = (order.iter().position(|s| *s == section), order.iter().position(|s| *s == target)) else {
+            return;
+        };
+        let moved = order.remove(from);
+        order.insert(to, moved);
+        self.sidebar_sections = order;
+    }
+
+    /// `$RILE_CONFIG_DIR/settings.toml` if set, else the platform config dir.
+    pub fn config_dir() -> Option<PathBuf> {
+        match std::env::var_os("RILE_CONFIG_DIR") {
+            Some(d) => Some(PathBuf::from(d)),
+            None => Some(dirs::config_dir()?.join("rile")),
+        }
+    }
+
+    pub fn path() -> Option<PathBuf> {
+        let dir = match std::env::var_os("RILE_CONFIG_DIR") {
+            Some(d) => PathBuf::from(d),
+            None => dirs::config_dir()?.join("rile"),
+        };
+        Some(dir.join("settings.toml"))
+    }
+
+    /// Loads settings, falling back to defaults when missing or invalid.
+    pub fn load() -> Self {
+        Self::path()
+            .and_then(|p| fs::read_to_string(p).ok())
+            .and_then(|s| toml::from_str(&s).ok())
+            .unwrap_or_default()
+    }
+
+    pub fn save(&self) -> Result<()> {
+        let Some(path) = Self::path() else { return Ok(()) };
+        if let Some(dir) = path.parent() {
+            fs::create_dir_all(dir)?;
+        }
+        fs::write(path, toml::to_string_pretty(self)?)?;
+        Ok(())
+    }
+
+    /// Settings key of a category in [`Settings::default_apps`].
+    pub fn category_key(category: FileCategory) -> String {
+        format!("{category:?}").to_lowercase()
+    }
+
+    /// The default program chosen for `path`: one set for its extension,
+    /// else for its category. None means "use the system default".
+    pub fn default_app_for(&self, path: &std::path::Path) -> Option<&PathBuf> {
+        let ext = path.extension()?.to_string_lossy().to_lowercase();
+        self.default_apps
+            .get(&format!(".{ext}"))
+            .or_else(|| FileCategory::of_extension(&ext).and_then(|c| self.default_apps.get(&Self::category_key(c))))
+            .filter(|app| app.exists())
+    }
+
+    pub fn toggle_favorite(&mut self, path: PathBuf) {
+        if let Some(i) = self.favorites.iter().position(|p| *p == path) {
+            self.favorites.remove(i);
+        } else {
+            self.favorites.push(path);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sidebar_order_is_complete_and_movable() {
+        let mut s = Settings { sidebar_sections: vec![SidebarSection::Devices, SidebarSection::Devices], ..Default::default() };
+        // Duplicates dropped, missing sections appended in their default order.
+        use SidebarSection::*;
+        assert_eq!(s.sidebar_order(), [Devices, Library, Favorites, Locations, Network]);
+        s.sidebar_sections = SidebarSection::ALL.to_vec();
+        // Dragging down lands after the target, dragging up before it.
+        s.move_sidebar_section(Favorites, Locations);
+        assert_eq!(s.sidebar_order(), [Library, Locations, Favorites, Devices, Network]);
+        s.move_sidebar_section(Network, Library);
+        assert_eq!(s.sidebar_order(), [Network, Library, Locations, Favorites, Devices]);
+        s.move_sidebar_section(Devices, Devices);
+        assert_eq!(s.sidebar_order(), [Network, Library, Locations, Favorites, Devices]);
+    }
+
+    #[test]
+    fn default_apps_by_extension_then_category() {
+        let t = std::env::temp_dir();
+        let mut s = Settings::default();
+        s.default_apps.insert(Settings::category_key(FileCategory::Code), t.clone());
+        assert_eq!(s.default_app_for(std::path::Path::new("/x/main.RS")), Some(&t));
+        assert_eq!(s.default_app_for(std::path::Path::new("/x/photo.png")), None);
+        let other = t.parent().unwrap().to_path_buf();
+        s.default_apps.insert(".rs".into(), other.clone());
+        assert_eq!(s.default_app_for(std::path::Path::new("/x/main.rs")), Some(&other));
+        // Maps serialize after the plain values.
+        let parsed: Settings = toml::from_str(&toml::to_string_pretty(&s).unwrap()).unwrap();
+        assert_eq!(parsed.default_apps.len(), 2);
+    }
+
+    #[test]
+    fn roundtrip_and_partial() {
+        let s = Settings { show_hidden: true, glass_hue: 215, glass_translucency: 72, ..Default::default() };
+        let parsed: Settings = toml::from_str(&toml::to_string(&s).unwrap()).unwrap();
+        assert!(parsed.show_hidden);
+        assert_eq!(parsed.glass_hue, 215);
+        assert_eq!(parsed.glass_translucency, 72);
+        let partial: Settings = toml::from_str("theme = \"dark\"").unwrap();
+        assert_eq!(partial.theme, ThemeMode::Dark);
+        assert_eq!(partial.glass_hue, 0);
+        assert_eq!(partial.glass_translucency, 50);
+    }
+}

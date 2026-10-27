@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Rile — Bolt Folder</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#6aa2dc"/><stop offset=".55" stop-color="#3f72aa"/><stop offset="1" stop-color="#21436d"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="folder" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#d6e3f2"/>
+    </linearGradient>
+    <linearGradient id="folderBack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c9daee"/><stop offset="1" stop-color="#a8c1de"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe27a"/><stop offset=".5" stop-color="#ffc233"/><stop offset="1" stop-color="#ff9418"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity=".35"/>
+    </filter>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0b1f38" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#gloss)"/>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="184" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="3"/>
+  <g stroke="#cfe3fa" stroke-opacity=".55" stroke-width="22" stroke-linecap="round">
+    <line x1="168" y1="500" x2="232" y2="500"/>
+    <line x1="150" y1="580" x2="232" y2="580"/>
+    <line x1="182" y1="660" x2="232" y2="660"/>
+  </g>
+  <g filter="url(#soft)">
+    <path d="M262 340Q262 302 300 302H430Q454 302 470 320L494 346H746Q784 346 784 384V712Q784 750 746 750H300Q262 750 262 712Z" fill="url(#folderBack)"/>
+    <path d="M254 430Q254 396 288 396H760Q794 396 794 430V720Q794 758 756 758H292Q254 758 254 720Z" fill="url(#folder)"/>
+  </g>
+  <g filter="url(#soft)">
+    <path d="M584 362L428 600H516L470 820L652 548H560L612 362Z" fill="url(#bolt)" stroke="#fff3c4" stroke-width="6" stroke-linejoin="round"/>
+  </g>
+</svg>

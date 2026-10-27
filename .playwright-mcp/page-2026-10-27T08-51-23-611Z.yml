@@ -1,0 +1,227 @@
+- generic [ref=f14e1]:
+  - generic [ref=f14e2]:
+    - complementary "Sidebar" [ref=f14e3]:
+      - generic [ref=f14e4]: rile.
+      - generic [ref=f14e6]:
+        - generic [ref=f14e7]: r
+        - generic [ref=f14e348]:
+          - text: Personal
+          - generic [ref=f14e349]: Local workspace
+        - generic "On this device" [ref=f14e350]
+      - navigation "Places" [ref=f14e8]:
+        - generic [ref=f14e9]:
+          - heading "Library" [level=2] [ref=f14e10]
+          - button "Home" [ref=f14e11] [cursor=pointer]
+          - button "Recents" [ref=f14e16] [cursor=pointer]
+          - button "Favorites" [ref=f14e21] [cursor=pointer]
+        - generic [ref=f14e25]:
+          - heading "Favorites" [level=2] [ref=f14e26]
+          - button "Desktop" [ref=f14e27] [cursor=pointer]
+          - button "Documents" [ref=f14e32] [cursor=pointer]
+          - button "Downloads" [ref=f14e37] [cursor=pointer]:
+            - generic [ref=f14e357]: "4"
+          - button "Pictures" [ref=f14e41] [cursor=pointer]
+          - button "Projects" [ref=f14e47] [cursor=pointer]
+        - generic [ref=f14e51]:
+          - heading "Devices" [level=2] [ref=f14e52]
+          - button "MacBook Pro" [ref=f14e53] [cursor=pointer]
+          - button "Macintosh HD" [ref=f14e58] [cursor=pointer]
+          - button "Studio SSD" [ref=f14e63] [cursor=pointer]:
+            - generic [ref=f14e364]: USB
+        - generic [ref=f14e365]:
+          - heading "Tags" [level=2] [ref=f14e366]
+          - button "Work" [ref=f14e367] [cursor=pointer]
+          - button "Personal" [ref=f14e370] [cursor=pointer]
+          - button "Important" [ref=f14e373] [cursor=pointer]
+      - generic [ref=f14e376]:
+        - generic [ref=f14e382]:
+          - text: Macintosh HD
+          - generic [ref=f14e383]: 228 GB available of 512 GB
+        - generic [ref=f14e386]: On your device. Not in an index.
+    - main [ref=f14e68]:
+      - generic [ref=f14e69]:
+        - generic [ref=f14e70]:
+          - button "Toggle sidebar" [pressed] [ref=f14e71] [cursor=pointer]
+          - button "Back" [disabled] [ref=f14e77]
+          - button "Forward" [ref=f14e81] [cursor=pointer]
+        - generic [ref=f14e1419]:
+          - button "MacBook Pro" [ref=f14e1580] [cursor=pointer]
+          - strong [ref=f14e1583]: Home
+        - generic [ref=f14e85]:
+          - searchbox "Search sample workspace" [ref=f14e1584]
+          - generic [ref=f14e388]: ⌘ F
+        - button "Toggle inspector" [disabled] [ref=f14e91]
+      - generic [ref=f14e95]:
+        - tablist "Open folders" [ref=f14e96]:
+          - tab "Home" [selected] [ref=f14e1585] [cursor=pointer]
+          - button "Close Home tab" [ref=f14e1590] [cursor=pointer]
+          - tab "rile" [ref=f14e1593] [cursor=pointer]
+          - button "Close rile tab" [ref=f14e1597] [cursor=pointer]
+        - button "New tab" [ref=f14e112] [cursor=pointer]
+      - region "File browser" [ref=f14e117]:
+        - tabpanel "Home" [ref=f14e1600]:
+          - generic [ref=f14e1781]:
+            - generic [ref=f14e1782]:
+              - generic [ref=f14e1783]:
+                - paragraph [ref=f14e1784]: 03 / THE ACTIVITY-FIRST HOME
+                - heading "Activity desk." [level=1] [ref=f14e1785]
+                - paragraph [ref=f14e1786]: Follow the trail. Find your way back to what matters.
+              - generic [ref=f14e1787]:
+                - generic [ref=f14e1788]:
+                  - generic [ref=f14e1789]: Home layout
+                  - combobox "Home layout" [active] [ref=f14e1790] [cursor=pointer]:
+                    - option "01 · Overview"
+                    - option "02 · Storage atlas"
+                    - option "03 · Activity desk" [selected]
+                    - option "04 · Library shelves"
+                - generic [ref=f14e1791]: Sample workspace
+            - generic [ref=f14e1793]:
+              - generic [ref=f14e1794]:
+                - generic [ref=f14e1795]:
+                  - generic [ref=f14e1796]:
+                    - generic [ref=f14e1797]: DISCOVERY JOURNAL
+                    - generic [ref=f14e1798]: Oct 21 – 27 · sample history
+                  - generic [ref=f14e1799]:
+                    - strong [ref=f14e1800]: "33"
+                    - generic [ref=f14e1801]:
+                      - heading "files, brought into view." [level=2] [ref=f14e1802]
+                      - paragraph [ref=f14e1803]: A seven-day illustration of workspace discovery.
+                  - img "Illustrative seven-day discovery history, increasing to 33 sample files" [ref=f14e1804]:
+                    - generic [ref=f14e1805]: "33"
+                    - generic [ref=f14e1806]: "17"
+                    - generic [ref=f14e1807]: "0"
+                    - generic [ref=f14e1811]: Oct 21
+                    - generic [ref=f14e1812]: Oct 22
+                    - generic [ref=f14e1813]: Oct 23
+                    - generic [ref=f14e1814]: Oct 24
+                    - generic [ref=f14e1815]: Oct 25
+                    - generic [ref=f14e1816]: Oct 26
+                    - generic [ref=f14e1817]: Oct 27
+                  - generic [ref=f14e1818]:
+                    - generic [ref=f14e1819]: Sample discovery
+                    - generic [ref=f14e1823]: No background scan is running
+                - generic [ref=f14e1824]:
+                  - generic [ref=f14e1825]:
+                    - heading "The file trail" [level=2] [ref=f14e1826]
+                    - button "All recent files" [ref=f14e1827] [cursor=pointer]
+                  - generic [ref=f14e1830]:
+                    - generic [ref=f14e1831]:
+                      - generic [ref=f14e1833]: Oct 27, 2026
+                      - generic [ref=f14e1834]: 1 shown
+                    - generic [ref=f14e1836]:
+                      - generic [ref=f14e1837]: 08:24
+                      - button "Show alpine-lake.jpg in folder" [ref=f14e1838] [cursor=pointer]:
+                        - generic [ref=f14e1844]:
+                          - strong [ref=f14e1845]: alpine-lake.jpg
+                          - generic [ref=f14e1846]: rile
+                        - generic [ref=f14e1847]: JPEG image
+                  - generic [ref=f14e1850]:
+                    - generic [ref=f14e1851]:
+                      - generic [ref=f14e1853]: Oct 26, 2026
+                      - generic [ref=f14e1854]: 8 shown
+                    - generic [ref=f14e1855]:
+                      - generic [ref=f14e1856]:
+                        - generic [ref=f14e1857]: 14:32
+                        - button "Show Cargo.toml in folder" [ref=f14e1858] [cursor=pointer]:
+                          - generic [ref=f14e1862]:
+                            - strong [ref=f14e1863]: Cargo.toml
+                            - generic [ref=f14e1864]: rile
+                          - generic [ref=f14e1865]: TOML document
+                      - generic [ref=f14e1868]:
+                        - generic [ref=f14e1869]: 14:32
+                        - button "Show CHANGELOG.md in folder" [ref=f14e1870] [cursor=pointer]:
+                          - generic [ref=f14e1875]:
+                            - strong [ref=f14e1876]: CHANGELOG.md
+                            - generic [ref=f14e1877]: rile
+                          - generic [ref=f14e1878]: Markdown
+                      - generic [ref=f14e1881]:
+                        - generic [ref=f14e1882]: 14:32
+                        - button "Show App.tsx in folder" [ref=f14e1883] [cursor=pointer]:
+                          - generic [ref=f14e1887]:
+                            - strong [ref=f14e1888]: App.tsx
+                            - generic [ref=f14e1889]: rile
+                          - generic [ref=f14e1890]: TypeScript JSX
+                      - generic [ref=f14e1893]:
+                        - generic [ref=f14e1894]: 14:32
+                        - button "Show main.rs in folder" [ref=f14e1895] [cursor=pointer]:
+                          - generic [ref=f14e1899]:
+                            - strong [ref=f14e1900]: main.rs
+                            - generic [ref=f14e1901]: rile
+                          - generic [ref=f14e1902]: Rust source
+                      - generic [ref=f14e1905]:
+                        - generic [ref=f14e1906]: 14:32
+                        - button "Show README.md in folder" [ref=f14e1907] [cursor=pointer]:
+                          - generic [ref=f14e1912]:
+                            - strong [ref=f14e1913]: README.md
+                            - generic [ref=f14e1914]: rile
+                          - generic [ref=f14e1915]: Markdown
+                      - generic [ref=f14e1918]:
+                        - generic [ref=f14e1919]: 14:32
+                        - button "Show roadmap.pdf in folder" [ref=f14e1920] [cursor=pointer]:
+                          - generic [ref=f14e1925]:
+                            - strong [ref=f14e1926]: roadmap.pdf
+                            - generic [ref=f14e1927]: rile
+                          - generic [ref=f14e1928]: PDF document
+                      - generic [ref=f14e1931]:
+                        - generic [ref=f14e1932]: 14:32
+                        - button "Show schema.json in folder" [ref=f14e1933] [cursor=pointer]:
+                          - generic [ref=f14e1937]:
+                            - strong [ref=f14e1938]: schema.json
+                            - generic [ref=f14e1939]: rile
+                          - generic [ref=f14e1940]: JSON document
+                      - generic [ref=f14e1943]:
+                        - generic [ref=f14e1944]: 14:32
+                        - button "Show screenshot.png in folder" [ref=f14e1945] [cursor=pointer]:
+                          - generic [ref=f14e1951]:
+                            - strong [ref=f14e1952]: screenshot.png
+                            - generic [ref=f14e1953]: rile
+                          - generic [ref=f14e1954]: PNG image
+              - complementary [ref=f14e1957]:
+                - generic [ref=f14e1958]:
+                  - heading "At a glance" [level=2] [ref=f14e1959]
+                  - paragraph [ref=f14e1960]: Current sample workspace
+                  - generic [ref=f14e1961]:
+                    - generic [ref=f14e1962]:
+                      - text: Files
+                      - strong [ref=f14e1963]: "33"
+                      - generic [ref=f14e1964]: discovered
+                    - generic [ref=f14e1965]:
+                      - text: Folders
+                      - strong [ref=f14e1966]: "17"
+                      - generic [ref=f14e1967]: across locations
+                  - generic [ref=f14e1968]:
+                    - button [ref=f14e1969] [cursor=pointer]:
+                      - generic [ref=f14e1970]:
+                        - text: Images
+                        - strong [ref=f14e1972]: "8"
+                    - button [ref=f14e1975] [cursor=pointer]:
+                      - generic [ref=f14e1976]:
+                        - text: Code
+                        - strong [ref=f14e1978]: "12"
+                    - button [ref=f14e1981] [cursor=pointer]:
+                      - generic [ref=f14e1982]:
+                        - text: Documents
+                        - strong [ref=f14e1984]: "11"
+                    - button [ref=f14e1987] [cursor=pointer]:
+                      - generic [ref=f14e1988]:
+                        - text: Archives
+                        - strong [ref=f14e1990]: "2"
+                - generic [ref=f14e1993]:
+                  - heading "Within reach" [level=2] [ref=f14e1994]
+                  - button "Macintosh HD 228 GB free" [ref=f14e1995] [cursor=pointer]:
+                    - generic [ref=f14e1999]:
+                      - text: Macintosh HD
+                      - generic [ref=f14e2000]: 228 GB free
+                  - button "Studio SSD 1.27 TB free" [ref=f14e2003] [cursor=pointer]:
+                    - generic [ref=f14e2007]:
+                      - text: Studio SSD
+                      - generic [ref=f14e2008]: 1.27 TB free
+                - button [ref=f14e2011] [cursor=pointer]:
+                  - text: CONTINUE EXPLORING
+                  - strong [ref=f14e2015]: rile
+                  - generic [ref=f14e2016]: Projects / rile
+            - generic [ref=f14e2019]: Design preview · file counts reflect sample data; disk usage and discovery history are illustrative.
+      - generic [ref=f14e342]:
+        - generic [ref=f14e343]: 33 sample files · 2 disks
+        - generic [ref=f14e1565]: Design preview · sample files
+  - status

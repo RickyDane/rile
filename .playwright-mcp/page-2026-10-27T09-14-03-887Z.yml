@@ -1,0 +1,152 @@
+- generic [active] [ref=f1e6]:
+  - generic [ref=f1e7]:
+    - complementary "Sidebar" [ref=f1e8]:
+      - generic [ref=f1e9]: rile.
+      - generic [ref=f1e15]:
+        - generic [ref=f1e16]: r
+        - generic [ref=f1e17]:
+          - text: Personal
+          - generic [ref=f1e18]: Local workspace
+        - generic "On this device" [ref=f1e19]
+      - navigation "Places" [ref=f1e20]:
+        - generic [ref=f1e21]:
+          - heading "Library" [level=2] [ref=f1e22]
+          - button "Home" [ref=f1e23] [cursor=pointer]
+          - button "Recents" [ref=f1e29] [cursor=pointer]
+          - button "Favorites" [ref=f1e35] [cursor=pointer]
+        - generic [ref=f1e40]:
+          - heading "Favorites" [level=2] [ref=f1e41]
+          - button "Desktop" [ref=f1e42] [cursor=pointer]
+          - button "Documents" [ref=f1e48] [cursor=pointer]
+          - button "Downloads" [ref=f1e54] [cursor=pointer]:
+            - generic [ref=f1e59]: "4"
+          - button "Pictures" [ref=f1e60] [cursor=pointer]
+          - button "Projects" [ref=f1e67] [cursor=pointer]
+        - generic [ref=f1e72]:
+          - heading "Devices" [level=2] [ref=f1e73]
+          - button "MacBook Pro" [ref=f1e74] [cursor=pointer]
+          - button "Macintosh HD" [ref=f1e81] [cursor=pointer]
+          - button "Studio SSD" [ref=f1e87] [cursor=pointer]:
+            - generic [ref=f1e93]: USB
+        - generic [ref=f1e94]:
+          - heading "Tags" [level=2] [ref=f1e95]
+          - button "Work" [ref=f1e96] [cursor=pointer]
+          - button "Personal" [ref=f1e99] [cursor=pointer]
+          - button "Important" [ref=f1e102] [cursor=pointer]
+      - generic [ref=f1e105]:
+        - generic [ref=f1e111]:
+          - text: Macintosh HD
+          - generic [ref=f1e112]: 228 GB available of 512 GB
+        - generic [ref=f1e115]: On your device. Not in an index.
+    - main [ref=f1e117]:
+      - generic [ref=f1e118]:
+        - generic [ref=f1e119]:
+          - button "Toggle sidebar" [pressed] [ref=f1e120] [cursor=pointer]
+          - button "Back" [ref=f1e126] [cursor=pointer]
+          - button "Forward" [disabled] [ref=f1e130]
+        - generic [ref=f1e134]:
+          - button "MacBook Pro" [ref=f1e585] [cursor=pointer]
+          - button "Home" [ref=f1e588] [cursor=pointer]
+          - strong [ref=f1e591]: Code
+        - generic [ref=f1e139]:
+          - searchbox "Search this folder" [ref=f1e592]
+          - generic [ref=f1e145]: ⌘ F
+        - button "Toggle inspector" [pressed] [ref=f1e146] [cursor=pointer]
+      - generic [ref=f1e150]:
+        - tablist "Open folders" [ref=f1e151]:
+          - tab "Code" [selected] [ref=f1e593] [cursor=pointer]
+          - button "Close Code tab" [ref=f1e597] [cursor=pointer]
+          - tab "rile" [ref=f1e600] [cursor=pointer]
+          - button "Close rile tab" [ref=f1e604] [cursor=pointer]
+        - button "New tab" [ref=f1e167] [cursor=pointer]
+      - generic [ref=f1e171]:
+        - region "File browser" [ref=f1e172]:
+          - generic [ref=f1e607]:
+            - generic [ref=f1e608]:
+              - heading "Code" [level=1] [ref=f1e612]
+              - generic [ref=f1e613]: 12 items
+            - generic [ref=f1e614]:
+              - button "New folder" [disabled] [ref=f1e615]
+              - group "View" [ref=f1e620]:
+                - button "Icon view" [pressed] [ref=f1e621] [cursor=pointer]
+                - button "List view" [ref=f1e628] [cursor=pointer]
+                - button "Column view" [ref=f1e632] [cursor=pointer]
+              - button "Sort files" [ref=f1e638] [cursor=pointer]
+              - button "More options" [ref=f1e643] [cursor=pointer]
+          - tabpanel "Code" [ref=f1e649]:
+            - generic [ref=f1e650]:
+              - button "Select App.tsx" [ref=f1e651] [cursor=pointer]:
+                - generic [ref=f1e652]: App.tsx
+                - generic [ref=f1e653]: 2.9 KB
+              - button "Select Cargo.toml" [ref=f1e655] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: "[T]"
+                - generic [ref=f1e656]: Cargo.toml
+                - generic [ref=f1e657]: 1.1 KB
+                - generic "Work" [ref=f1e659]
+              - button "Select file_operations.rs" [ref=f1e660] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: R
+                - generic [ref=f1e661]: file_operations.rs
+                - generic [ref=f1e662]: 5.1 KB
+              - button "Select hello.rs" [ref=f1e664] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: R
+                - generic [ref=f1e665]: hello.rs
+                - generic [ref=f1e666]: 730 B
+              - button "Select main.rs" [ref=f1e668] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: R
+                - generic [ref=f1e669]: main.rs
+                - generic [ref=f1e670]: 4.3 KB
+                - generic "Work" [ref=f1e672]
+              - button "Select navigation.rs" [ref=f1e673] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: R
+                - generic [ref=f1e674]: navigation.rs
+                - generic [ref=f1e675]: 3.9 KB
+              - button "Select pane.rs" [ref=f1e677] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: R
+                - generic [ref=f1e678]: pane.rs
+                - generic [ref=f1e679]: 8.1 KB
+              - button "Select schema.json" [ref=f1e681] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: "{ }"
+                - generic [ref=f1e682]: schema.json
+                - generic [ref=f1e683]: 856 B
+              - button "Select settings.json" [ref=f1e685] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: "{ }"
+                - generic [ref=f1e686]: settings.json
+                - generic [ref=f1e687]: 1.2 KB
+              - button "Select styles.css" [ref=f1e689] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: "3"
+                - generic [ref=f1e690]: styles.css
+                - generic [ref=f1e691]: 3.4 KB
+              - button "Select theme.rs" [ref=f1e693] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: R
+                - generic [ref=f1e694]: theme.rs
+                - generic [ref=f1e695]: 2.8 KB
+              - button "Select workspace.rs" [ref=f1e697] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: R
+                - generic [ref=f1e698]: workspace.rs
+                - generic [ref=f1e699]: 18.4 KB
+          - generic "Folder path" [ref=f1e701]:
+            - button "Home" [ref=f1e702] [cursor=pointer]
+            - button "Code" [ref=f1e708] [cursor=pointer]
+        - complementary "File inspector" [ref=f1e714]:
+          - generic [ref=f1e715]:
+            - generic [ref=f1e716]: Inspector
+            - button "Close inspector" [ref=f1e717] [cursor=pointer]
+          - generic [ref=f1e720]:
+            - heading "A closer look." [level=2] [ref=f1e724]
+            - paragraph [ref=f1e725]: Select a file to see its previewand details here.
+      - generic [ref=f1e387]:
+        - generic [ref=f1e388]: 12 items
+        - generic [ref=f1e389]: Design preview · sample files
+        - slider "Icon size" [ref=f1e733] [cursor=pointer]: "134"
+  - status

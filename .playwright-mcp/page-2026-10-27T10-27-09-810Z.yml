@@ -1,0 +1,50 @@
+- generic [active] [ref=f2e1]:
+  - 'heading "Storage on the sidebar: three options" [level=1] [ref=f2e2]'
+  - paragraph [ref=f2e3]: "The Devices section with the same three disks in each option: an internal disk, a nearly full external SSD, and a USB stick. Colors switch to amber above 80% and red above 95%."
+  - generic [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - heading "A · Capacity bar" [level=2] [ref=f2e6]
+      - paragraph [ref=f2e7]: A thin bar under the name with free space beside it. Easiest to read, but each row gets a second line.
+      - generic [ref=f2e8]:
+        - generic [ref=f2e9]: Devices
+        - 'generic "Macintosh HD: 207 GB free of 494 GB (58% used)" [ref=f2e10]':
+          - generic [ref=f2e14]:
+            - generic [ref=f2e15]: Macintosh HD
+            - generic [ref=f2e16]: 207 GB free
+        - 'generic "Studio SSD: 60 GB free of 2.00 TB (97% used)" [ref=f2e19]':
+          - generic [ref=f2e23]:
+            - generic [ref=f2e24]: Studio SSD
+            - generic [ref=f2e25]: 60 GB free
+        - 'generic "USB Stick: 10 GB free of 64 GB (84% used)" [ref=f2e28]':
+          - generic [ref=f2e38]:
+            - generic [ref=f2e39]: USB Stick
+            - generic [ref=f2e40]: 10 GB free
+    - generic [ref=f2e43]:
+      - heading "B · Ring gauge" [level=2] [ref=f2e44]
+      - paragraph [ref=f2e45]: A small ring and percentage at the end of the row. Compact, rows keep their height, and the eject button stays.
+      - generic [ref=f2e46]:
+        - generic [ref=f2e47]: Devices
+        - 'generic "Macintosh HD: 207 GB free of 494 GB (58% used)" [ref=f2e48]':
+          - generic [ref=f2e51]: Macintosh HD
+          - generic [ref=f2e52]: 58%
+        - 'generic "Studio SSD: 60 GB free of 2.00 TB (97% used)" [ref=f2e56]':
+          - generic [ref=f2e59]: Studio SSD
+          - generic [ref=f2e60]: 97%
+        - 'generic "USB Stick: 10 GB free of 64 GB (84% used)" [ref=f2e66]':
+          - generic [ref=f2e75]: USB Stick
+          - generic [ref=f2e76]: 84%
+    - generic [ref=f2e82]:
+      - heading "C · Row fill" [level=2] [ref=f2e83]
+      - paragraph [ref=f2e84]: The row background fills up to the used amount, with free space as text. Very subtle, keeps the height, and shows the whole width at a glance.
+      - generic [ref=f2e85]:
+        - generic [ref=f2e86]: Devices
+        - 'generic "Macintosh HD: 207 GB free of 494 GB (58% used)" [ref=f2e87]':
+          - generic [ref=f2e90]: Macintosh HD
+          - generic [ref=f2e91]: 207 GB
+        - 'generic "Studio SSD: 60 GB free of 2.00 TB (97% used)" [ref=f2e92]':
+          - generic [ref=f2e95]: Studio SSD
+          - generic [ref=f2e96]: 60 GB
+        - 'generic "USB Stick: 10 GB free of 64 GB (84% used)" [ref=f2e99]':
+          - generic [ref=f2e108]: USB Stick
+          - generic [ref=f2e109]: 10 GB
+  - paragraph [ref=f2e112]: Hover any row for the exact figures. A adds a second line, so rows are taller. B keeps rows at their normal height. C uses the row background itself, also at normal height.

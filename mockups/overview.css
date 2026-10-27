@@ -1,0 +1,39 @@
+/* Overview-only polish: artwork and chart treatment stay within the Native UI. */
+body[data-design=native] .overview-page .start-metric { min-width:0; background:linear-gradient(145deg,#ffffff09,#ffffff04); border-color:#ffffff0d; box-shadow:inset 0 1px #ffffff05,0 8px 22px #0000000c; }
+body[data-design=native] .overview-page .start-panel,body[data-design=native] .overview-page .storage-card { background:linear-gradient(145deg,#ffffff07,#ffffff04); border-color:#ffffff0a; box-shadow:inset 0 1px #ffffff04; }
+.overview-page .metric-icon { width:52px; height:52px; background:none !important; border-radius:0; }
+.overview-page .metric-icon .overview-art { width:52px; height:52px; stroke:none; filter:drop-shadow(0 4px 5px #0005); }
+.overview-page .overview-art { stroke:none; overflow:visible; }
+.overview-page .start-metric p { color:#aaadb5; }
+.overview-page .start-metric strong { color:#ebedf0; }
+.overview-page .start-metric div>span { color:#9297a1; }
+.overview-page .start-panel h2,.overview-page .start-section-heading h2 { color:#dedfe3; }
+.overview-page .start-panel header p,.overview-page .start-section-heading>span { color:#91949d; }
+.overview-page .discovery-summary>span { color:#a6a9b1; }
+.overview-page .discovery-summary i { color:#858b96; }
+.overview-page .discovery-chart line { stroke:#ffffff0d; stroke-dasharray:2 5; }
+.overview-page .discovery-chart text { fill:#89909d; }
+.overview-page .discovery-chart .chart-line { fill:none; stroke:#7ebcf4; stroke-width:2.3; stroke-linecap:round; stroke-linejoin:round; }
+.overview-page .discovery-chart .chart-halo { fill:#78bfff; fill-opacity:.15; stroke:none; }
+.overview-page .discovery-chart .chart-end { fill:#e2f3ff; stroke:#5899d2; stroke-width:2; }
+.overview-page .overview-donut { position:relative; background:none; transform:none; }
+.overview-page .overview-donut-ring { position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg); filter:drop-shadow(0 3px 5px #0003); }
+.overview-page .overview-donut-ring circle { fill:none; stroke-width:11; }
+.overview-page .overview-donut-ring .donut-track { stroke:#ffffff12; }
+.overview-page .overview-donut-ring .donut-segment { stroke-linecap:butt; }
+body[data-design=native] .overview-page .overview-donut>div { position:relative; background:transparent; box-shadow:none; transform:none; }
+.overview-page .overview-donut strong { color:#e9ebee; }
+.overview-page .overview-donut span { color:#979da8; }
+.overview-page .file-type-chart li { color:#b0b4bd; }
+.overview-page .file-type-chart li>i { width:7px; height:7px; border-radius:50%; box-shadow:0 0 0 3px #ffffff08; }
+.overview-page .file-type-chart li>strong { color:#dce0e5; }
+.overview-page .volume-icon { width:48px; height:48px; background:none; }
+.overview-page .volume-icon .overview-art { width:48px; height:48px; filter:drop-shadow(0 3px 4px #0005); }
+.overview-page .storage-card-top strong { color:#e1e3e7; }
+.overview-page .storage-card-top small,.overview-page .volume-caption { color:#9298a2; }
+.overview-page .volume-usage { color:#9da3ac; }
+.overview-page .volume-usage strong { color:#d8dce2; }
+.overview-page .volume-meter { background:#ffffff12; box-shadow:inset 0 1px 2px #0003; }
+.overview-page .volume-meter>i { box-shadow:inset 0 1px #ffffff50; }
+@media(max-width:1150px) { .overview-page .metric-icon,.overview-page .metric-icon .overview-art { width:42px; height:42px; } }
+@media(max-width:520px) { .overview-page .metric-icon,.overview-page .metric-icon .overview-art { width:32px; height:32px; }.overview-page .volume-icon,.overview-page .volume-icon .overview-art { width:42px; height:42px; } }

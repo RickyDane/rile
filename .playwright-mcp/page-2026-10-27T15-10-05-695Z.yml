@@ -1,0 +1,106 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: rile.
+      - generic [ref=e5]: Icon explorations / Round 02
+    - heading "Six ways to make an entrance." [level=1] [ref=e6]
+    - paragraph [ref=e7]: A fast file explorer deserves a distinct place in your Dock. Six original directions, from familiar folders to a new signature.
+    - generic [ref=e8]:
+      - group "Preview background" [ref=e9]:
+        - button "Dark" [ref=e10] [cursor=pointer]
+        - button "Light" [active] [pressed] [ref=e11] [cursor=pointer]
+      - generic [ref=e12]: Compare below at 48, 32 & 16 px · SVG originals included
+  - main [ref=e13]:
+    - article [ref=e14]:
+      - img "Ribbon R app icon" [ref=e16]
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - generic [ref=e19]: "01"
+          - heading "Ribbon R" [level=2] [ref=e20]
+        - paragraph [ref=e21]: The signature
+        - paragraph [ref=e22]: A folded ribbon becomes a lowercase r. Quiet, ownable, and unmistakable in the Dock.
+        - generic "Small size previews" [ref=e23]:
+          - img "Ribbon R at 48 pixels" [ref=e24]
+          - img "Ribbon R at 32 pixels" [ref=e25]
+          - img "Ribbon R at 16 pixels" [ref=e26]
+          - link "Download Ribbon R SVG" [ref=e27] [cursor=pointer]:
+            - /url: 01-ribbon.svg
+            - text: Download SVG ↗
+    - article [ref=e28]:
+      - img "Open Tab app icon" [ref=e30]
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - generic [ref=e33]: "02"
+          - heading "Open Tab" [level=2] [ref=e34]
+        - paragraph [ref=e35]: The familiar, refined
+        - paragraph [ref=e36]: An open blue folder with a crisp paper inset. Native file-manager DNA, stripped to the essentials.
+        - generic "Small size previews" [ref=e37]:
+          - img "Open Tab at 48 pixels" [ref=e38]
+          - img "Open Tab at 32 pixels" [ref=e39]
+          - img "Open Tab at 16 pixels" [ref=e40]
+          - link "Download Open Tab SVG" [ref=e41] [cursor=pointer]:
+            - /url: 02-open-tab.svg
+            - text: Download SVG ↗
+    - article [ref=e42]:
+      - img "Wayfinder app icon" [ref=e44]
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]: "03"
+          - heading "Wayfinder" [level=2] [ref=e48]
+        - paragraph [ref=e49]: Find your way
+        - paragraph [ref=e50]: A luminous compass needle inside a precise circular frame. For discovery, not just storage.
+        - generic "Small size previews" [ref=e51]:
+          - img "Wayfinder at 48 pixels" [ref=e52]
+          - img "Wayfinder at 32 pixels" [ref=e53]
+          - img "Wayfinder at 16 pixels" [ref=e54]
+          - link "Download Wayfinder SVG" [ref=e55] [cursor=pointer]:
+            - /url: 03-wayfinder.svg
+            - text: Download SVG ↗
+    - article [ref=e56]:
+      - img "Parallel app icon" [ref=e58]
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - generic [ref=e61]: "04"
+          - heading "Parallel" [level=2] [ref=e62]
+        - paragraph [ref=e63]: Built for flow
+        - paragraph [ref=e64]: Two offset panes and a forward-moving cut. A nod to dual-pane browsing and effortless transfers.
+        - generic "Small size previews" [ref=e65]:
+          - img "Parallel at 48 pixels" [ref=e66]
+          - img "Parallel at 32 pixels" [ref=e67]
+          - img "Parallel at 16 pixels" [ref=e68]
+          - link "Download Parallel SVG" [ref=e69] [cursor=pointer]:
+            - /url: 04-panes.svg
+            - text: Download SVG ↗
+    - article [ref=e70]:
+      - img "Swift Fold app icon" [ref=e72]
+      - generic [ref=e73]:
+        - generic [ref=e74]:
+          - generic [ref=e75]: "05"
+          - heading "Swift Fold" [level=2] [ref=e76]
+        - paragraph [ref=e77]: A little more energy
+        - paragraph [ref=e78]: A single paper fold in warm orange. A bold silhouette that makes a fast explorer feel fast.
+        - generic "Small size previews" [ref=e79]:
+          - img "Swift Fold at 48 pixels" [ref=e80]
+          - img "Swift Fold at 32 pixels" [ref=e81]
+          - img "Swift Fold at 16 pixels" [ref=e82]
+          - link "Download Swift Fold SVG" [ref=e83] [cursor=pointer]:
+            - /url: 05-swift.svg
+            - text: Download SVG ↗
+    - article [ref=e84]:
+      - img "Trail app icon" [ref=e86]
+      - generic [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]: "06"
+          - heading "Trail" [level=2] [ref=e90]
+        - paragraph [ref=e91]: Everything connected
+        - paragraph [ref=e92]: A branching path forms an abstract r. Your folders, locations, and connections in one simple mark.
+        - generic "Small size previews" [ref=e93]:
+          - img "Trail at 48 pixels" [ref=e94]
+          - img "Trail at 32 pixels" [ref=e95]
+          - img "Trail at 16 pixels" [ref=e96]
+          - link "Download Trail SVG" [ref=e97] [cursor=pointer]:
+            - /url: 06-trail.svg
+            - text: Download SVG ↗
+  - contentinfo [ref=e98]:
+    - generic [ref=e99]: 1024 × 1024 vector artwork · Shared macOS-style silhouette · No external assets
+    - generic [ref=e100]: Suggestions only — the app icon is unchanged.

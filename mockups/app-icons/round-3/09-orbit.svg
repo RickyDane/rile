@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Rile — Orbit</title>
+  <desc id="desc">A central home with satellite files. Local disks, remote servers, and favorite places in one orbit.</desc>
+  <defs>
+    <linearGradient id="tile" x2=".25" y2="1"><stop stop-color="#392e60"/><stop offset="1" stop-color="#17152c"/></linearGradient>
+    <linearGradient id="ink" x2=".2" y2="1"><stop stop-color="#e2d0ff"/><stop offset="1" stop-color="#8d76dc"/></linearGradient>
+    <linearGradient id="gloss" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="20" stdDeviation="20" flood-color="#070d18" flood-opacity=".24"/></filter>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="16" stdDeviation="14" flood-color="#081321" flood-opacity=".25"/></filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#tile)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#gloss)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="3"/>
+  <ellipse cx="512" cy="512" rx="266" ry="158" transform="rotate(-35 512 512)" fill="none" stroke="#b6a2ee" stroke-width="16"/><ellipse cx="512" cy="512" rx="266" ry="158" transform="rotate(35 512 512)" fill="none" stroke="#7b6bac" stroke-width="10"/><g filter="url(#lift)"><rect x="394" y="394" width="236" height="236" rx="67" fill="url(#ink)"/><path d="M464 558V466H524Q560 466 560 501Q560 536 524 536H464M522 536L552 570" fill="none" stroke="#38285b" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/><circle cx="300" cy="352" r="46" fill="#f1dba9"/><circle cx="722" cy="674" r="36" fill="#bacdff"/><circle cx="738" cy="360" r="26" fill="#efc2e2"/></g>
+</svg>

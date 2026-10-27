@@ -1,0 +1,179 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "Rile design studio" [ref=e3] [cursor=pointer]:
+      - /url: "#glass"
+      - text: rile / design studio
+    - generic [ref=e4]: Interactive concepts · not live files
+  - main [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - paragraph [ref=e9]: A NEW PERSPECTIVE ON YOUR FILES
+        - heading "A little less friction. A lot more feeling." [level=1] [ref=e10]: A little less friction.A lot more feeling.
+      - paragraph [ref=e11]: Four directions. One familiar workspace.Pick a design, explore the views, and findthe Rile that feels like you.
+    - navigation "Design direction" [ref=e12]:
+      - button "01 / GLASSMORPHISM Aurora Light, layered, quietly luminous. ↗" [pressed] [ref=e13] [cursor=pointer]:
+        - generic [ref=e17]:
+          - generic [ref=e18]: 01 / GLASSMORPHISM
+          - strong [ref=e19]: Aurora
+          - generic [ref=e20]: Light, layered, quietly luminous.
+        - generic [ref=e21]: ↗
+      - button "02 / WARM MINIMALISM Atelier A thoughtful place for your work. ↗" [ref=e22] [cursor=pointer]:
+        - generic [ref=e26]:
+          - generic [ref=e27]: 02 / WARM MINIMALISM
+          - strong [ref=e28]: Atelier
+          - generic [ref=e29]: A thoughtful place for your work.
+        - generic [ref=e30]: ↗
+      - button "03 / PRECISION DARK Carbon Less noise. More signal. ↗" [ref=e31] [cursor=pointer]:
+        - generic [ref=e35]:
+          - generic [ref=e36]: 03 / PRECISION DARK
+          - strong [ref=e37]: Carbon
+          - generic [ref=e38]: Less noise. More signal.
+        - generic [ref=e39]: ↗
+      - button "04 / NEO-BRUTALISM Signal Unapologetically at your service. ↗" [ref=e40] [cursor=pointer]:
+        - generic [ref=e43]:
+          - generic [ref=e44]: 04 / NEO-BRUTALISM
+          - strong [ref=e45]: Signal
+          - generic [ref=e46]: Unapologetically at your service.
+        - generic [ref=e47]: ↗
+    - region "Interactive file explorer mockup" [ref=e48]:
+      - generic [ref=e49]:
+        - generic [ref=e50]:
+          - generic [ref=e55]: rile / your space, sorted.
+          - button "Ask Rile ⌘ K" [ref=e56] [cursor=pointer]:
+            - text: Ask Rile
+            - generic [ref=e60]: ⌘ K
+        - generic [ref=e61]:
+          - complementary "Locations" [ref=e62]:
+            - generic [ref=e63]:
+              - generic [ref=e64]: r.
+              - generic [ref=e65]:
+                - text: Personal workspace
+                - generic [ref=e66]: Local. Fast. Yours.
+            - generic [ref=e67]:
+              - paragraph [ref=e68]: WORKSPACE
+              - button [ref=e69] [cursor=pointer]
+              - button "Recents 12" [ref=e74] [cursor=pointer]:
+                - text: Recents
+                - generic [ref=e79]: "12"
+            - generic [ref=e80]:
+              - paragraph [ref=e81]:
+                - text: FAVORITES
+                - generic [ref=e82]: −
+              - button [ref=e83] [cursor=pointer]
+              - button [ref=e88] [cursor=pointer]
+              - button "Downloads 8" [ref=e93] [cursor=pointer]:
+                - text: Downloads
+                - generic [ref=e97]: "8"
+              - button [ref=e98] [cursor=pointer]
+            - generic [ref=e104]:
+              - paragraph [ref=e105]:
+                - text: LOCATIONS
+                - generic [ref=e106]: −
+              - button [ref=e107] [cursor=pointer]
+              - button "Studio SSD ⏏" [ref=e112] [cursor=pointer]:
+                - text: Studio SSD
+                - generic [ref=e117]: ⏏
+            - generic [ref=e118]:
+              - generic [ref=e123]:
+                - text: Macintosh HD
+                - generic [ref=e124]: 284 GB of 512 GB used
+              - generic [ref=e127]: All files stay on your device
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - generic [ref=e131]:
+                - button "Back" [disabled] [ref=e132]
+                - generic [ref=e136]: Workspace
+                - button "Projects" [ref=e140] [cursor=pointer]
+                - strong [ref=e144]: Forma Studio
+              - button "Toggle preview" [pressed] [ref=e145] [cursor=pointer]
+            - generic [ref=e149]:
+              - generic [ref=e150]:
+                - paragraph [ref=e151]: YOUR NEXT GREAT THING
+                - heading "Forma Studio." [level=2] [ref=e152]
+                - paragraph [ref=e153]: A home for ideas taking shape.
+              - button [ref=e154] [cursor=pointer]
+            - generic [ref=e158]:
+              - group "File view" [ref=e159]:
+                - button "Grid view" [pressed] [ref=e160] [cursor=pointer]
+                - button "List view" [ref=e167] [cursor=pointer]
+                - button "Column view" [ref=e171] [cursor=pointer]
+                - button "Dual-pane view" [ref=e176] [cursor=pointer]
+              - generic [ref=e181]:
+                - searchbox "Filter files" [ref=e186]
+                - generic [ref=e187]: /
+              - button [ref=e188] [cursor=pointer]
+            - generic [ref=e192]:
+              - generic [ref=e290]:
+                - generic [ref=e291]: FOLDERS & FILES
+                - generic [ref=e292]: 8 items
+              - generic [ref=e293]:
+                - button "Select Brand assets" [pressed] [ref=e294] [cursor=pointer]:
+                  - generic [aria-hidden] [ref=e295]: ✓
+                  - generic [ref=e297]: ✧
+                  - generic [ref=e299]: Brand assets
+                  - generic [ref=e300]: 12 items · Folder
+                - button "Select Explorations" [ref=e301] [cursor=pointer]:
+                  - generic [ref=e303]: ✧
+                  - generic [ref=e305]: Explorations
+                  - generic [ref=e306]: 6 items · Folder
+                - button "Select References" [ref=e307] [cursor=pointer]:
+                  - generic [ref=e309]: ✧
+                  - generic [ref=e311]: References
+                  - generic [ref=e312]: 18 items · Folder
+                - button "Select Color explorations.png" [ref=e313] [cursor=pointer]:
+                  - generic [ref=e320]: Color explorations.png
+                  - generic [ref=e321]: 840 KB · PNG image
+                - button "Select Forma — Brand poster.png" [ref=e322] [cursor=pointer]:
+                  - generic [aria-hidden] [ref=e323]:
+                    - generic [ref=e324]: forma
+                    - generic [ref=e325]: ROOM FOR POSSIBILITY
+                  - generic [ref=e326]: Forma — Brand poster.png
+                  - generic [ref=e327]: 2.4 MB · PNG image
+                - button "Select Project brief.pdf" [ref=e328] [cursor=pointer]:
+                  - generic [ref=e330]: The brief.
+                  - generic [ref=e338]: Project brief.pdf
+                  - generic [ref=e339]: 128 KB · PDF document
+                - button "Select Quiet landscapes.jpg" [ref=e340] [cursor=pointer]:
+                  - generic [ref=e342]: Quiet landscapes.jpg
+                  - generic [ref=e343]: 3.1 MB · JPEG image
+                - button "Select README.md" [ref=e344] [cursor=pointer]:
+                  - generic [ref=e346]: "# Forma Studio ideas.take_shape(); → a little space → a new perspective → make something good"
+                  - generic [ref=e347]: README.md
+                  - generic [ref=e348]: 4 KB · Markdown
+            - generic [ref=e252]:
+              - generic [ref=e253]: 8 items
+              - generic [ref=e254]: Index-free. Instantly yours.
+              - generic [ref=e256]: 1 selected · 12 items
+          - complementary "File preview" [ref=e257]:
+            - generic [ref=e349]:
+              - text: PREVIEW
+              - button "Close preview" [ref=e350] [cursor=pointer]: ×
+            - generic [ref=e352]: ✧
+            - heading "Brand assets" [level=3] [ref=e354]
+            - text: Folder · 12 items
+            - generic [ref=e355]:
+              - generic [ref=e356]:
+                - term [ref=e357]: Contains
+                - definition [ref=e358]: 12 items
+              - generic [ref=e359]:
+                - term [ref=e360]: Modified
+                - definition [ref=e361]: Today, 10:42
+              - generic [ref=e362]:
+                - term [ref=e363]: Created
+                - definition [ref=e364]: Oct 18, 2026
+            - paragraph [ref=e365]: TAGS
+            - generic [ref=e366]: Forma
+            - generic [ref=e367]: Work in progress
+            - generic [ref=e368]:
+              - generic [ref=e369]: ↵
+              - text: Open folder
+      - generic [ref=e282]:
+        - generic [ref=e283]: 01 — AURORA
+        - generic [ref=e284]: Frosted surfaces / soft depth / violet light
+        - generic [ref=e285]: DESKTOP CONCEPT · GRID VIEW
+    - generic [ref=e286]:
+      - paragraph [ref=e287]:
+        - strong [ref=e288]: Space to breathe. Layers to discover.
+        - text: Translucent chrome lets your content lead, with a gentle violet accent to keep you oriented.
+      - generic [ref=e289]: Try the views, select a file, or press ⌘ KSample data only. Your files are untouched.
+  - status

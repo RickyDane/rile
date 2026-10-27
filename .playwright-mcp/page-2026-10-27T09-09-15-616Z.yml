@@ -1,0 +1,221 @@
+- generic [active] [ref=e33]:
+  - generic [ref=e34]:
+    - complementary "Sidebar" [ref=e35]:
+      - generic [ref=e36]: rile.
+      - generic [ref=e42]:
+        - generic [ref=e43]: r
+        - generic [ref=e44]:
+          - text: Personal
+          - generic [ref=e45]: Local workspace
+        - generic "On this device" [ref=e46]
+      - navigation "Places" [ref=e47]:
+        - generic [ref=e48]:
+          - heading "Library" [level=2] [ref=e49]
+          - button "Home" [ref=e50] [cursor=pointer]
+          - button "Recents" [ref=e56] [cursor=pointer]
+          - button "Favorites" [ref=e62] [cursor=pointer]
+        - generic [ref=e67]:
+          - heading "Favorites" [level=2] [ref=e68]
+          - button "Desktop" [ref=e69] [cursor=pointer]
+          - button "Documents" [ref=e75] [cursor=pointer]
+          - button "Downloads" [ref=e81] [cursor=pointer]:
+            - generic [ref=e86]: "4"
+          - button "Pictures" [ref=e87] [cursor=pointer]
+          - button "Projects" [ref=e94] [cursor=pointer]
+        - generic [ref=e99]:
+          - heading "Devices" [level=2] [ref=e100]
+          - button "MacBook Pro" [ref=e101] [cursor=pointer]
+          - button "Macintosh HD" [ref=e108] [cursor=pointer]
+          - button "Studio SSD" [ref=e114] [cursor=pointer]:
+            - generic [ref=e120]: USB
+        - generic [ref=e121]:
+          - heading "Tags" [level=2] [ref=e122]
+          - button "Work" [ref=e123] [cursor=pointer]
+          - button "Personal" [ref=e126] [cursor=pointer]
+          - button "Important" [ref=e129] [cursor=pointer]
+      - generic [ref=e132]:
+        - generic [ref=e138]:
+          - text: Macintosh HD
+          - generic [ref=e139]: 228 GB available of 512 GB
+        - generic [ref=e142]: On your device. Not in an index.
+    - main [ref=e144]:
+      - generic [ref=e1]:
+        - generic [ref=e2]:
+          - button "Toggle sidebar" [pressed] [ref=e3] [cursor=pointer]
+          - button "Back" [disabled] [ref=e9]
+          - button "Forward" [disabled] [ref=e13]
+        - combobox "Explorer design" [ref=e18] [cursor=pointer]:
+          - option "01 · Rile"
+          - option "02 · Native"
+          - option "03 · Studio"
+          - option "04 · Workbench" [selected]
+        - generic [ref=e22]:
+          - searchbox "Search sample workspace" [ref=e625]
+          - generic [ref=e28]: ⌘ F
+        - button "Toggle inspector" [disabled] [ref=e29]
+      - generic [ref=e145]:
+        - tablist "Open folders" [ref=e146]:
+          - tab "Home" [selected] [ref=e626] [cursor=pointer]
+          - button "Close Home tab" [ref=e631] [cursor=pointer]
+          - tab "rile" [ref=e634] [cursor=pointer]
+          - button "Close rile tab" [ref=e638] [cursor=pointer]
+        - button "New tab" [ref=e162] [cursor=pointer]
+      - region "File browser" [ref=e167]:
+        - tabpanel "Home" [ref=e641]:
+          - generic [ref=e642]:
+            - generic [ref=e643]:
+              - generic [ref=e644]:
+                - paragraph [ref=e645]: YOUR WORKSPACE, AT A GLANCE
+                - heading "Home." [level=1] [ref=e646]
+                - paragraph [ref=e647]: A little perspective on everything you keep.
+              - generic [ref=e648]: Sample workspace
+            - region "Workspace statistics" [ref=e650]:
+              - article [ref=e651]:
+                - generic [ref=e656]:
+                  - paragraph [ref=e657]: Storage used
+                  - strong [ref=e658]: 1.02TB
+                  - generic [ref=e659]: of 2.51 TB across 2 disks
+              - article [ref=e660]:
+                - generic [ref=e665]:
+                  - paragraph [ref=e666]: Files discovered
+                  - strong [ref=e667]: "33"
+                  - generic [ref=e668]: in the sample workspace
+              - article [ref=e669]:
+                - generic [ref=e673]:
+                  - paragraph [ref=e674]: Folders
+                  - strong [ref=e675]: "17"
+                  - generic [ref=e676]: across your sample locations
+              - article [ref=e677]:
+                - generic [ref=e682]:
+                  - paragraph [ref=e683]: Connected disks
+                  - strong [ref=e684]: "2"
+                  - generic [ref=e685]: 1 internal · 1 external
+            - generic [ref=e686]:
+              - generic [ref=e687]:
+                - generic [ref=e688]:
+                  - generic [ref=e689]:
+                    - heading "File discovery" [level=2] [ref=e690]
+                    - paragraph [ref=e691]: Sample history · last 7 days
+                  - generic [ref=e692]: 7 days
+                - generic [ref=e693]:
+                  - strong [ref=e694]: "33"
+                  - generic [ref=e695]:
+                    - text: files discovered
+                    - generic [ref=e696]: in this demo
+                - img "Illustrative seven-day discovery history, increasing to 33 sample files" [ref=e697]:
+                  - generic [ref=e698]: "33"
+                  - generic [ref=e699]: "17"
+                  - generic [ref=e700]: "0"
+                  - generic [ref=e704]: Oct 21
+                  - generic [ref=e705]: Oct 22
+                  - generic [ref=e706]: Oct 23
+                  - generic [ref=e707]: Oct 24
+                  - generic [ref=e708]: Oct 25
+                  - generic [ref=e709]: Oct 26
+                  - generic [ref=e710]: Oct 27
+              - generic [ref=e711]:
+                - generic [ref=e713]:
+                  - heading "A closer look" [level=2] [ref=e714]
+                  - paragraph [ref=e715]: Your sample files, by kind
+                - generic [ref=e721]:
+                  - 'img "Images: 8, Code: 12, Documents: 11, Archives: 2" [ref=e722]':
+                    - generic [ref=e723]:
+                      - strong [ref=e724]: "33"
+                      - generic [ref=e725]: files
+                  - list [ref=e726]:
+                    - listitem [ref=e727]:
+                      - generic [ref=e729]: Images
+                      - strong [ref=e730]: "8"
+                    - listitem [ref=e731]:
+                      - generic [ref=e733]: Code
+                      - strong [ref=e734]: "12"
+                    - listitem [ref=e735]:
+                      - generic [ref=e737]: Documents
+                      - strong [ref=e738]: "11"
+                    - listitem [ref=e739]:
+                      - generic [ref=e741]: Archives
+                      - strong [ref=e742]: "2"
+            - region [ref=e743]:
+              - generic [ref=e744]:
+                - heading "Your storage" [level=2] [ref=e745]
+                - generic [ref=e746]: Illustrative disk usage
+              - generic [ref=e747]:
+                - button "Browse Macintosh HD" [ref=e748] [cursor=pointer]:
+                  - generic [ref=e749]:
+                    - generic [ref=e754]:
+                      - strong [ref=e755]: Macintosh HD
+                      - generic [ref=e756]: Internal · APFS
+                    - generic [ref=e757]: Connected
+                  - generic [ref=e759]:
+                    - generic [ref=e760]:
+                      - strong [ref=e761]: 284 GB
+                      - text: used
+                    - generic [ref=e762]: 228 GB free
+                  - meter "Macintosh HD storage used in GB" [ref=e763]
+                  - generic [ref=e765]:
+                    - generic [ref=e766]: 55% used
+                    - generic [ref=e767]: 512 GB capacity
+                - button "Browse Studio SSD" [ref=e768] [cursor=pointer]:
+                  - generic [ref=e769]:
+                    - generic [ref=e774]:
+                      - strong [ref=e775]: Studio SSD
+                      - generic [ref=e776]: External · USB-C
+                    - generic [ref=e777]: Connected
+                  - generic [ref=e779]:
+                    - generic [ref=e780]:
+                      - strong [ref=e781]: 732 GB
+                      - text: used
+                    - generic [ref=e782]: 1268 GB free
+                  - meter "Studio SSD storage used in GB" [ref=e783]
+                  - generic [ref=e785]:
+                    - generic [ref=e786]: 37% used
+                    - generic [ref=e787]: 2.00 TB capacity
+            - generic [ref=e788]:
+              - generic [ref=e789]:
+                - generic [ref=e790]:
+                  - generic [ref=e791]:
+                    - heading "Recently modified" [level=2] [ref=e792]
+                    - paragraph [ref=e793]: Pick up where you left off
+                  - button "View all" [ref=e794] [cursor=pointer]
+                - generic [ref=e797]:
+                  - button "Show alpine-lake.jpg in folder" [ref=e798] [cursor=pointer]:
+                    - generic [ref=e804]:
+                      - strong [ref=e805]: alpine-lake.jpg
+                      - generic [ref=e806]: rile
+                    - generic [ref=e807]: 4.3 MB
+                  - button "Show Cargo.toml in folder" [ref=e810] [cursor=pointer]:
+                    - generic [ref=e814]:
+                      - strong [ref=e815]: Cargo.toml
+                      - generic [ref=e816]: rile
+                    - generic [ref=e817]: 1.1 KB
+                  - button "Show CHANGELOG.md in folder" [ref=e820] [cursor=pointer]:
+                    - generic [ref=e825]:
+                      - strong [ref=e826]: CHANGELOG.md
+                      - generic [ref=e827]: rile
+                    - generic [ref=e828]: 4.8 KB
+                  - button "Show App.tsx in folder" [ref=e831] [cursor=pointer]:
+                    - generic [ref=e835]:
+                      - strong [ref=e836]: App.tsx
+                      - generic [ref=e837]: rile
+                    - generic [ref=e838]: 2.9 KB
+                  - button "Show main.rs in folder" [ref=e841] [cursor=pointer]:
+                    - generic [ref=e845]:
+                      - strong [ref=e846]: main.rs
+                      - generic [ref=e847]: rile
+                    - generic [ref=e848]: 4.3 KB
+              - generic [ref=e851]:
+                - generic [ref=e853]:
+                  - heading "Jump back in" [level=2] [ref=e854]
+                  - paragraph [ref=e855]: Your everyday places
+                - button "Open Projects" [ref=e858] [cursor=pointer]:
+                  - generic [ref=e861]: Projects
+                - button "Open Downloads" [ref=e864] [cursor=pointer]:
+                  - generic [ref=e867]: Downloads
+                - button "Open Pictures" [ref=e870] [cursor=pointer]:
+                  - generic [ref=e875]: Pictures
+                - button "Open rickyperlick" [ref=e878] [cursor=pointer]:
+                  - generic [ref=e882]: rickyperlick
+                - paragraph [ref=e885]: Browse directly. No indexing required.
+            - generic [ref=e886]: This is a design preview. File counts come from sample data; disk usage and discovery history are illustrative.
+      - generic [ref=e395]: 33 sample files · 2 disks
+  - status

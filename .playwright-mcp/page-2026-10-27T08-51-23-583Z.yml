@@ -1,0 +1,186 @@
+- generic [active] [ref=f14e1]:
+  - generic [ref=f14e2]:
+    - complementary "Sidebar" [ref=f14e3]:
+      - generic [ref=f14e4]: rile.
+      - generic [ref=f14e6]:
+        - generic [ref=f14e7]: r
+        - generic [ref=f14e348]:
+          - text: Personal
+          - generic [ref=f14e349]: Local workspace
+        - generic "On this device" [ref=f14e350]
+      - navigation "Places" [ref=f14e8]:
+        - generic [ref=f14e9]:
+          - heading "Library" [level=2] [ref=f14e10]
+          - button "Home" [ref=f14e11] [cursor=pointer]
+          - button "Recents" [ref=f14e16] [cursor=pointer]
+          - button "Favorites" [ref=f14e21] [cursor=pointer]
+        - generic [ref=f14e25]:
+          - heading "Favorites" [level=2] [ref=f14e26]
+          - button "Desktop" [ref=f14e27] [cursor=pointer]
+          - button "Documents" [ref=f14e32] [cursor=pointer]
+          - button "Downloads" [ref=f14e37] [cursor=pointer]:
+            - generic [ref=f14e357]: "4"
+          - button "Pictures" [ref=f14e41] [cursor=pointer]
+          - button "Projects" [ref=f14e47] [cursor=pointer]
+        - generic [ref=f14e51]:
+          - heading "Devices" [level=2] [ref=f14e52]
+          - button "MacBook Pro" [ref=f14e53] [cursor=pointer]
+          - button "Macintosh HD" [ref=f14e58] [cursor=pointer]
+          - button "Studio SSD" [ref=f14e63] [cursor=pointer]:
+            - generic [ref=f14e364]: USB
+        - generic [ref=f14e365]:
+          - heading "Tags" [level=2] [ref=f14e366]
+          - button "Work" [ref=f14e367] [cursor=pointer]
+          - button "Personal" [ref=f14e370] [cursor=pointer]
+          - button "Important" [ref=f14e373] [cursor=pointer]
+      - generic [ref=f14e376]:
+        - generic [ref=f14e382]:
+          - text: Macintosh HD
+          - generic [ref=f14e383]: 228 GB available of 512 GB
+        - generic [ref=f14e386]: On your device. Not in an index.
+    - main [ref=f14e68]:
+      - generic [ref=f14e69]:
+        - generic [ref=f14e70]:
+          - button "Toggle sidebar" [pressed] [ref=f14e71] [cursor=pointer]
+          - button "Back" [disabled] [ref=f14e77]
+          - button "Forward" [ref=f14e81] [cursor=pointer]
+        - generic [ref=f14e1419]:
+          - button "MacBook Pro" [ref=f14e1580] [cursor=pointer]
+          - strong [ref=f14e1583]: Home
+        - generic [ref=f14e85]:
+          - searchbox "Search sample workspace" [ref=f14e1584]
+          - generic [ref=f14e388]: ⌘ F
+        - button "Toggle inspector" [disabled] [ref=f14e91]
+      - generic [ref=f14e95]:
+        - tablist "Open folders" [ref=f14e96]:
+          - tab "Home" [selected] [ref=f14e1585] [cursor=pointer]
+          - button "Close Home tab" [ref=f14e1590] [cursor=pointer]
+          - tab "rile" [ref=f14e1593] [cursor=pointer]
+          - button "Close rile tab" [ref=f14e1597] [cursor=pointer]
+        - button "New tab" [ref=f14e112] [cursor=pointer]
+      - region "File browser" [ref=f14e117]:
+        - tabpanel "Home" [ref=f14e1600]:
+          - generic [ref=f14e1601]:
+            - generic [ref=f14e1602]:
+              - generic [ref=f14e1603]:
+                - paragraph [ref=f14e1604]: 02 / THE STORAGE-FIRST HOME
+                - heading "Storage atlas." [level=1] [ref=f14e1605]
+                - paragraph [ref=f14e1606]: A place for everything. A clear view of the space it takes.
+              - generic [ref=f14e1607]:
+                - generic [ref=f14e1608]:
+                  - generic [ref=f14e1609]: Home layout
+                  - combobox "Home layout" [ref=f14e1610] [cursor=pointer]:
+                    - option "01 · Overview"
+                    - option "02 · Storage atlas" [selected]
+                    - option "03 · Activity desk"
+                    - option "04 · Library shelves"
+                - generic [ref=f14e1611]: Sample workspace
+            - generic [ref=f14e1613]:
+              - generic [ref=f14e1614]:
+                - region "Disk usage" [ref=f14e1615]:
+                  - article [ref=f14e1616]:
+                    - generic [ref=f14e1617]:
+                      - generic [ref=f14e1622]:
+                        - heading "Macintosh HD" [level=2] [ref=f14e1623]
+                        - paragraph [ref=f14e1624]: Internal · APFS
+                      - generic [ref=f14e1625]: Connected
+                    - generic [ref=f14e1627]:
+                      - 'img "Macintosh HD: 55% used" [ref=f14e1628]':
+                        - generic [ref=f14e1629]:
+                          - strong [ref=f14e1630]: 55%
+                          - generic [ref=f14e1631]: used
+                      - generic [ref=f14e1632]:
+                        - text: Available
+                        - strong [ref=f14e1633]: 228 GB
+                        - generic [ref=f14e1634]: of 512 GB
+                    - generic [ref=f14e1635]:
+                      - generic [ref=f14e1636]: 284 GB used
+                      - generic [ref=f14e1638]: 228 GB free
+                    - button "Browse Macintosh HD" [ref=f14e1640] [cursor=pointer]
+                  - article [ref=f14e1643]:
+                    - generic [ref=f14e1644]:
+                      - generic [ref=f14e1649]:
+                        - heading "Studio SSD" [level=2] [ref=f14e1650]
+                        - paragraph [ref=f14e1651]: External · USB-C
+                      - generic [ref=f14e1652]: Connected
+                    - generic [ref=f14e1654]:
+                      - 'img "Studio SSD: 37% used" [ref=f14e1655]':
+                        - generic [ref=f14e1656]:
+                          - strong [ref=f14e1657]: 37%
+                          - generic [ref=f14e1658]: used
+                      - generic [ref=f14e1659]:
+                        - text: Available
+                        - strong [ref=f14e1660]: 1.27 TB
+                        - generic [ref=f14e1661]: of 2.00 TB
+                    - generic [ref=f14e1662]:
+                      - generic [ref=f14e1663]: 732 GB used
+                      - generic [ref=f14e1665]: 1268 GB free
+                    - button "Browse Studio SSD" [ref=f14e1667] [cursor=pointer]
+                - generic [ref=f14e1670]:
+                  - generic [ref=f14e1671]:
+                    - generic [ref=f14e1672]:
+                      - heading "Capacity, side by side" [level=2] [ref=f14e1673]
+                      - paragraph [ref=f14e1674]: Both disks on the same scale · illustrative figures
+                    - generic [ref=f14e1675]: 2.00 TB
+                  - generic [ref=f14e1676]:
+                    - generic [ref=f14e1677]: "0"
+                    - generic [ref=f14e1678]: 1.00 TB
+                    - generic [ref=f14e1679]: 2.00 TB
+                  - generic [ref=f14e1680]:
+                    - generic [ref=f14e1681]: Macintosh HD
+                    - strong [ref=f14e1685]: 512 GB
+                  - generic [ref=f14e1686]:
+                    - generic [ref=f14e1687]: Studio SSD
+                    - strong [ref=f14e1691]: 2.00 TB
+                  - paragraph [ref=f14e1692]: Used space Available capacity
+                - generic [ref=f14e1695]:
+                  - generic [ref=f14e1697]:
+                    - heading "The bigger things" [level=2] [ref=f14e1698]
+                    - paragraph [ref=f14e1699]: Largest files in this sample workspace—not a full disk scan
+                  - generic [ref=f14e1703]:
+                    - button "Show rile-backup.zip in folder" [ref=f14e1704] [cursor=pointer]:
+                      - generic [ref=f14e1709]:
+                        - strong [ref=f14e1710]: rile-backup.zip
+                        - generic [ref=f14e1711]: Backups
+                      - generic [ref=f14e1712]: 48.2 MB
+                    - button "Show icons.zip in folder" [ref=f14e1715] [cursor=pointer]:
+                      - generic [ref=f14e1720]:
+                        - strong [ref=f14e1721]: icons.zip
+                        - generic [ref=f14e1722]: Downloads
+                      - generic [ref=f14e1723]: 12.4 MB
+                    - button "Show Alps.jpg in folder" [ref=f14e1726] [cursor=pointer]:
+                      - generic [ref=f14e1732]:
+                        - strong [ref=f14e1733]: Alps.jpg
+                        - generic [ref=f14e1734]: Media
+                      - generic [ref=f14e1735]: 6.8 MB
+                    - button "Show Lake at dawn.jpg in folder" [ref=f14e1738] [cursor=pointer]:
+                      - generic [ref=f14e1744]:
+                        - strong [ref=f14e1745]: Lake at dawn.jpg
+                        - generic [ref=f14e1746]: Pictures
+                      - generic [ref=f14e1747]: 5.1 MB
+              - complementary [ref=f14e1750]:
+                - generic [ref=f14e1751]:
+                  - paragraph [ref=f14e1756]: Room to grow
+                  - strong [ref=f14e1757]: 1.50 TB
+                  - generic [ref=f14e1758]: available across your disks
+                  - meter "Total storage used in GB" [ref=f14e1759]
+                  - generic [ref=f14e1761]: 1.02 TB used of 2.51 TB
+                - generic [ref=f14e1762]:
+                  - generic [ref=f14e1763]:
+                    - text: Files discovered
+                    - strong [ref=f14e1764]: "33"
+                    - generic [ref=f14e1765]: sample files, not an index
+                  - generic [ref=f14e1766]:
+                    - text: Folders
+                    - strong [ref=f14e1767]: "17"
+                    - generic [ref=f14e1768]: in your sample workspace
+                  - generic [ref=f14e1769]:
+                    - text: Connected disks
+                    - strong [ref=f14e1770]: "2"
+                    - generic [ref=f14e1771]: internal + external
+                - paragraph [ref=f14e1776]: Your files stay where they are.Browse a disk to explore its folders.
+            - generic [ref=f14e1777]: Design preview · file counts reflect sample data; disk usage and discovery history are illustrative.
+      - generic [ref=f14e342]:
+        - generic [ref=f14e343]: 33 sample files · 2 disks
+        - generic [ref=f14e1565]: Design preview · sample files
+  - status

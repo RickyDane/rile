@@ -1,0 +1,184 @@
+- generic [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - link "Rile design studio" [ref=f5e3] [cursor=pointer]:
+      - /url: "#glass"
+      - text: rile / design studio
+    - generic [ref=f5e4]: Interactive concepts · not live files
+  - main [ref=f5e6]:
+    - generic [ref=f5e7]:
+      - generic [ref=f5e8]:
+        - paragraph [ref=f5e9]: FAMILIAR STRUCTURE / DISTINCT PERSONALITIES
+        - heading "A file explorer. Find your own point of view." [level=1] [ref=f5e10]
+      - paragraph [ref=f5e11]: Traditional layouts. Different points of view.Sidebars, columns, twin panes and previews.Find the right balance for your workflow.
+    - navigation "Design direction" [ref=f5e12]:
+      - button [pressed] [ref=f5e13] [cursor=pointer]:
+        - strong [ref=f5e15]: Obsidian
+      - button [ref=f5e16] [cursor=pointer]:
+        - strong [ref=f5e18]: Aurora
+      - button [ref=f5e19] [cursor=pointer]:
+        - strong [ref=f5e21]: Atelier
+      - button [ref=f5e22] [cursor=pointer]:
+        - strong [ref=f5e24]: Carbon
+      - button [ref=f5e25] [cursor=pointer]:
+        - strong [ref=f5e27]: Signal
+      - button [ref=f5e28] [cursor=pointer]:
+        - strong [ref=f5e30]: Atlas
+      - button [ref=f5e31] [cursor=pointer]:
+        - strong [ref=f5e33]: Ledger
+      - button [ref=f5e34] [cursor=pointer]:
+        - strong [ref=f5e36]: Harbor
+    - region "Interactive file explorer mockup" [ref=f5e37]:
+      - generic [ref=f5e38]:
+        - generic [ref=f5e39]:
+          - generic [ref=f5e44]: rile
+          - group "Open locations" [ref=f5e45]:
+            - button "Projects" [pressed] [ref=f5e46] [cursor=pointer]: Forma Studio
+            - button "Downloads" [ref=f5e50] [cursor=pointer]
+            - button "Pictures" [ref=f5e54] [cursor=pointer]
+          - button "Ask Rile ⌘ K" [ref=f5e60] [cursor=pointer]:
+            - text: Ask Rile
+            - generic [ref=f5e64]: ⌘ K
+        - generic [ref=f5e65]:
+          - complementary "Locations" [ref=f5e66]:
+            - generic [ref=f5e67]:
+              - generic [ref=f5e68]: r.
+              - generic [ref=f5e69]:
+                - text: Personal workspace
+                - generic [ref=f5e70]: Local. Fast. Yours.
+            - generic [ref=f5e71]:
+              - paragraph [ref=f5e72]: WORKSPACE
+              - button "Home" [ref=f5e73] [cursor=pointer]
+              - button "Recents" [ref=f5e78] [cursor=pointer]:
+                - text: Recents
+                - generic [ref=f5e83]: "12"
+            - generic [ref=f5e84]:
+              - paragraph [ref=f5e85]:
+                - text: FAVORITES
+                - generic [ref=f5e86]: −
+              - button "Projects" [ref=f5e87] [cursor=pointer]
+              - button "Documents" [ref=f5e92] [cursor=pointer]
+              - button "Downloads" [ref=f5e97] [cursor=pointer]:
+                - text: Downloads
+                - generic [ref=f5e101]: "8"
+              - button "Pictures" [ref=f5e102] [cursor=pointer]
+            - generic [ref=f5e108]:
+              - paragraph [ref=f5e109]:
+                - text: LOCATIONS
+                - generic [ref=f5e110]: −
+              - button "Macintosh HD" [ref=f5e111] [cursor=pointer]
+              - button "Studio SSD" [ref=f5e116] [cursor=pointer]:
+                - text: Studio SSD
+                - generic [ref=f5e121]: ⏏
+            - generic [ref=f5e122]:
+              - generic [ref=f5e127]:
+                - text: Macintosh HD
+                - generic [ref=f5e128]: 284 GB of 512 GB used
+              - generic [ref=f5e131]: All files stay on your device
+          - generic [ref=f5e133]:
+            - generic [ref=f5e134]:
+              - generic [ref=f5e135]:
+                - button "Back" [disabled] [ref=f5e136]
+                - generic [ref=f5e140]: Workspace
+                - button "Projects" [ref=f5e144] [cursor=pointer]
+                - strong [ref=f5e148]: Forma Studio
+              - button "Toggle preview" [pressed] [ref=f5e149] [cursor=pointer]
+            - generic [ref=f5e153]:
+              - generic [ref=f5e154]:
+                - heading "Forma Studio" [level=2] [ref=f5e155]
+                - paragraph [ref=f5e156]: A home for ideas taking shape.
+              - button "New folder" [ref=f5e157] [cursor=pointer]
+            - generic [ref=f5e161]:
+              - group "File view" [ref=f5e162]:
+                - button "Signature layout" [ref=f5e163] [cursor=pointer]: ✦
+                - button "Grid view" [ref=f5e164] [cursor=pointer]
+                - button "List view" [active] [pressed] [ref=f5e171] [cursor=pointer]
+                - button "Column view" [ref=f5e175] [cursor=pointer]
+                - button "Dual-pane view" [ref=f5e180] [cursor=pointer]
+              - generic [ref=f5e185]:
+                - searchbox "Filter files" [ref=f5e190]
+                - generic [ref=f5e191]: /
+              - button "Sort by name" [ref=f5e192] [cursor=pointer]: Name
+            - table [ref=f5e296]:
+              - rowgroup [ref=f5e297]:
+                - row [ref=f5e298]:
+                  - columnheader "Name" [ref=f5e299]
+                  - columnheader "Size" [ref=f5e300]
+                  - columnheader "Modified" [ref=f5e301]
+              - rowgroup [ref=f5e302]:
+                - row [ref=f5e303]:
+                  - cell [ref=f5e304]:
+                    - button "Brand assets" [ref=f5e305] [cursor=pointer]
+                  - cell "12 items" [ref=f5e308]
+                  - cell "Today, 10:42" [ref=f5e309]
+                - row [ref=f5e310]:
+                  - cell [ref=f5e311]:
+                    - button "Explorations" [ref=f5e312] [cursor=pointer]
+                  - cell "6 items" [ref=f5e315]
+                  - cell "Today, 09:15" [ref=f5e316]
+                - row [ref=f5e317]:
+                  - cell [ref=f5e318]:
+                    - button "References" [ref=f5e319] [cursor=pointer]
+                  - cell "18 items" [ref=f5e322]
+                  - cell "Yesterday" [ref=f5e323]
+                - row [ref=f5e324]:
+                  - cell [ref=f5e325]:
+                    - button "Color explorations.png" [ref=f5e326] [cursor=pointer]
+                  - cell "840 KB" [ref=f5e331]
+                  - cell "Today, 09:15" [ref=f5e332]
+                - row [ref=f5e333]:
+                  - cell [ref=f5e334]:
+                    - button "Forma — Brand poster.png" [ref=f5e335] [cursor=pointer]
+                  - cell "2.4 MB" [ref=f5e340]
+                  - cell "Today, 10:42" [ref=f5e341]
+                - row [ref=f5e342]:
+                  - cell [ref=f5e343]:
+                    - button "Project brief.pdf" [pressed] [ref=f5e344] [cursor=pointer]
+                  - cell "128 KB" [ref=f5e348]
+                  - cell "Oct 22, 2026" [ref=f5e349]
+                - row [ref=f5e350]:
+                  - cell [ref=f5e351]:
+                    - button "Quiet landscapes.jpg" [ref=f5e352] [cursor=pointer]
+                  - cell "3.1 MB" [ref=f5e357]
+                  - cell "Oct 21, 2026" [ref=f5e358]
+                - row [ref=f5e359]:
+                  - cell [ref=f5e360]:
+                    - button "README.md" [ref=f5e361] [cursor=pointer]
+                  - cell "4 KB" [ref=f5e364]
+                  - cell "Oct 20, 2026" [ref=f5e365]
+            - generic [ref=f5e258]:
+              - generic [ref=f5e259]: 8 items
+              - generic [ref=f5e260]: Index-free. Instantly yours.
+              - generic [ref=f5e262]: 1 selected · 128 KB
+          - complementary "File preview" [ref=f5e263]:
+            - generic [ref=f5e366]:
+              - text: PREVIEW
+              - button "Close preview" [ref=f5e367] [cursor=pointer]: ×
+            - generic [ref=f5e369]: The brief.
+            - heading "Project brief.pdf" [level=3] [ref=f5e377]
+            - text: PDF document · 128 KB
+            - generic [ref=f5e378]:
+              - generic [ref=f5e379]:
+                - term [ref=f5e380]: Size
+                - definition [ref=f5e381]: 128 KB
+              - generic [ref=f5e382]:
+                - term [ref=f5e383]: Modified
+                - definition [ref=f5e384]: Oct 22, 2026
+              - generic [ref=f5e385]:
+                - term [ref=f5e386]: Created
+                - definition [ref=f5e387]: Oct 18, 2026
+            - paragraph [ref=f5e388]: TAGS
+            - generic [ref=f5e389]: Forma
+            - generic [ref=f5e390]: Work in progress
+            - generic [ref=f5e391]:
+              - generic [ref=f5e392]: Space
+              - text: Quick look
+      - generic [ref=f5e288]:
+        - generic [ref=f5e289]: 08 — OBSIDIAN
+        - generic [ref=f5e290]: Graphite chrome / blue folders / location tabs / live inspector
+        - generic [ref=f5e291]: DESKTOP CONCEPT · LIST VIEW
+    - generic [ref=f5e292]:
+      - paragraph [ref=f5e293]:
+        - strong [ref=f5e294]: Everything in its place. Nothing in your way.
+        - text: "Finder’s familiar structure meets Spacedrive-inspired depth: quiet graphite surfaces, luminous blue folders, tabbed locations and a persistent inspector. A focused home for your files."
+      - generic [ref=f5e295]: Try the views, select a file, or press ⌘ KSample data only. Your files are untouched.
+  - status

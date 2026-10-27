@@ -1,0 +1,319 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "Spacedrive" [ref=e4] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e6]:
+        - link "Blog" [ref=e7] [cursor=pointer]:
+          - /url: /blog
+        - link "GitHub" [ref=e8] [cursor=pointer]:
+          - /url: https://github.com/spacedriveapp/spacedrive
+      - link "Star 37k" [ref=e10] [cursor=pointer]:
+        - /url: https://github.com/spacedriveapp/spacedrive
+        - generic [ref=e13]: Star
+        - generic [ref=e14]: 37k
+  - generic [ref=e15]:
+    - generic [ref=e16]:
+      - img "Spacedrive" [ref=e19]
+      - heading "Take back your data." [level=1] [ref=e24]
+      - paragraph [ref=e25]: Spacedrive connects every file, cloud, device, and source you own in one local-first app. Browse and search your data today. Enable agents when you want work done across it.
+      - generic [ref=e26]:
+        - link "Read the blog" [ref=e27] [cursor=pointer]:
+          - /url: /blog
+        - link "Star on GitHub" [ref=e28] [cursor=pointer]:
+          - /url: https://github.com/spacedriveapp/spacedrive
+      - paragraph [ref=e29]: v2.0 · macOS · Windows · Linux · iOS · Android
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - button "Pause demo" [ref=e31]: Pause
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - navigation:
+                        - button "Personal"
+                        - generic:
+                          - generic:
+                            - button "Overview"
+                            - button "Favorites"
+                            - button "Recents"
+                            - button "Sources"
+                          - generic:
+                            - generic:
+                              - button "Devices"
+                            - generic:
+                              - button "Spacephone"
+                              - button "Spacestudio"
+                              - button "Titan NAS"
+                              - button "SpacePC"
+                              - button "Spacebook Pro"
+                          - generic:
+                            - generic:
+                              - button "Locations"
+                            - generic:
+                              - button "Documents"
+                              - button "Downloads"
+                              - button "Projects"
+                              - button "Screenshots"
+                          - generic:
+                            - generic:
+                              - button "Tags"
+                            - generic:
+                              - button "Important"
+                              - button "Work"
+                              - button "Personal"
+                              - button "Archive"
+                          - generic:
+                            - generic:
+                              - button "Sources"
+                            - generic:
+                              - button "Gmail"
+                              - button "Obsidian"
+                              - button "GitHub"
+                        - generic:
+                          - generic:
+                            - button
+                            - button
+                            - button
+                          - button
+                  - generic:
+                    - generic:
+                      - button
+                      - generic:
+                        - generic:
+                          - button
+                        - generic:
+                          - button [disabled]
+                      - generic:
+                        - generic: Spacebook Pro
+                        - generic: Overview
+                      - button
+                      - button
+                      - button "Views"
+                      - button
+                      - button
+                      - button
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - button "Overview"
+                            - button "Close tab"
+                          - generic:
+                            - button "Projects"
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic: Total Storage
+                                - generic:
+                                  - generic: "96.2"
+                                  - generic: TB
+                                - generic: 64.7 TB used
+                            - generic:
+                              - generic:
+                                - generic: Files
+                                - generic: 2,435,763
+                                - generic: indexed
+                            - generic:
+                              - generic:
+                                - generic: Unique
+                                - generic: 1,687,492
+                                - generic: content hashes
+                            - generic:
+                              - generic:
+                                - generic: Devices
+                                - generic: "5"
+                                - generic: connected
+                            - generic:
+                              - generic:
+                                - generic: Compute
+                                - generic:
+                                  - generic: "70"
+                                  - generic: TOPS
+                                - generic: High
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic: Spacebook Pro
+                                  - generic: MacBook Pro, M4 Max
+                                - generic: LAN
+                              - generic:
+                                - generic:
+                                  - generic: Storage
+                                  - generic: 2.8 TB / 7.0 TB
+                              - generic:
+                                - generic: Macintosh HD
+                                - generic: Samsung T9
+                                - generic: OWC Envoy Pro
+                                - generic: Projects
+                                - generic: +10 more
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic: Titan NAS
+                                  - generic: TrueNAS · 10GbE
+                                - generic: LAN
+                              - generic:
+                                - generic:
+                                  - generic: Storage
+                                  - generic: 12.7 TB / 36.0 TB
+                              - generic:
+                                - generic: Pool 1
+                                - generic: Pool 2
+                                - generic: Cold Pool
+                                - generic: Media
+                                - generic: Backups
+                                - generic: Archive
+                                - generic: +12 more
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic: Spacestudio
+                                  - generic: Mac Studio, M3 Ultra
+                                - generic: Offline
+                              - generic:
+                                - generic:
+                                  - generic: Storage
+                                  - generic: 1.6 TB / 4.0 TB
+                              - generic:
+                                - generic: Internal
+                                - generic: Renders
+                                - generic: Assets
+                                - generic: Libraries
+                                - generic: +3 more
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic: SpacePC
+                                  - generic: Windows 11 · RTX 5090
+                                - generic: Relay
+                              - generic:
+                                - generic:
+                                  - generic: Storage
+                                  - generic: 4.3 TB / 10.0 TB
+                              - generic:
+                                - generic: "C:"
+                                - generic: "D:"
+                                - generic: Games
+                                - generic: Captures
+                                - generic: Clips
+                                - generic: +4 more
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic: Spacephone
+                                  - generic: iPhone 17 Pro
+                                - generic: Relay
+                              - generic:
+                                - generic:
+                                  - generic: Storage
+                                  - generic: 128 GB / 256 GB
+                              - generic:
+                                - generic: Internal
+                                - generic: Camera Roll
+                                - generic: Voice Memos
+                                - generic: Downloads
+                                - generic: +2 more
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic: Amazon S3
+                                  - generic: us-east-1 · Glacier tier
+                                - generic: Relay
+                              - generic:
+                                - generic:
+                                  - generic: Storage
+                                  - generic: 70.0 TB / 350.0 TB
+                              - generic:
+                                - generic: sd-media-prod
+                                - generic: sd-backups
+                                - generic: sd-archive-cold
+                                - generic: Media Vault
+                                - generic: +10 more
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic: Google Drive
+                                  - generic: Workspace · 2 TB plan
+                                - generic: Relay
+                              - generic:
+                                - generic:
+                                  - generic: Storage
+                                  - generic: 820 GB / 4.0 TB
+                              - generic:
+                                - generic: My Drive
+                                - generic: Shared with me
+                                - generic: Invoices
+                                - generic: Contracts
+                                - generic: Client Deliverables
+                                - generic: +5 more
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic: Dropbox
+                                  - generic: Business · 5 TB
+                                - generic: Relay
+                              - generic:
+                                - generic:
+                                  - generic: Storage
+                                  - generic: 2.3 TB / 7.0 TB
+                              - generic:
+                                - generic: Team
+                                - generic: Personal
+                                - generic: Raw Footage
+                                - generic: Edits
+                                - generic: Deliverables
+                                - generic: +6 more
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic: Spacepad
+                                  - generic: iPad Pro M4, 13"
+                                - generic: Offline
+                              - generic:
+                                - generic:
+                                  - generic: Storage
+                                  - generic: 340 GB / 1.0 TB
+                              - generic:
+                                - generic: Internal
+                                - generic: Sketches
+                                - generic: Reference
+                                - generic: Notes
+                                - generic: +2 more
+  - generic [ref=e36]:
+    - generic [ref=e37]: A note to the community
+    - heading "The new Spacedrive is native" [level=2] [ref=e38]
+    - generic [ref=e39]:
+      - paragraph [ref=e40]: "I started Spacedrive because my files were scattered across laptops, external drives, a NAS, cloud folders, and phones that never talked to each other. The promise was simple: one app for all of it, built in the open and owned by the people using it. That promise resonated. The repo reached the top of GitHub, tens of thousands of developers followed along, and we raised funding from OSS Capital, Naval Ravikant, Tobias Lutke, and Tom Preston-Werner."
+      - paragraph [ref=e41]: The open-source project proved the idea. But it grew heavy — a cross-platform stack carrying sync, cloud, a virtual filesystem, and every operating system at once. It worked. It was also slow to move, and it was never as fast as the app I had in my head.
+      - paragraph [ref=e42]: So I built a new one from scratch. Native Rust, GPU-rendered, Mac-first. It scrolls a library of 129,000 photos at a locked 60fps with nothing loading in — no spinner, no decode on the hot path. It is the fastest photo app on macOS, and that is just the surface.
+      - paragraph [ref=e43]: "Underneath, every photo, file, and note is the same thing: a record on one spine. A file stops being the primitive everything else has to pretend to be. That is what turns a fast photo grid into a private index of your whole digital life — files, photos, notes, and later email, people, and places — all searchable in one place, all on your machine."
+      - paragraph [ref=e44]: This version ships differently. You buy it once. No cloud, no account, no subscription, no telemetry. It runs entirely on your computer and nothing leaves it. The open-source Spacedrive isn't going anywhere — it stays open and keeps its own path. This is the app I want to use every day.
+      - paragraph [ref=e45]: The site is still quiet while the product catches up to the story. Demo coming soon.
+      - paragraph [ref=e46]: Jamie Pine, Founder
+  - contentinfo [ref=e47]:
+    - generic [ref=e48]:
+      - generic [ref=e49]:
+        - generic [ref=e50]:
+          - img "Spacedrive" [ref=e51]
+          - generic [ref=e52]: Spacedrive
+        - navigation [ref=e53]:
+          - link "GitHub" [ref=e54] [cursor=pointer]:
+            - /url: https://github.com/spacedriveapp/spacedrive
+          - link "Docs" [ref=e55] [cursor=pointer]:
+            - /url: https://docs.spacedrive.com
+          - link "Discord" [ref=e56] [cursor=pointer]:
+            - /url: https://discord.gg/gTaF2Z44f5
+          - link "X / Twitter" [ref=e57] [cursor=pointer]:
+            - /url: https://x.com/spacedriveapp
+          - link "FSL-1.1-ALv2" [ref=e58] [cursor=pointer]:
+            - /url: https://fsl.software/
+      - generic [ref=e59]: © 2026 Spacedrive Technology Inc.
+  - alert [ref=e60]

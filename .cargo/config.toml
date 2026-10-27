@@ -1,0 +1,3 @@
+# Embeds the Swift runtime search path, required once spotlight-llm (AI feature) is linked.
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-Wl,-rpath,/usr/lib/swift"]

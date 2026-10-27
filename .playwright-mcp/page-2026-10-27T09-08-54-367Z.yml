@@ -1,0 +1,206 @@
+- generic [ref=e33]:
+  - generic [ref=e34]:
+    - complementary "Sidebar" [ref=e35]:
+      - generic [ref=e36]: rile.
+      - generic [ref=e42]:
+        - generic [ref=e43]: r
+        - generic [ref=e44]:
+          - text: Personal
+          - generic [ref=e45]: Local workspace
+        - generic "On this device" [ref=e46]
+      - navigation "Places" [ref=e47]:
+        - generic [ref=e48]:
+          - heading "Library" [level=2] [ref=e49]
+          - button "Home" [ref=e50] [cursor=pointer]
+          - button "Recents" [ref=e56] [cursor=pointer]
+          - button "Favorites" [ref=e62] [cursor=pointer]
+        - generic [ref=e67]:
+          - heading "Favorites" [level=2] [ref=e68]
+          - button "Desktop" [ref=e69] [cursor=pointer]
+          - button "Documents" [ref=e75] [cursor=pointer]
+          - button "Downloads" [ref=e81] [cursor=pointer]:
+            - generic [ref=e86]: "4"
+          - button "Pictures" [ref=e87] [cursor=pointer]
+          - button "Projects" [ref=e94] [cursor=pointer]
+        - generic [ref=e99]:
+          - heading "Devices" [level=2] [ref=e100]
+          - button "MacBook Pro" [ref=e101] [cursor=pointer]
+          - button "Macintosh HD" [ref=e108] [cursor=pointer]
+          - button "Studio SSD" [ref=e114] [cursor=pointer]:
+            - generic [ref=e120]: USB
+        - generic [ref=e121]:
+          - heading "Tags" [level=2] [ref=e122]
+          - button "Work" [ref=e123] [cursor=pointer]
+          - button "Personal" [ref=e126] [cursor=pointer]
+          - button "Important" [ref=e129] [cursor=pointer]
+      - generic [ref=e132]:
+        - generic [ref=e138]:
+          - text: Macintosh HD
+          - generic [ref=e139]: 228 GB available of 512 GB
+        - generic [ref=e142]: On your device. Not in an index.
+    - main [ref=e144]:
+      - generic [ref=e1]:
+        - generic [ref=e2]:
+          - button "Toggle sidebar" [pressed] [ref=e3] [cursor=pointer]
+          - button "Back" [disabled] [ref=e9]
+          - button "Forward" [disabled] [ref=e13]
+        - combobox "Explorer design" [active] [ref=e18] [cursor=pointer]:
+          - option "01 · Rile"
+          - option "02 · Native"
+          - option "03 · Studio"
+          - option "04 · Workbench" [selected]
+        - generic [ref=e22]:
+          - searchbox "Search this folder" [ref=e27]
+          - generic [ref=e28]: ⌘ F
+        - button "Toggle inspector" [pressed] [ref=e29] [cursor=pointer]
+      - generic [ref=e145]:
+        - tablist "Open folders" [ref=e146]:
+          - tab "Home" [ref=e412] [cursor=pointer]
+          - button "Close Home tab" [ref=e417] [cursor=pointer]
+          - tab "rile" [selected] [ref=e420] [cursor=pointer]
+          - button "Close rile tab" [ref=e424] [cursor=pointer]
+        - button "New tab" [ref=e162] [cursor=pointer]
+      - generic [ref=e166]:
+        - region "File browser" [ref=e167]:
+          - generic [ref=e168]:
+            - heading "rile" [level=1] [ref=e173]
+            - generic [ref=e174]:
+              - button "New folder" [ref=e175] [cursor=pointer]
+              - group "View" [ref=e180]:
+                - button "Icon view" [pressed] [ref=e181] [cursor=pointer]
+                - button "List view" [ref=e188] [cursor=pointer]
+                - button "Column view" [ref=e192] [cursor=pointer]
+              - button "Sort files" [ref=e198] [cursor=pointer]
+              - button "More options" [ref=e203] [cursor=pointer]
+          - tabpanel "rile" [ref=e209]:
+            - generic [ref=e429]:
+              - button "Select assets" [ref=e430] [cursor=pointer]:
+                - generic [ref=e431]: assets
+                - generic [ref=e432]: 2 items
+                - generic "Work" [ref=e434]
+              - button "Select docs" [ref=e435] [cursor=pointer]:
+                - generic [ref=e436]: docs
+                - generic [ref=e437]: 2 items
+              - button "Select plugins" [ref=e439] [cursor=pointer]:
+                - generic [ref=e440]: plugins
+                - generic [ref=e441]: 1 item
+              - button "Select src" [ref=e443] [cursor=pointer]:
+                - generic [ref=e444]: src
+                - generic [ref=e445]: 3 items
+                - generic "Work" [ref=e447]
+              - button "Select tests" [ref=e448] [cursor=pointer]:
+                - generic [ref=e449]: tests
+                - generic [ref=e450]: 2 items
+              - button "Select alpine-lake.jpg" [pressed] [ref=e452] [cursor=pointer]:
+                - generic [ref=e453]: alpine-lake.jpg
+                - generic [ref=e454]: 4.3 MB
+                - generic "Personal" [ref=e456]
+              - button "Select App.tsx" [ref=e457] [cursor=pointer]:
+                - generic [ref=e458]: App.tsx
+                - generic [ref=e459]: 2.9 KB
+              - button "Select Cargo.toml" [ref=e461] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: "[T]"
+                - generic [ref=e462]: Cargo.toml
+                - generic [ref=e463]: 1.1 KB
+                - generic "Work" [ref=e465]
+              - button "Select CHANGELOG.md" [ref=e466] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: M↓
+                - generic [ref=e467]: CHANGELOG.md
+                - generic [ref=e468]: 4.8 KB
+              - button "Select main.rs" [ref=e470] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: R
+                - generic [ref=e471]: main.rs
+                - generic [ref=e472]: 4.3 KB
+                - generic "Work" [ref=e474]
+              - button "Select README.md" [ref=e475] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: M↓
+                - generic [ref=e476]: README.md
+                - generic [ref=e477]: 6.7 KB
+              - button "Select roadmap.pdf" [ref=e479] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: PDF
+                - generic [ref=e480]: roadmap.pdf
+                - generic [ref=e481]: 1.8 MB
+                - generic "Important" [ref=e483]
+              - button "Select schema.json" [ref=e484] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: "{ }"
+                - generic [ref=e485]: schema.json
+                - generic [ref=e486]: 856 B
+              - button "Select screenshot.png" [ref=e488] [cursor=pointer]:
+                - generic [ref=e489]: screenshot.png
+                - generic [ref=e490]: 2.4 MB
+                - generic "Work" [ref=e492]
+              - button "Select styles.css" [ref=e493] [cursor=pointer]:
+                - generic [aria-hidden]:
+                  - generic: "3"
+                - generic [ref=e494]: styles.css
+                - generic [ref=e495]: 3.4 KB
+          - generic "Folder path" [ref=e278]:
+            - button "Macintosh HD" [ref=e497] [cursor=pointer]
+            - button "Users" [ref=e503] [cursor=pointer]
+            - button "rickyperlick" [ref=e508] [cursor=pointer]
+            - button "Projects" [ref=e514] [cursor=pointer]
+            - button "rile" [ref=e519] [cursor=pointer]
+        - complementary "File inspector" [ref=e304]:
+          - generic [ref=e522]:
+            - generic [ref=e523]: Inspector
+            - button "Close inspector" [ref=e524] [cursor=pointer]
+          - generic [ref=e541]:
+            - heading "alpine-lake.jpg" [level=2] [ref=e542]
+            - paragraph [ref=e543]: JPEG image · 4.3 MB
+          - generic [ref=e544]:
+            - button "Remove from favorites" [pressed] [ref=e545] [cursor=pointer]
+            - button "Show in folder" [ref=e548] [cursor=pointer]
+            - button "Quick Look" [ref=e551] [cursor=pointer]
+          - generic [ref=e554]:
+            - heading "Details" [level=3] [ref=e555]
+            - generic [ref=e559]:
+              - generic [ref=e560]:
+                - term [ref=e561]: Size
+                - definition [ref=e562]: 4.3 MB
+              - generic [ref=e563]:
+                - term [ref=e564]: Extension
+                - definition [ref=e565]: jpg
+              - generic [ref=e566]:
+                - term [ref=e567]: Kind
+                - definition [ref=e568]: JPEG image
+              - generic [ref=e569]:
+                - term [ref=e570]: Location
+                - definition [ref=e571]: rile
+          - generic [ref=e572]:
+            - heading "Dates" [level=3] [ref=e573]
+            - generic [ref=e577]:
+              - generic [ref=e578]:
+                - term [ref=e579]: Created
+                - definition [ref=e580]: Oct 18, 2026
+              - generic [ref=e581]:
+                - term [ref=e582]: Modified
+                - definition [ref=e583]: Oct 27, 2026
+              - generic [ref=e584]:
+                - term [ref=e585]: Accessed
+                - definition [ref=e586]: Oct 27, 2026
+          - generic [ref=e587]:
+            - heading "Image" [level=3] [ref=e588]
+            - generic [ref=e593]:
+              - generic [ref=e594]:
+                - term [ref=e595]: Dimensions
+                - definition [ref=e596]: 3840 × 2560
+              - generic [ref=e597]:
+                - term [ref=e598]: Color space
+                - definition [ref=e599]: sRGB
+          - generic [ref=e600]:
+            - heading "Tags" [level=3] [ref=e601]
+            - button "Personal" [ref=e606] [cursor=pointer]
+          - button "Quick Look Space" [ref=e608] [cursor=pointer]:
+            - text: Quick Look
+            - generic [ref=e611]: Space
+      - generic [ref=e395]:
+        - generic [ref=e396]: 15 items
+        - generic [ref=e397]: 1 selected · 4.3 MB
+        - slider "Icon size" [ref=e405] [cursor=pointer]: "134"
+  - status

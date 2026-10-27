@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Rile — Keepsake</title>
+  <desc id="desc">A deep red folder and a cream bookmark. A warmer direction centered on favorites and things worth keeping.</desc>
+  <defs>
+    <linearGradient id="tile" x2=".25" y2="1"><stop stop-color="#57333d"/><stop offset="1" stop-color="#2d1d29"/></linearGradient>
+    <linearGradient id="ink" x2=".2" y2="1"><stop stop-color="#e59b9b"/><stop offset="1" stop-color="#b74b66"/></linearGradient>
+    <linearGradient id="gloss" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="20" stdDeviation="20" flood-color="#070d18" flood-opacity=".24"/></filter>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="16" stdDeviation="14" flood-color="#081321" flood-opacity=".25"/></filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#tile)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#gloss)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="3"/>
+  <g filter="url(#lift)"><path d="M256 362Q256 322 296 322H440L488 374H732Q772 374 772 414V706Q772 746 732 746H296Q256 746 256 706Z" fill="#863d55"/><rect x="280" y="410" width="480" height="336" rx="42" fill="url(#ink)"/><path d="M558 410H670V618L614 578L558 618Z" fill="#ffeed4"/><path d="M312 434H526" stroke="#ffdad3" stroke-opacity=".6" stroke-width="6" stroke-linecap="round"/><path d="M344 646H440" stroke="#8a344e" stroke-width="18" stroke-linecap="round"/></g>
+</svg>

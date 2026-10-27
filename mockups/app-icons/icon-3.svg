@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Rile — Card Stack</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7f8fa"/><stop offset="1" stop-color="#d9dde4"/>
+    </linearGradient>
+    <linearGradient id="c1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7aaee6"/><stop offset="1" stop-color="#3f72aa"/>
+    </linearGradient>
+    <linearGradient id="c2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a4a50"/><stop offset="1" stop-color="#2a2a2e"/>
+    </linearGradient>
+    <linearGradient id="c3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eef1f5"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity=".30"/>
+    </filter>
+    <filter id="card" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#1b2735" flood-opacity=".30"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#shadow)"/>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="184" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="3"/>
+  <g transform="rotate(-14 512 560)" filter="url(#card)">
+    <rect x="352" y="250" width="320" height="420" rx="40" fill="url(#c1)"/>
+  </g>
+  <g transform="rotate(10 512 560)" filter="url(#card)">
+    <rect x="372" y="262" width="320" height="420" rx="40" fill="url(#c2)"/>
+    <rect x="410" y="300" width="244" height="14" rx="7" fill="#fff" fill-opacity=".12"/>
+  </g>
+  <g filter="url(#card)">
+    <path d="M382 334Q382 294 422 294H580L670 384V734Q670 774 630 774H422Q382 774 382 734Z" fill="url(#c3)"/>
+    <path d="M580 294V350Q580 384 614 384H670Z" fill="#cdd6e2"/>
+    <rect x="426" y="430" width="200" height="40" rx="20" fill="#3f72aa"/>
+    <rect x="426" y="512" width="200" height="22" rx="11" fill="#b9c2ce"/>
+    <rect x="426" y="568" width="164" height="22" rx="11" fill="#b9c2ce"/>
+    <rect x="426" y="624" width="188" height="22" rx="11" fill="#b9c2ce"/>
+    <rect x="426" y="680" width="120" height="22" rx="11" fill="#b9c2ce"/>
+  </g>
+</svg>

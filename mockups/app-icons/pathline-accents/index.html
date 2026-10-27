@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Rile — Pathline accent palette</title>
+<link rel="icon" type="image/svg+xml" href="blue.svg">
+<style>
+:root{color-scheme:dark;--bg:#15181b;--text:#f4f5f2;--muted:#a0aab4;--panel:#20252a;--stage:#292f34;--line:#ffffff18;--dock:#ffffff14}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body.light{color-scheme:light;--bg:#f2f2ee;--text:#222930;--muted:#66717a;--panel:#fffefa;--stage:#e4e8e7;--line:#00000018;--dock:#ffffffa8}
+header,main,footer{max-width:1340px;padding-left:28px;padding-right:28px;margin:auto}
+header{padding-top:28px}
+.top,.controls,.card-title,.sizes,.toolbar{display:flex;align-items:center}
+.top,.toolbar{justify-content:space-between;gap:16px}
+.brand{font-size:26px;font-weight:750;letter-spacing:-1.5px}
+.small-label,.eyebrow{text-transform:uppercase;letter-spacing:1.6px;font-size:10px;color:var(--muted)}
+h1{font-size:clamp(30px,3.7vw,44px);letter-spacing:-1.5px;line-height:1.1;font-weight:600;margin:24px 0 10px}
+header p{color:var(--muted);margin:0;max-width:730px}
+.toolbar{margin:22px 0}
+.controls{gap:4px;padding:4px;border:1px solid var(--line);border-radius:10px}
+button{font:inherit;cursor:pointer;color:var(--muted);background:none;border:0;border-radius:6px;padding:6px 14px}
+button[aria-pressed="true"]{color:var(--text);background:var(--stage)}
+button:focus-visible,a:focus-visible{outline:2px solid #80aeea;outline-offset:4px}
+a{color:inherit;text-underline-offset:4px}
+.hint{font-size:12px;color:var(--muted)}
+main{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+article{min-width:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel)}
+.stage{height:185px;display:grid;place-items:center;background:var(--stage);border-bottom:1px solid var(--line)}
+.hero{width:180px;height:180px}
+.info{padding:14px 16px}
+.card-title{gap:9px}
+.swatch{width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 1px #ffffff26}
+h2{font-size:16px;letter-spacing:-.3px;margin:0;font-weight:600}
+.eyebrow{margin-left:auto;font-variant-numeric:tabular-nums;letter-spacing:1px}
+.sizes{gap:13px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);height:59px}
+.sizes img{display:block}
+.sizes a{font-size:11px;margin-left:auto;color:var(--muted);white-space:nowrap}
+.dock-section{max-width:1340px;padding:22px 28px 0;margin:auto}
+.dock-label{margin:0 0 10px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1.4px}
+.dock{display:flex;gap:4px;align-items:center;justify-content:center;width:max-content;max-width:100%;padding:8px 15px;border:1px solid var(--line);border-radius:19px;background:var(--dock);overflow:auto}
+.dock img{width:48px;height:48px;flex:none}
+footer{display:flex;justify-content:space-between;gap:20px;padding-top:20px;padding-bottom:28px;color:var(--muted);font-size:11px}
+@media(max-width:900px){main{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){header,main,footer,.dock-section{padding-left:16px;padding-right:16px}main{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.stage{height:150px}.hero{width:150px;height:150px}.info{padding:12px}.sizes{gap:6px}.sizes img:first-child{width:36px;height:36px}.sizes a{font-size:10px}.small-label{display:none}.toolbar,footer{flex-wrap:wrap}.dock{justify-content:flex-start;width:100%}}
+</style>
+</head>
+<body>
+<header>
+<div class="top"><span class="brand">rile<span style="color:#87b9ec">.</span></span><span class="small-label">Pathline / Accent study</span></div>
+<h1>One icon. Eight accents.</h1>
+<p>The Pathline icon, adapted to every accent available in Rile. Each keeps the same silhouette and warm waypoint, with a tinted tile and ribbon that follow the chosen color.</p>
+<div class="toolbar"><div class="controls" role="group" aria-label="Preview background"><button type="button" data-theme="dark" aria-pressed="true">Dark</button><button type="button" data-theme="light" aria-pressed="false">Light</button></div><span class="hint">Compare at 48, 32 &amp; 16 px · Original SVGs included</span></div>
+</header>
+<main>
+<article aria-labelledby="accent-blue">
+<div class="stage"><img class="hero" src="blue.svg" alt="Blue Pathline app icon" width="180" height="180"></div>
+<div class="info"><div class="card-title"><span class="swatch" style="--accent:hsl(212 92% 62%)" aria-hidden="true"></span><h2 id="accent-blue">Blue</h2><span class="eyebrow">01 / 08</span></div>
+<div class="sizes" aria-label="Blue small size previews">
+<img src="blue.svg" width="48" height="48" alt="Blue at 48 pixels">
+<img src="blue.svg" width="32" height="32" alt="Blue at 32 pixels">
+<img src="blue.svg" width="16" height="16" alt="Blue at 16 pixels">
+<a href="blue.svg" download="rile-pathline-blue.svg" aria-label="Download Blue Pathline SVG">SVG ↗</a>
+</div></div></article>
+<article aria-labelledby="accent-purple">
+<div class="stage"><img class="hero" src="purple.svg" alt="Purple Pathline app icon" width="180" height="180"></div>
+<div class="info"><div class="card-title"><span class="swatch" style="--accent:hsl(268 75% 62%)" aria-hidden="true"></span><h2 id="accent-purple">Purple</h2><span class="eyebrow">02 / 08</span></div>
+<div class="sizes" aria-label="Purple small size previews">
+<img src="purple.svg" width="48" height="48" alt="Purple at 48 pixels">
+<img src="purple.svg" width="32" height="32" alt="Purple at 32 pixels">
+<img src="purple.svg" width="16" height="16" alt="Purple at 16 pixels">
+<a href="purple.svg" download="rile-pathline-purple.svg" aria-label="Download Purple Pathline SVG">SVG ↗</a>
+</div></div></article>
+<article aria-labelledby="accent-pink">
+<div class="stage"><img class="hero" src="pink.svg" alt="Pink Pathline app icon" width="180" height="180"></div>
+<div class="info"><div class="card-title"><span class="swatch" style="--accent:hsl(330 80% 62%)" aria-hidden="true"></span><h2 id="accent-pink">Pink</h2><span class="eyebrow">03 / 08</span></div>
+<div class="sizes" aria-label="Pink small size previews">
+<img src="pink.svg" width="48" height="48" alt="Pink at 48 pixels">
+<img src="pink.svg" width="32" height="32" alt="Pink at 32 pixels">
+<img src="pink.svg" width="16" height="16" alt="Pink at 16 pixels">
+<a href="pink.svg" download="rile-pathline-pink.svg" aria-label="Download Pink Pathline SVG">SVG ↗</a>
+</div></div></article>
+<article aria-labelledby="accent-red">
+<div class="stage"><img class="hero" src="red.svg" alt="Red Pathline app icon" width="180" height="180"></div>
+<div class="info"><div class="card-title"><span class="swatch" style="--accent:hsl(0 80% 62%)" aria-hidden="true"></span><h2 id="accent-red">Red</h2><span class="eyebrow">04 / 08</span></div>
+<div class="sizes" aria-label="Red small size previews">
+<img src="red.svg" width="48" height="48" alt="Red at 48 pixels">
+<img src="red.svg" width="32" height="32" alt="Red at 32 pixels">
+<img src="red.svg" width="16" height="16" alt="Red at 16 pixels">
+<a href="red.svg" download="rile-pathline-red.svg" aria-label="Download Red Pathline SVG">SVG ↗</a>
+</div></div></article>
+<article aria-labelledby="accent-orange">
+<div class="stage"><img class="hero" src="orange.svg" alt="Orange Pathline app icon" width="180" height="180"></div>
+<div class="info"><div class="card-title"><span class="swatch" style="--accent:hsl(28 95% 62%)" aria-hidden="true"></span><h2 id="accent-orange">Orange</h2><span class="eyebrow">05 / 08</span></div>
+<div class="sizes" aria-label="Orange small size previews">
+<img src="orange.svg" width="48" height="48" alt="Orange at 48 pixels">
+<img src="orange.svg" width="32" height="32" alt="Orange at 32 pixels">
+<img src="orange.svg" width="16" height="16" alt="Orange at 16 pixels">
+<a href="orange.svg" download="rile-pathline-orange.svg" aria-label="Download Orange Pathline SVG">SVG ↗</a>
+</div></div></article>
+<article aria-labelledby="accent-green">
+<div class="stage"><img class="hero" src="green.svg" alt="Green Pathline app icon" width="180" height="180"></div>
+<div class="info"><div class="card-title"><span class="swatch" style="--accent:hsl(142 65% 62%)" aria-hidden="true"></span><h2 id="accent-green">Green</h2><span class="eyebrow">06 / 08</span></div>
+<div class="sizes" aria-label="Green small size previews">
+<img src="green.svg" width="48" height="48" alt="Green at 48 pixels">
+<img src="green.svg" width="32" height="32" alt="Green at 32 pixels">
+<img src="green.svg" width="16" height="16" alt="Green at 16 pixels">
+<a href="green.svg" download="rile-pathline-green.svg" aria-label="Download Green Pathline SVG">SVG ↗</a>
+</div></div></article>
+<article aria-labelledby="accent-teal">
+<div class="stage"><img class="hero" src="teal.svg" alt="Teal Pathline app icon" width="180" height="180"></div>
+<div class="info"><div class="card-title"><span class="swatch" style="--accent:hsl(178 70% 62%)" aria-hidden="true"></span><h2 id="accent-teal">Teal</h2><span class="eyebrow">07 / 08</span></div>
+<div class="sizes" aria-label="Teal small size previews">
+<img src="teal.svg" width="48" height="48" alt="Teal at 48 pixels">
+<img src="teal.svg" width="32" height="32" alt="Teal at 32 pixels">
+<img src="teal.svg" width="16" height="16" alt="Teal at 16 pixels">
+<a href="teal.svg" download="rile-pathline-teal.svg" aria-label="Download Teal Pathline SVG">SVG ↗</a>
+</div></div></article>
+<article aria-labelledby="accent-graphite">
+<div class="stage"><img class="hero" src="graphite.svg" alt="Graphite Pathline app icon" width="180" height="180"></div>
+<div class="info"><div class="card-title"><span class="swatch" style="--accent:hsl(220 8% 62%)" aria-hidden="true"></span><h2 id="accent-graphite">Graphite</h2><span class="eyebrow">08 / 08</span></div>
+<div class="sizes" aria-label="Graphite small size previews">
+<img src="graphite.svg" width="48" height="48" alt="Graphite at 48 pixels">
+<img src="graphite.svg" width="32" height="32" alt="Graphite at 32 pixels">
+<img src="graphite.svg" width="16" height="16" alt="Graphite at 16 pixels">
+<a href="graphite.svg" download="rile-pathline-graphite.svg" aria-label="Download Graphite Pathline SVG">SVG ↗</a>
+</div></div></article>
+</main>
+<section class="dock-section" aria-labelledby="dock-heading"><h2 class="dock-label" id="dock-heading">Together at Dock size</h2><div class="dock"><img src="blue.svg" width="48" height="48" alt="Blue"><img src="purple.svg" width="48" height="48" alt="Purple"><img src="pink.svg" width="48" height="48" alt="Pink"><img src="red.svg" width="48" height="48" alt="Red"><img src="orange.svg" width="48" height="48" alt="Orange"><img src="green.svg" width="48" height="48" alt="Green"><img src="teal.svg" width="48" height="48" alt="Teal"><img src="graphite.svg" width="48" height="48" alt="Graphite"></div></section>
+<footer><span>1024 × 1024 vector originals · Accent names match Rile settings</span><span>Review artwork only — no runtime icon changes yet.</span></footer>
+<script>
+document.querySelectorAll('[data-theme]').forEach(button => button.addEventListener('click', () => {
+  document.body.classList.toggle('light', button.dataset.theme === 'light');
+  document.querySelectorAll('[data-theme]').forEach(option => option.setAttribute('aria-pressed', String(option === button)));
+}));
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Rile — Monogram Folder</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a3a3e"/><stop offset="1" stop-color="#1b1b1d"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".10"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="back" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a7fb8"/><stop offset="1" stop-color="#2d5a8c"/>
+    </linearGradient>
+    <linearGradient id="front" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7aaee6"/><stop offset="1" stop-color="#3f72aa"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity=".35"/>
+    </filter>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#gloss)"/>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="184" fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="3"/>
+  <g filter="url(#soft)">
+    <path d="M230 330Q230 290 270 290H418Q444 290 460 308L486 336H758Q798 336 798 376V720Q798 760 758 760H270Q230 760 230 720Z" fill="url(#back)"/>
+    <rect x="276" y="338" width="472" height="140" rx="18" fill="#e8eef6"/>
+    <rect x="296" y="358" width="432" height="140" rx="18" fill="#ffffff"/>
+    <path d="M218 424Q218 388 254 388H770Q806 388 806 424V728Q806 768 766 768H258Q218 768 218 728Z" fill="url(#front)"/>
+    <path d="M254 390H770Q804 390 805 424" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="4"/>
+  </g>
+  <path d="M446 700V478H534A58 58 0 0 1 534 594H446M522 594L590 700" fill="none" stroke="#1e3f66" stroke-opacity=".35" stroke-width="54" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 6)"/>
+  <path d="M446 700V478H534A58 58 0 0 1 534 594H446M522 594L590 700" fill="none" stroke="#fff" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

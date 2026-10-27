@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Rile — Lens</title>
+  <desc id="desc">A soft glass lens over a tiny file grid. A search-first direction with a cool, luminous finish.</desc>
+  <defs>
+    <linearGradient id="tile" x2=".25" y2="1"><stop stop-color="#234555"/><stop offset="1" stop-color="#0c202d"/></linearGradient>
+    <linearGradient id="ink" x2=".2" y2="1"><stop stop-color="#c3f1f3"/><stop offset="1" stop-color="#5cabbf"/></linearGradient>
+    <linearGradient id="gloss" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="20" stdDeviation="20" flood-color="#070d18" flood-opacity=".24"/></filter>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="16" stdDeviation="14" flood-color="#081321" flood-opacity=".25"/></filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#tile)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#gloss)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="3"/>
+  <g fill="#a9d5df" opacity=".45"><rect x="272" y="286" width="120" height="148" rx="24"/><rect x="438" y="286" width="120" height="148" rx="24"/><rect x="272" y="476" width="120" height="148" rx="24"/><rect x="438" y="476" width="120" height="148" rx="24"/></g><g filter="url(#lift)"><path d="M618 618L738 744" stroke="#c3ebf1" stroke-width="82" stroke-linecap="round"/><circle cx="488" cy="488" r="193" fill="#5cb1cb" fill-opacity=".63" stroke="url(#ink)" stroke-width="39"/><path d="M366 464A128 128 0 0 1 484 360" fill="none" stroke="#e1fbff" stroke-opacity=".75" stroke-width="13" stroke-linecap="round"/></g>
+</svg>

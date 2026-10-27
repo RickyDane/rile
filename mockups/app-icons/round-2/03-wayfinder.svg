@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Rile — Wayfinder</title>
+  <desc id="desc">A luminous compass needle inside a precise circular frame. For discovery, not just storage.</desc>
+  <defs>
+    <linearGradient id="tile" x2=".25" y2="1"><stop stop-color="#173b42"/><stop offset="1" stop-color="#081c25"/></linearGradient>
+    <linearGradient id="blue" x2=".2" y2="1"><stop stop-color="#91d2ff"/><stop offset="1" stop-color="#397cce"/></linearGradient>
+    <linearGradient id="lilac" x2=".2" y2="1"><stop stop-color="#f2efff"/><stop offset="1" stop-color="#bdb8ed"/></linearGradient>
+    <linearGradient id="sheen" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".16"/><stop offset=".65" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="20" stdDeviation="20" flood-color="#070d18" flood-opacity=".24"/></filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="16" stdDeviation="14" flood-color="#081321" flood-opacity=".24"/></filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#tile)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#sheen)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="3"/>
+  <circle cx="512" cy="512" r="234" fill="#0a242e" stroke="#71bdc1" stroke-opacity=".3" stroke-width="3"/><circle cx="512" cy="512" r="196" fill="none" stroke="#8ed4d7" stroke-width="13"/><path d="M512 294V322M512 702V730M294 512H322M702 512H730" stroke="#b5eddf" stroke-width="14" stroke-linecap="round"/><g filter="url(#soft)"><path d="M628 352L562 562L396 672L462 462Z" fill="#bdf7df"/><path d="M628 352L562 562L462 462Z" fill="#fffdf1"/><path d="M396 672L462 462L562 562Z" fill="#40ad9e"/><circle cx="512" cy="512" r="24" fill="#123a40"/></g>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Rile — Fox</title>
+  <desc id="desc">An angular fox face in burnt orange. An expressive mascot for a nimble, lightweight explorer.</desc>
+  <defs>
+    <linearGradient id="tile" x2=".25" y2="1"><stop stop-color="#4b2925"/><stop offset="1" stop-color="#24191b"/></linearGradient>
+    <linearGradient id="ink" x2=".2" y2="1"><stop stop-color="#ffcf94"/><stop offset="1" stop-color="#eb7d41"/></linearGradient>
+    <linearGradient id="gloss" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="20" stdDeviation="20" flood-color="#070d18" flood-opacity=".24"/></filter>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="16" stdDeviation="14" flood-color="#081321" flood-opacity=".25"/></filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#tile)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#gloss)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="3"/>
+  <g filter="url(#lift)"><path d="M266 280L464 380H560L758 280L714 600L512 760L310 600Z" fill="url(#ink)"/><path d="M266 280L406 430L310 600Z" fill="#c35e35"/><path d="M758 280L618 430L714 600Z" fill="#c35e35"/><path d="M310 530L512 636L714 530L676 644L512 760L348 644Z" fill="#fff1d8"/><path d="M442 624H582L512 694Z" fill="#3a2626"/><path d="M382 496L440 520M642 496L584 520" stroke="#3a2626" stroke-width="20" stroke-linecap="round"/></g>
+</svg>

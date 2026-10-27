@@ -1,0 +1,131 @@
+- generic [active] [ref=f3e1]:
+  - banner [ref=f3e2]:
+    - generic [ref=f3e3]:
+      - generic [ref=f3e4]: rile.
+      - generic [ref=f3e5]: Pathline / Accent study
+    - heading "One icon. Eight accents." [level=1] [ref=f3e6]
+    - paragraph [ref=f3e7]: The Pathline icon, adapted to every accent available in Rile. Each keeps the same silhouette and warm waypoint, with a tinted tile and ribbon that follow the chosen color.
+    - generic [ref=f3e8]:
+      - group "Preview background" [ref=f3e9]:
+        - button "Dark" [pressed] [ref=f3e10] [cursor=pointer]
+        - button "Light" [ref=f3e11] [cursor=pointer]
+      - generic [ref=f3e12]: Compare at 48, 32 & 16 px · Original SVGs included
+  - main [ref=f3e13]:
+    - article [ref=f3e14]:
+      - img "Blue Pathline app icon" [ref=f3e16]
+      - generic [ref=f3e17]:
+        - generic [ref=f3e18]:
+          - heading "Blue" [level=2] [ref=f3e20]
+          - generic [ref=f3e21]: 01 / 08
+        - generic "Blue small size previews" [ref=f3e22]:
+          - img "Blue at 48 pixels" [ref=f3e23]
+          - img "Blue at 32 pixels" [ref=f3e24]
+          - img "Blue at 16 pixels" [ref=f3e25]
+          - link "Download Blue Pathline SVG" [ref=f3e26] [cursor=pointer]:
+            - /url: blue.svg
+            - text: SVG ↗
+    - article [ref=f3e27]:
+      - img "Purple Pathline app icon" [ref=f3e29]
+      - generic [ref=f3e30]:
+        - generic [ref=f3e31]:
+          - heading "Purple" [level=2] [ref=f3e33]
+          - generic [ref=f3e34]: 02 / 08
+        - generic "Purple small size previews" [ref=f3e35]:
+          - img "Purple at 48 pixels" [ref=f3e36]
+          - img "Purple at 32 pixels" [ref=f3e37]
+          - img "Purple at 16 pixels" [ref=f3e38]
+          - link "Download Purple Pathline SVG" [ref=f3e39] [cursor=pointer]:
+            - /url: purple.svg
+            - text: SVG ↗
+    - article [ref=f3e40]:
+      - img "Pink Pathline app icon" [ref=f3e42]
+      - generic [ref=f3e43]:
+        - generic [ref=f3e44]:
+          - heading "Pink" [level=2] [ref=f3e46]
+          - generic [ref=f3e47]: 03 / 08
+        - generic "Pink small size previews" [ref=f3e48]:
+          - img "Pink at 48 pixels" [ref=f3e49]
+          - img "Pink at 32 pixels" [ref=f3e50]
+          - img "Pink at 16 pixels" [ref=f3e51]
+          - link "Download Pink Pathline SVG" [ref=f3e52] [cursor=pointer]:
+            - /url: pink.svg
+            - text: SVG ↗
+    - article [ref=f3e53]:
+      - img "Red Pathline app icon" [ref=f3e55]
+      - generic [ref=f3e56]:
+        - generic [ref=f3e57]:
+          - heading "Red" [level=2] [ref=f3e59]
+          - generic [ref=f3e60]: 04 / 08
+        - generic "Red small size previews" [ref=f3e61]:
+          - img "Red at 48 pixels" [ref=f3e62]
+          - img "Red at 32 pixels" [ref=f3e63]
+          - img "Red at 16 pixels" [ref=f3e64]
+          - link "Download Red Pathline SVG" [ref=f3e65] [cursor=pointer]:
+            - /url: red.svg
+            - text: SVG ↗
+    - article [ref=f3e66]:
+      - img "Orange Pathline app icon" [ref=f3e68]
+      - generic [ref=f3e69]:
+        - generic [ref=f3e70]:
+          - heading "Orange" [level=2] [ref=f3e72]
+          - generic [ref=f3e73]: 05 / 08
+        - generic "Orange small size previews" [ref=f3e74]:
+          - img "Orange at 48 pixels" [ref=f3e75]
+          - img "Orange at 32 pixels" [ref=f3e76]
+          - img "Orange at 16 pixels" [ref=f3e77]
+          - link "Download Orange Pathline SVG" [ref=f3e78] [cursor=pointer]:
+            - /url: orange.svg
+            - text: SVG ↗
+    - article [ref=f3e79]:
+      - img "Green Pathline app icon" [ref=f3e81]
+      - generic [ref=f3e82]:
+        - generic [ref=f3e83]:
+          - heading "Green" [level=2] [ref=f3e85]
+          - generic [ref=f3e86]: 06 / 08
+        - generic "Green small size previews" [ref=f3e87]:
+          - img "Green at 48 pixels" [ref=f3e88]
+          - img "Green at 32 pixels" [ref=f3e89]
+          - img "Green at 16 pixels" [ref=f3e90]
+          - link "Download Green Pathline SVG" [ref=f3e91] [cursor=pointer]:
+            - /url: green.svg
+            - text: SVG ↗
+    - article [ref=f3e92]:
+      - img "Teal Pathline app icon" [ref=f3e94]
+      - generic [ref=f3e95]:
+        - generic [ref=f3e96]:
+          - heading "Teal" [level=2] [ref=f3e98]
+          - generic [ref=f3e99]: 07 / 08
+        - generic "Teal small size previews" [ref=f3e100]:
+          - img "Teal at 48 pixels" [ref=f3e101]
+          - img "Teal at 32 pixels" [ref=f3e102]
+          - img "Teal at 16 pixels" [ref=f3e103]
+          - link "Download Teal Pathline SVG" [ref=f3e104] [cursor=pointer]:
+            - /url: teal.svg
+            - text: SVG ↗
+    - article [ref=f3e105]:
+      - img "Graphite Pathline app icon" [ref=f3e107]
+      - generic [ref=f3e108]:
+        - generic [ref=f3e109]:
+          - heading "Graphite" [level=2] [ref=f3e111]
+          - generic [ref=f3e112]: 08 / 08
+        - generic "Graphite small size previews" [ref=f3e113]:
+          - img "Graphite at 48 pixels" [ref=f3e114]
+          - img "Graphite at 32 pixels" [ref=f3e115]
+          - img "Graphite at 16 pixels" [ref=f3e116]
+          - link "Download Graphite Pathline SVG" [ref=f3e117] [cursor=pointer]:
+            - /url: graphite.svg
+            - text: SVG ↗
+  - region [ref=f3e118]:
+    - heading "Together at Dock size" [level=2] [ref=f3e119]
+    - generic [ref=f3e120]:
+      - img "Blue" [ref=f3e121]
+      - img "Purple" [ref=f3e122]
+      - img "Pink" [ref=f3e123]
+      - img "Red" [ref=f3e124]
+      - img "Orange" [ref=f3e125]
+      - img "Green" [ref=f3e126]
+      - img "Teal" [ref=f3e127]
+      - img "Graphite" [ref=f3e128]
+  - contentinfo [ref=f3e129]:
+    - generic [ref=f3e130]: 1024 × 1024 vector originals · Accent names match Rile settings
+    - generic [ref=f3e131]: Review artwork only — no runtime icon changes yet.

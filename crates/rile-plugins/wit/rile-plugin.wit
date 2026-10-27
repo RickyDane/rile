@@ -1,0 +1,74 @@
+package rile:plugin@0.1.0;
+
+/// Data types shared between the host (Rile) and plugins.
+interface types {
+    /// Static plugin metadata.
+    record manifest {
+        /// Stable, unique identifier, e.g. `com.example.hello`.
+        id: string,
+        /// Human readable name.
+        name: string,
+        /// Plugin version (semver recommended).
+        version: string,
+        /// One-line description.
+        description: string,
+    }
+
+    /// The explorer state a plugin call is made in.
+    record context {
+        /// Directory currently shown in the explorer, if any.
+        current-dir: option<string>,
+        /// Absolute paths of the selected entries.
+        selection: list<string>,
+    }
+
+    /// A command contributed by a plugin (e.g. to the command palette).
+    record command {
+        id: string,
+        label: string,
+    }
+
+    /// Something the host should do after a command ran.
+    variant action {
+        /// Open the path with its default application.
+        open(string),
+        /// Navigate the explorer to the given directory.
+        navigate(string),
+        /// Refresh the current listing.
+        refresh,
+        /// Copy the text to the clipboard.
+        copy-text(string),
+        /// Show a notification to the user.
+        notify(string),
+    }
+}
+
+/// Functions the host provides to plugins. All file access is sandboxed.
+interface host {
+    /// Write a message to the host's log.
+    log: func(msg: string);
+    /// Queue a user-visible notification (delivered after the call returns).
+    notify: func(msg: string);
+    /// Read up to `max-bytes` of a file as (lossy) UTF-8 text.
+    /// Only paths that are part of the current invocation's selection are allowed.
+    read-text: func(path: string, max-bytes: u32) -> result<string, string>;
+    /// List the entry names of a directory. Allowed for the current directory,
+    /// selected entries and their parents, and direct children of those.
+    list-dir: func(path: string) -> result<list<string>, string>;
+}
+
+world plugin {
+    use types.{manifest, context, command, action};
+
+    import host;
+
+    /// Plugin metadata.
+    export manifest: func() -> manifest;
+    /// Commands available for the given context.
+    export commands: func(ctx: context) -> list<command>;
+    /// Run a command previously returned by `commands`.
+    export run-command: func(id: string, ctx: context) -> result<list<action>, string>;
+    /// Text preview for a file; `ext` is the lowercase extension without the dot.
+    /// Return `none` when the file type is not supported.
+    export preview: func(path: string, ext: string) -> option<string>;
+}

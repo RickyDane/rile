@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Rile — Index</title>
+  <desc id="desc">Three tactile index dividers, each with its own tab. A warm, analog take on digital organization.</desc>
+  <defs>
+    <linearGradient id="tile" x2=".25" y2="1"><stop stop-color="#f0e6d3"/><stop offset="1" stop-color="#cdbb9d"/></linearGradient>
+    <linearGradient id="ink" x2=".2" y2="1"><stop stop-color="#6d9691"/><stop offset="1" stop-color="#2f615b"/></linearGradient>
+    <linearGradient id="gloss" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="20" stdDeviation="20" flood-color="#070d18" flood-opacity=".24"/></filter>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="16" stdDeviation="14" flood-color="#081321" flood-opacity=".25"/></filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#tile)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#gloss)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="3"/>
+  <g filter="url(#lift)"><path d="M282 340H382V300Q382 280 402 280H478Q498 280 498 300V340H702Q742 340 742 380V700Q742 740 702 740H282Q242 740 242 700V380Q242 340 282 340Z" fill="#365c59"/><path d="M302 394H504V354Q504 334 524 334H600Q620 334 620 354V394H722Q762 394 762 434V708Q762 748 722 748H302Q262 748 262 708V434Q262 394 302 394Z" fill="#7aa39b"/><path d="M322 450H634V410Q634 390 654 390H730Q750 390 750 410V450H746Q782 450 782 490V720Q782 760 742 760H322Q282 760 282 720V490Q282 450 322 450Z" fill="#f8f1df"/><path d="M346 540H566M346 582H494" stroke="#c3baa6" stroke-width="15" stroke-linecap="round"/></g>
+</svg>

@@ -1,0 +1,181 @@
+- generic [active] [ref=f2e75]:
+  - generic [ref=f2e76]:
+    - complementary "Sidebar" [ref=f2e77]:
+      - generic [ref=f2e78]: rile.
+      - generic [ref=f2e84]:
+        - generic [ref=f2e85]: r
+        - generic [ref=f2e86]:
+          - text: Personal
+          - generic [ref=f2e87]: Local workspace
+        - generic "On this device" [ref=f2e88]
+      - navigation "Places" [ref=f2e89]:
+        - generic [ref=f2e90]:
+          - heading "Library" [level=2] [ref=f2e91]
+          - button "Home" [ref=f2e92] [cursor=pointer]
+          - button "Recents" [ref=f2e98] [cursor=pointer]
+          - button "Favorites" [ref=f2e104] [cursor=pointer]
+        - generic [ref=f2e109]:
+          - heading "Favorites" [level=2] [ref=f2e110]
+          - button "Desktop" [ref=f2e111] [cursor=pointer]
+          - button "Documents" [ref=f2e117] [cursor=pointer]
+          - button "Downloads" [ref=f2e123] [cursor=pointer]:
+            - generic [ref=f2e128]: "4"
+          - button "Pictures" [ref=f2e129] [cursor=pointer]
+          - button "Projects" [ref=f2e136] [cursor=pointer]
+        - generic [ref=f2e141]:
+          - heading "Devices" [level=2] [ref=f2e142]
+          - button "MacBook Pro" [ref=f2e143] [cursor=pointer]
+          - button "Macintosh HD" [ref=f2e150] [cursor=pointer]
+          - button "Studio SSD" [ref=f2e156] [cursor=pointer]:
+            - generic [ref=f2e162]: USB
+        - generic [ref=f2e163]:
+          - heading "Tags" [level=2] [ref=f2e164]
+          - button "Work" [ref=f2e165] [cursor=pointer]
+          - button "Personal" [ref=f2e168] [cursor=pointer]
+          - button "Important" [ref=f2e171] [cursor=pointer]
+      - generic [ref=f2e174]:
+        - generic [ref=f2e180]:
+          - text: Macintosh HD
+          - generic [ref=f2e181]: 228 GB available of 512 GB
+        - generic [ref=f2e184]: On your device. Not in an index.
+    - main [ref=f2e186]:
+      - generic [ref=f2e187]:
+        - generic [ref=f2e188]:
+          - button "Toggle sidebar" [pressed] [ref=f2e189] [cursor=pointer]
+          - button "Back" [disabled] [ref=f2e195]
+          - button "Forward" [ref=f2e199] [cursor=pointer]
+        - generic [ref=f2e203]:
+          - button "MacBook Pro" [ref=f2e380] [cursor=pointer]
+          - strong [ref=f2e383]: Home
+        - generic [ref=f2e211]:
+          - searchbox "Search sample workspace" [ref=f2e384]
+          - generic [ref=f2e217]: ⌘ F
+        - button "Toggle inspector" [disabled] [ref=f2e218]
+      - generic [ref=f2e222]:
+        - tablist "Open folders" [ref=f2e223]:
+          - tab "Home" [selected] [ref=f2e385] [cursor=pointer]
+          - button "Close Home tab" [ref=f2e390] [cursor=pointer]
+          - tab "rile" [ref=f2e393] [cursor=pointer]
+          - button "Close rile tab" [ref=f2e397] [cursor=pointer]
+        - button "New tab" [ref=f2e238] [cursor=pointer]
+      - region "File browser" [ref=f2e243]:
+        - tabpanel "Home" [ref=f2e400]:
+          - generic [ref=f2e401]:
+            - generic [ref=f2e402]:
+              - generic [ref=f2e403]:
+                - paragraph [ref=f2e404]: 04 / THE VISUAL LIBRARY HOME
+                - heading "Library shelves." [level=1] [ref=f2e405]
+                - paragraph [ref=f2e406]: Less searching. More finding. Everything in its own place.
+              - generic [ref=f2e407]:
+                - generic [ref=f2e408]:
+                  - generic [ref=f2e409]: Home layout
+                  - combobox "Home layout" [ref=f2e410] [cursor=pointer]:
+                    - option "01 · Overview"
+                    - option "02 · Storage atlas"
+                    - option "03 · Activity desk"
+                    - option "04 · Library shelves" [selected]
+                - generic [ref=f2e411]: Sample workspace
+            - region "Browse files by type" [ref=f2e413]:
+              - button "Visual things Images & screenshots 8 files" [ref=f2e414] [cursor=pointer]:
+                - generic [ref=f2e443]:
+                  - generic [ref=f2e444]:
+                    - text: Visual things
+                    - strong [ref=f2e449]: Images & screenshots
+                  - generic [ref=f2e450]:
+                    - text: "8"
+                    - generic [ref=f2e451]: files
+              - generic [ref=f2e454]:
+                - button "BUILT & WRITTEN Code 12 sample files" [ref=f2e455] [cursor=pointer]:
+                  - generic [ref=f2e459]:
+                    - generic [ref=f2e460]: BUILT & WRITTEN
+                    - strong [ref=f2e461]: Code
+                    - generic [ref=f2e462]: 12 sample files
+                - button "WORDS & IDEAS Documents 11 sample files" [ref=f2e465] [cursor=pointer]:
+                  - generic [ref=f2e470]:
+                    - generic [ref=f2e471]: WORDS & IDEAS
+                    - strong [ref=f2e472]: Documents
+                    - generic [ref=f2e473]: 11 sample files
+                - button "PACKED AWAY Archives 2 sample files" [ref=f2e476] [cursor=pointer]:
+                  - generic [ref=f2e481]:
+                    - generic [ref=f2e482]: PACKED AWAY
+                    - strong [ref=f2e483]: Archives
+                    - generic [ref=f2e484]: 2 sample files
+            - region "Workspace totals" [ref=f2e487]:
+              - generic [ref=f2e488]:
+                - strong [ref=f2e489]: "33"
+                - generic [ref=f2e490]: files discovered
+              - generic [ref=f2e491]:
+                - strong [ref=f2e492]: "17"
+                - generic [ref=f2e493]: folders
+              - generic [ref=f2e494]:
+                - strong [ref=f2e495]: "2"
+                - generic [ref=f2e496]: connected disks
+              - generic [ref=f2e497]:
+                - strong [ref=f2e498]: 1.50 TB
+                - generic [ref=f2e499]: space available · sample
+            - generic [ref=f2e500]:
+              - generic [ref=f2e501]:
+                - heading "Familiar places" [level=2] [ref=f2e502]
+                - generic [ref=f2e503]: Always one step away
+              - generic [ref=f2e504]:
+                - button "rile 16 items" [ref=f2e505] [cursor=pointer]:
+                  - strong [ref=f2e507]: rile
+                  - generic [ref=f2e508]: 16 items
+                - button "website 1 items" [ref=f2e511] [cursor=pointer]:
+                  - strong [ref=f2e513]: website
+                  - generic [ref=f2e514]: 1 items
+                - button "Downloads 4 items" [ref=f2e517] [cursor=pointer]:
+                  - strong [ref=f2e519]: Downloads
+                  - generic [ref=f2e520]: 4 items
+                - button "Pictures 2 items" [ref=f2e523] [cursor=pointer]:
+                  - strong [ref=f2e525]: Pictures
+                  - generic [ref=f2e526]: 2 items
+            - generic [ref=f2e529]:
+              - generic [ref=f2e530]:
+                - heading "Back on your desk" [level=2] [ref=f2e531]
+                - button "All recent files" [ref=f2e532] [cursor=pointer]
+              - generic [ref=f2e535]:
+                - button "Show alpine-lake.jpg in folder" [ref=f2e536] [cursor=pointer]:
+                  - strong [ref=f2e538]: alpine-lake.jpg
+                  - generic [ref=f2e539]: rile · 4.3 MB
+                - button "Show Cargo.toml in folder" [ref=f2e540] [cursor=pointer]:
+                  - generic [ref=f2e541]:
+                    - generic [aria-hidden]:
+                      - generic: "[T]"
+                  - strong [ref=f2e542]: Cargo.toml
+                  - generic [ref=f2e543]: rile · 1.1 KB
+                - button "Show CHANGELOG.md in folder" [ref=f2e544] [cursor=pointer]:
+                  - generic [ref=f2e545]:
+                    - generic [aria-hidden]:
+                      - generic: M↓
+                  - strong [ref=f2e546]: CHANGELOG.md
+                  - generic [ref=f2e547]: rile · 4.8 KB
+                - button "Show App.tsx in folder" [ref=f2e548] [cursor=pointer]:
+                  - strong [ref=f2e550]: App.tsx
+                  - generic [ref=f2e551]: rile · 2.9 KB
+                - button "Show main.rs in folder" [ref=f2e552] [cursor=pointer]:
+                  - generic [ref=f2e553]:
+                    - generic [aria-hidden]:
+                      - generic: R
+                  - strong [ref=f2e554]: main.rs
+                  - generic [ref=f2e555]: rile · 4.3 KB
+                - button "Show README.md in folder" [ref=f2e556] [cursor=pointer]:
+                  - generic [ref=f2e557]:
+                    - generic [aria-hidden]:
+                      - generic: M↓
+                  - strong [ref=f2e558]: README.md
+                  - generic [ref=f2e559]: rile · 6.7 KB
+            - region "Storage locations" [ref=f2e560]:
+              - button "Macintosh HD 228 GB available of 512 GB" [ref=f2e561] [cursor=pointer]:
+                - generic [ref=f2e565]:
+                  - strong [ref=f2e566]: Macintosh HD
+                  - generic [ref=f2e567]: 228 GB available of 512 GB
+              - button "Studio SSD 1.27 TB available of 2.00 TB" [ref=f2e572] [cursor=pointer]:
+                - generic [ref=f2e576]:
+                  - strong [ref=f2e577]: Studio SSD
+                  - generic [ref=f2e578]: 1.27 TB available of 2.00 TB
+            - generic [ref=f2e583]: Design preview · file counts reflect sample data; disk usage and discovery history are illustrative.
+      - generic [ref=f2e363]:
+        - generic [ref=f2e364]: 33 sample files · 2 disks
+        - generic [ref=f2e365]: Design preview · sample files
+  - status

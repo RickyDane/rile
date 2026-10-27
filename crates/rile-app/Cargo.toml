@@ -1,0 +1,51 @@
+[package]
+name = "rile-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "rile"
+path = "src/main.rs"
+
+[features]
+default = ["ai"]
+# On-device AI via Apple Foundation Models (macOS 26+, Apple Silicon only).
+ai = ["dep:spotlight-llm"]
+
+[dependencies]
+rile-core.workspace = true
+rile-services.workspace = true
+rile-plugins.workspace = true
+rile-remote.workspace = true
+serde.workspace = true
+toml.workspace = true
+serde_json = "1"
+dirs.workspace = true
+gpui-kit.workspace = true
+anyhow.workspace = true
+smol.workspace = true
+humansize.workspace = true
+chrono.workspace = true
+imagesize = "0.13"
+# Thumbnails (same crate/version gpui decodes with).
+image = { version = "0.25", default-features = false, features = ["bmp", "gif", "ico", "jpeg", "png", "tiff", "webp"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Lower thread priority (QoS) for background photo describing.
+libc = "0.2"
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSImage"] }
+
+[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
+spotlight-llm = { version = "0.1.2", optional = true }
+
+[dev-dependencies]
+gpui-pre = { version = "=0.3.10", features = ["test-support"] }
+tempfile.workspace = true
+async-trait = "0.1"
+libunftp = { version = "0.23", default-features = false, features = ["ring"] }
+unftp-sbe-fs = "0.4"
+unftp-core = "0.1"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "time"] }

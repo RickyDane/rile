@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>rile / six icon directions</title>
+<link rel="icon" type="image/svg+xml" href="01-ribbon.svg">
+<style>
+  :root { color-scheme:dark; --bg:#17191c; --card:#202328; --stage:#292d33; --text:#f1f2ee; --muted:#9da5af; --line:#ffffff14; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; transition:background .2s,color .2s; }
+  body.light { color-scheme:light; --bg:#f3f2ee; --card:#fffefa; --stage:#e9e9e5; --text:#252a30; --muted:#646c75; --line:#00000016; }
+  header,main,footer { max-width:1260px; margin:auto; padding-left:32px; padding-right:32px; }
+  header { padding-top:32px; padding-bottom:24px; }
+  .topline,.tools,.controls,.card-head,.sizes { display:flex; align-items:center; }
+  .topline { justify-content:space-between; gap:16px; margin-bottom:22px; }
+  .wordmark { font-size:27px; font-weight:720; letter-spacing:-1.5px; }
+  .edition,.eyebrow { font-size:10px; text-transform:uppercase; letter-spacing:2px; color:var(--muted); }
+  h1 { font-size:clamp(27px,4vw,40px); letter-spacing:-1.4px; line-height:1.12; font-weight:580; margin:0 0 12px; }
+  header p { color:var(--muted); margin:0; max-width:620px; }
+  .tools { justify-content:space-between; gap:16px; margin-top:24px; }
+  .controls { gap:5px; padding:4px; border:1px solid var(--line); border-radius:10px; }
+  button { font:inherit; cursor:pointer; color:var(--muted); background:transparent; border:0; border-radius:6px; padding:6px 14px; }
+  button[aria-pressed="true"] { color:var(--text); background:var(--stage); }
+  a { color:inherit; text-underline-offset:4px; }
+  button:focus-visible,a:focus-visible { outline:2px solid #7aace9; outline-offset:4px; }
+  .hint { font-size:12px; color:var(--muted); }
+  main { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; padding-bottom:24px; }
+  article { border:1px solid var(--line); border-radius:18px; overflow:hidden; background:var(--card); }
+  .stage { height:220px; display:grid; place-items:center; background:var(--stage); border-bottom:1px solid var(--line); }
+  .hero { width:214px; height:214px; transition:transform .2s; }
+  article:hover .hero { transform:translateY(-4px); }
+  .info { padding:18px 20px; }
+  .card-head { gap:10px; margin-bottom:5px; }
+  .number { font:11px ui-monospace,monospace; color:var(--muted); }
+  h2 { font-size:18px; letter-spacing:-.4px; margin:0; font-weight:600; }
+  .eyebrow { letter-spacing:1.2px; margin:8px 0; }
+  .description { color:var(--muted); font-size:12px; min-height:54px; margin:0; }
+  .sizes { gap:16px; margin-top:16px; padding-top:12px; border-top:1px solid var(--line); height:65px; }
+  .sizes img { display:block; }
+  .sizes a { font-size:11px; margin-left:auto; white-space:nowrap; color:var(--muted); }
+  footer { display:flex; justify-content:space-between; gap:20px; padding-bottom:28px; color:var(--muted); font-size:11px; }
+  @media(min-width:1400px) { .stage { height:256px; } .hero { width:244px; height:244px; } }
+  @media(max-width:900px) { main { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media(max-width:560px) { header,main,footer { padding-left:18px; padding-right:18px; } main { grid-template-columns:1fr; } .edition { display:none; } .tools,footer { flex-wrap:wrap; } .stage { height:240px; } .hero { width:234px; height:234px; } }
+  @media(prefers-reduced-motion:reduce) { * { transition:none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="topline"><span class="wordmark">rile<span style="color:#87b9ec">.</span></span><span class="edition">Icon explorations / Round 02</span></div>
+  <h1>Six ways to make an entrance.</h1>
+  <p>A fast file explorer deserves a distinct place in your Dock. Six original directions, from familiar folders to a new signature.</p>
+  <div class="tools"><div class="controls" role="group" aria-label="Preview background"><button type="button" data-theme="dark" aria-pressed="true">Dark</button><button type="button" data-theme="light" aria-pressed="false">Light</button></div><span class="hint">Compare below at 48, 32 &amp; 16 px · SVG originals included</span></div>
+</header>
+<main>
+  <article aria-labelledby="concept-1">
+    <div class="stage"><img class="hero" src="01-ribbon.svg" alt="Ribbon R app icon" width="214" height="214"></div>
+    <div class="info">
+      <div class="card-head"><span class="number">01</span><h2 id="concept-1">Ribbon R</h2></div>
+      <p class="eyebrow">The signature</p>
+      <p class="description">A folded ribbon becomes a lowercase r. Quiet, ownable, and unmistakable in the Dock.</p>
+      <div class="sizes" aria-label="Small size previews">
+        <img src="01-ribbon.svg" width="48" height="48" alt="Ribbon R at 48 pixels">
+        <img src="01-ribbon.svg" width="32" height="32" alt="Ribbon R at 32 pixels">
+        <img src="01-ribbon.svg" width="16" height="16" alt="Ribbon R at 16 pixels">
+        <a href="01-ribbon.svg" download="01-ribbon.svg" aria-label="Download Ribbon R SVG">Download SVG ↗</a>
+      </div>
+    </div>
+  </article>
+  <article aria-labelledby="concept-2">
+    <div class="stage"><img class="hero" src="02-open-tab.svg" alt="Open Tab app icon" width="214" height="214"></div>
+    <div class="info">
+      <div class="card-head"><span class="number">02</span><h2 id="concept-2">Open Tab</h2></div>
+      <p class="eyebrow">The familiar, refined</p>
+      <p class="description">An open blue folder with a crisp paper inset. Native file-manager DNA, stripped to the essentials.</p>
+      <div class="sizes" aria-label="Small size previews">
+        <img src="02-open-tab.svg" width="48" height="48" alt="Open Tab at 48 pixels">
+        <img src="02-open-tab.svg" width="32" height="32" alt="Open Tab at 32 pixels">
+        <img src="02-open-tab.svg" width="16" height="16" alt="Open Tab at 16 pixels">
+        <a href="02-open-tab.svg" download="02-open-tab.svg" aria-label="Download Open Tab SVG">Download SVG ↗</a>
+      </div>
+    </div>
+  </article>
+  <article aria-labelledby="concept-3">
+    <div class="stage"><img class="hero" src="03-wayfinder.svg" alt="Wayfinder app icon" width="214" height="214"></div>
+    <div class="info">
+      <div class="card-head"><span class="number">03</span><h2 id="concept-3">Wayfinder</h2></div>
+      <p class="eyebrow">Find your way</p>
+      <p class="description">A luminous compass needle inside a precise circular frame. For discovery, not just storage.</p>
+      <div class="sizes" aria-label="Small size previews">
+        <img src="03-wayfinder.svg" width="48" height="48" alt="Wayfinder at 48 pixels">
+        <img src="03-wayfinder.svg" width="32" height="32" alt="Wayfinder at 32 pixels">
+        <img src="03-wayfinder.svg" width="16" height="16" alt="Wayfinder at 16 pixels">
+        <a href="03-wayfinder.svg" download="03-wayfinder.svg" aria-label="Download Wayfinder SVG">Download SVG ↗</a>
+      </div>
+    </div>
+  </article>
+  <article aria-labelledby="concept-4">
+    <div class="stage"><img class="hero" src="04-panes.svg" alt="Parallel app icon" width="214" height="214"></div>
+    <div class="info">
+      <div class="card-head"><span class="number">04</span><h2 id="concept-4">Parallel</h2></div>
+      <p class="eyebrow">Built for flow</p>
+      <p class="description">Two offset panes and a forward-moving cut. A nod to dual-pane browsing and effortless transfers.</p>
+      <div class="sizes" aria-label="Small size previews">
+        <img src="04-panes.svg" width="48" height="48" alt="Parallel at 48 pixels">
+        <img src="04-panes.svg" width="32" height="32" alt="Parallel at 32 pixels">
+        <img src="04-panes.svg" width="16" height="16" alt="Parallel at 16 pixels">
+        <a href="04-panes.svg" download="04-panes.svg" aria-label="Download Parallel SVG">Download SVG ↗</a>
+      </div>
+    </div>
+  </article>
+  <article aria-labelledby="concept-5">
+    <div class="stage"><img class="hero" src="05-swift.svg" alt="Swift Fold app icon" width="214" height="214"></div>
+    <div class="info">
+      <div class="card-head"><span class="number">05</span><h2 id="concept-5">Swift Fold</h2></div>
+      <p class="eyebrow">A little more energy</p>
+      <p class="description">A single paper fold in warm orange. A bold silhouette that makes a fast explorer feel fast.</p>
+      <div class="sizes" aria-label="Small size previews">
+        <img src="05-swift.svg" width="48" height="48" alt="Swift Fold at 48 pixels">
+        <img src="05-swift.svg" width="32" height="32" alt="Swift Fold at 32 pixels">
+        <img src="05-swift.svg" width="16" height="16" alt="Swift Fold at 16 pixels">
+        <a href="05-swift.svg" download="05-swift.svg" aria-label="Download Swift Fold SVG">Download SVG ↗</a>
+      </div>
+    </div>
+  </article>
+  <article aria-labelledby="concept-6">
+    <div class="stage"><img class="hero" src="06-trail.svg" alt="Trail app icon" width="214" height="214"></div>
+    <div class="info">
+      <div class="card-head"><span class="number">06</span><h2 id="concept-6">Trail</h2></div>
+      <p class="eyebrow">Everything connected</p>
+      <p class="description">A branching path forms an abstract r. Your folders, locations, and connections in one simple mark.</p>
+      <div class="sizes" aria-label="Small size previews">
+        <img src="06-trail.svg" width="48" height="48" alt="Trail at 48 pixels">
+        <img src="06-trail.svg" width="32" height="32" alt="Trail at 32 pixels">
+        <img src="06-trail.svg" width="16" height="16" alt="Trail at 16 pixels">
+        <a href="06-trail.svg" download="06-trail.svg" aria-label="Download Trail SVG">Download SVG ↗</a>
+      </div>
+    </div>
+  </article>
+</main>
+<footer><span>1024 × 1024 vector artwork · Shared macOS-style silhouette · No external assets</span><span>Suggestions only — the app icon is unchanged.</span></footer>
+<script>
+  document.querySelectorAll('[data-theme]').forEach(button => {
+    button.addEventListener('click', () => {
+      document.body.classList.toggle('light', button.dataset.theme === 'light');
+      document.querySelectorAll('[data-theme]').forEach(option => option.setAttribute('aria-pressed', String(option === button)));
+    });
+  });
+</script>
+</body>
+</html>

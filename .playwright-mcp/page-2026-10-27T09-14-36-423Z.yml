@@ -1,0 +1,96 @@
+- generic [active] [ref=f13e70]:
+  - generic [ref=f13e71]:
+    - complementary "Sidebar" [ref=f13e72]:
+      - generic [ref=f13e73]: rile.
+      - generic [ref=f13e79]:
+        - generic [ref=f13e80]: r
+        - generic [ref=f13e81]:
+          - text: Personal
+          - generic [ref=f13e82]: Local workspace
+        - generic "On this device" [ref=f13e83]
+      - navigation "Places" [ref=f13e84]:
+        - generic [ref=f13e85]:
+          - heading "Library" [level=2] [ref=f13e86]
+          - button "Home" [ref=f13e87] [cursor=pointer]
+          - button "Recents" [ref=f13e93] [cursor=pointer]
+          - button "Favorites" [ref=f13e99] [cursor=pointer]
+        - generic [ref=f13e104]:
+          - heading "Favorites" [level=2] [ref=f13e105]
+          - button "Desktop" [ref=f13e106] [cursor=pointer]
+          - button "Documents" [ref=f13e112] [cursor=pointer]
+          - button "Downloads" [ref=f13e118] [cursor=pointer]:
+            - generic [ref=f13e123]: "4"
+          - button "Pictures" [ref=f13e124] [cursor=pointer]
+          - button "Projects" [ref=f13e131] [cursor=pointer]
+        - generic [ref=f13e136]:
+          - heading "Devices" [level=2] [ref=f13e137]
+          - button "MacBook Pro" [ref=f13e138] [cursor=pointer]
+          - button "Macintosh HD" [ref=f13e145] [cursor=pointer]
+          - button "Studio SSD" [ref=f13e151] [cursor=pointer]:
+            - generic [ref=f13e157]: USB
+        - generic [ref=f13e158]:
+          - heading "Tags" [level=2] [ref=f13e159]
+          - button "Work" [ref=f13e160] [cursor=pointer]
+          - button "Personal" [ref=f13e163] [cursor=pointer]
+          - button "Important" [ref=f13e166] [cursor=pointer]
+      - generic [ref=f13e169]:
+        - generic [ref=f13e175]:
+          - text: Macintosh HD
+          - generic [ref=f13e176]: 228 GB available of 512 GB
+        - generic [ref=f13e179]: On your device. Not in an index.
+    - main [ref=f13e181]:
+      - generic [ref=f13e182]:
+        - generic [ref=f13e183]:
+          - button "Toggle sidebar" [pressed] [ref=f13e184] [cursor=pointer]
+          - button "Back" [ref=f13e190] [cursor=pointer]
+          - button "Forward" [disabled] [ref=f13e194]
+        - generic [ref=f13e198]:
+          - button "MacBook Pro" [ref=f13e800] [cursor=pointer]
+          - strong [ref=f13e803]: Studio SSD
+        - generic [ref=f13e206]:
+          - searchbox "Search this folder" [ref=f13e804]
+          - generic [ref=f13e212]: ⌘ F
+        - button "Toggle inspector" [pressed] [ref=f13e213] [cursor=pointer]
+      - generic [ref=f13e217]:
+        - tablist "Open folders" [ref=f13e218]:
+          - tab "Studio SSD" [selected] [ref=f13e805] [cursor=pointer]
+          - button "Close Studio SSD tab" [ref=f13e810] [cursor=pointer]
+          - tab "rile" [ref=f13e813] [cursor=pointer]
+          - button "Close rile tab" [ref=f13e817] [cursor=pointer]
+        - button "New tab" [ref=f13e233] [cursor=pointer]
+      - generic [ref=f13e237]:
+        - region "File browser" [ref=f13e238]:
+          - generic [ref=f13e239]:
+            - generic [ref=f13e240]:
+              - heading "Studio SSD" [level=1] [ref=f13e823]
+              - generic [ref=f13e245]: 2 items
+            - generic [ref=f13e246]:
+              - button "New folder" [ref=f13e247] [cursor=pointer]
+              - group "View" [ref=f13e252]:
+                - button "Icon view" [pressed] [ref=f13e253] [cursor=pointer]
+                - button "List view" [ref=f13e260] [cursor=pointer]
+                - button "Column view" [ref=f13e264] [cursor=pointer]
+              - button "Sort files" [ref=f13e270] [cursor=pointer]
+              - button "More options" [ref=f13e275] [cursor=pointer]
+          - tabpanel "Studio SSD" [ref=f13e824]:
+            - generic [ref=f13e825]:
+              - button "Select Backups" [ref=f13e826] [cursor=pointer]:
+                - generic [ref=f13e827]: Backups
+                - generic [ref=f13e828]: 1 item
+              - button "Select Media" [ref=f13e830] [cursor=pointer]:
+                - generic [ref=f13e831]: Media
+                - generic [ref=f13e832]: 1 item
+          - generic "Folder path" [ref=f13e333]:
+            - button "Studio SSD" [ref=f13e834] [cursor=pointer]
+        - complementary "File inspector" [ref=f13e346]:
+          - generic [ref=f13e838]:
+            - generic [ref=f13e839]: Inspector
+            - button "Close inspector" [ref=f13e840] [cursor=pointer]
+          - generic [ref=f13e843]:
+            - heading "A closer look." [level=2] [ref=f13e847]
+            - paragraph [ref=f13e848]: Select a file to see its previewand details here.
+      - generic [ref=f13e358]:
+        - generic [ref=f13e359]: 2 items
+        - generic [ref=f13e360]: Design preview · sample files
+        - slider "Icon size" [ref=f13e368] [cursor=pointer]: "134"
+  - status
