@@ -304,7 +304,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let lock = Lock::acquire(dir.path()).unwrap();
         // Same process may not hold it twice through a stale-looking file...
-        fs::write(dir.path().join("lock"), "1").unwrap(); // pid 1 (launchd/init) is alive
+        // pid 1 (launchd/init) and pid 4 (Windows' System process) are always alive.
+        fs::write(dir.path().join("lock"), if cfg!(windows) { "4" } else { "1" }).unwrap();
         assert!(Lock::acquire(dir.path()).is_err());
         drop(lock);
         assert!(!dir.path().join("lock").exists());
