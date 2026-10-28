@@ -359,7 +359,12 @@ mod tests {
         assert_eq!(p.name, "hello.txt");
         assert_eq!(p.size, 11);
         assert!(!p.is_dir && !p.is_symlink);
-        assert_eq!(p.kind_label, "TXT file");
+        // Windows reports the registered file type's name ("Text Document").
+        if cfg!(windows) {
+            assert!(!p.kind_label.is_empty());
+        } else {
+            assert_eq!(p.kind_label, "TXT file");
+        }
         assert_eq!(p.mime.as_deref(), Some("text/plain"));
         assert!(p.modified.is_some());
         #[cfg(unix)]

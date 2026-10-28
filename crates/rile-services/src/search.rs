@@ -675,7 +675,7 @@ mod tests {
         assert!(!contains_ascii_ci(b"Hello", b"xyz"));
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(any(target_os = "macos", windows)))]
     #[test]
     fn spotlight_unsupported() {
         assert!(spotlight_search("x", None, 10, &AtomicBool::new(false)).is_err());

@@ -713,20 +713,37 @@ mod tests {
         assert!(paths.contains(&(SuggestionKind::Caches, "Library/Caches/com.app".into())));
         assert!(paths.contains(&(SuggestionKind::Installers, "Setup.dmg".into())));
         assert!(paths.contains(&(SuggestionKind::Logs, "Logs".into())));
-        assert!(paths.contains(&(SuggestionKind::Logs, "Library/Logs/SomeApp".into())));
-        assert!(paths.contains(&(SuggestionKind::Logs, "Library/Logs/b.log".into())));
-        assert!(!paths.iter().any(|(_, p)| p == Path::new("Library/Logs") || p == Path::new("Library/Caches")), "protected folders are never offered");
+        // `Library` is managed by the system only on macOS.
+        if cfg!(not(windows)) {
+            assert!(paths.contains(&(SuggestionKind::Logs, "Library/Logs/SomeApp".into())));
+            assert!(paths.contains(&(SuggestionKind::Logs, "Library/Logs/b.log".into())));
+            assert!(!paths.iter().any(|(_, p)| p == Path::new("Library/Logs") || p == Path::new("Library/Caches")), "protected folders are never offered");
+        }
         assert!(!paths.iter().any(|(_, p)| p.starts_with("notes")), "target without Cargo.toml is user data");
         assert!(!paths.iter().any(|(_, p)| p.starts_with("go")), "module caches are left to their tools");
         assert!(!paths.iter().any(|(_, p)| p.ends_with("y")), "nested suggestions are not double counted");
     }
 
+    #[cfg(not(windows))]
     #[test]
     fn system_folders_are_protected() {
         for p in ["/", "/Users", "/System", "/Users/me", "/Users/me/Library", "/Users/me/Library/Logs", "/Library/Caches"] {
             assert!(is_protected(Path::new(p)), "{p}");
         }
         for p in ["/Users/me/Library/Logs/App", "/Users/me/Library/Caches/com.app", "/Users/me/Coding/x/node_modules"] {
+            assert!(!is_protected(Path::new(p)), "{p}");
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn system_folders_are_protected() {
+        let system_root = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".into());
+        let system32 = format!(r"{system_root}\System32");
+        for p in [r"C:\", r"C:\Users", r"C:\Program Files\App", system32.as_str(), r"C:\Users\me", r"C:\Users\me\AppData", r"C:\Users\me\AppData\Local"] {
+            assert!(is_protected(Path::new(p)), "{p}");
+        }
+        for p in [r"C:\Users\me\AppData\Local\Temp", r"C:\Users\me\Coding\x\node_modules"] {
             assert!(!is_protected(Path::new(p)), "{p}");
         }
     }
