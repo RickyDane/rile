@@ -125,7 +125,11 @@ pub fn model(config: &BackupConfig, history: &HashMap<String, Vec<RunRecord>>, l
         if let Some(s) = status {
             // Always the same three lines while running, so the open menu
             // only changes text (see `MenuModel::shape`).
-            let rates = rile_backup::format_rates(s.bytes_per_sec, s.items_per_sec);
+            let mut rates = rile_backup::format_rates(s.bytes_per_sec, s.items_per_sec);
+            if let Some(eta) = s.eta() {
+                if !rates.is_empty() { rates.push_str(" · "); }
+                rates.push_str(&format!("~{eta}"));
+            }
             details.push(if rates.is_empty() { "Measuring speed…".into() } else { rates });
             details.push(if s.files_total > 0 {
                 format!("{} of {} changes", s.files_done, s.files_total)
@@ -774,7 +778,7 @@ mod tests {
         assert_eq!((busy.icon, busy.title.as_str()), (Icon::Running, "Backing up — 25% · 12.4 MB/s · 85 items/s"));
         assert_eq!(busy.jobs[0].title, "Work — Copying 25%");
         assert!(busy.jobs[0].running && !busy.jobs[0].can_run);
-        assert_eq!(busy.jobs[0].details, ["12.4 MB/s · 85 items/s", "1 of 4 changes", "Docs/a.txt"]);
+        assert_eq!(busy.jobs[0].details, ["12.4 MB/s · 85 items/s · ~1 s left", "1 of 4 changes", "Docs/a.txt"]);
         // Progress changes text, never the menu's items.
         let starting = RunStatus { bytes_per_sec: 0., items_per_sec: 0., files_total: 0, current: String::new(), ..status(0, 0) };
         let early = model(&config, &history, &HashMap::from([("a".to_string(), starting)]), now);

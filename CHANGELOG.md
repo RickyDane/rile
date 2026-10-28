@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.1
+
+### Backups
+- Show an estimated time remaining during backup transfers on the Backups page and in the backup status menu.
+
 ## v0.7.0
 
 ### Windows support

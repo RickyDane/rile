@@ -167,6 +167,19 @@ pub struct RunStatus {
 }
 
 impl RunStatus {
+    /// Estimated remaining copy time, based on the current transfer rate.
+    pub fn eta(&self) -> Option<String> {
+        if self.phase != "Copying" || self.bytes_done >= self.bytes_total || !self.bytes_per_sec.is_finite() || self.bytes_per_sec < 1. {
+            return None;
+        }
+        let seconds = ((self.bytes_total - self.bytes_done) as f64 / self.bytes_per_sec).ceil() as u64;
+        Some(match seconds {
+            0..60 => format!("{seconds} s left"),
+            60..3600 => format!("{} min left", seconds.div_ceil(60)),
+            _ => format!("{} h {} min left", seconds / 3600, seconds % 3600 / 60),
+        })
+    }
+
     /// Overall progress (0..1) once copying has started.
     pub fn fraction(&self) -> Option<f32> {
         if self.bytes_total > 0 {

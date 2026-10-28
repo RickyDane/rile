@@ -260,7 +260,11 @@ fn job_card(ws: &Workspace, ix: usize, job: &BackupJob, ch: &Chrome, cx: &mut Co
             String::new()
         };
         let label = if running.is_some() { format!("{}…", status.phase) } else { format!("{}… (in the background)", status.phase) };
-        let rates = rile_backup::format_rates(status.bytes_per_sec, status.items_per_sec);
+        let mut rates = rile_backup::format_rates(status.bytes_per_sec, status.items_per_sec);
+        if let Some(eta) = status.eta() {
+            if !rates.is_empty() { rates.push_str(" · "); }
+            rates.push_str(&format!("~{eta}"));
+        }
         v_flex()
             .gap(px(6.))
             .child(h_flex().justify_between().gap_2()
