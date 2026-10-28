@@ -296,9 +296,20 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
         .when_some(ws.updates.available.as_ref().map(|r| r.version.clone()), |d, v| {
             d.child(
                 Button::new("update").cursor_pointer()
-                    .primary()
+                    .ghost()
                     .xsmall()
-                    .label(format!("Update {v}"))
+                    .h(px(27.))
+                    .px(px(9.))
+                    .rounded(px(7.))
+                    .bg(ch.accent.opacity(0.12))
+                    .border_1()
+                    .border_color(ch.accent.opacity(0.25))
+                    .text_color(ch.accent)
+                    .text_size(px(11.))
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .child(h_flex().gap(px(6.))
+                        .child(crate::icons::icon(IconName::Download).size(px(14.)))
+                        .child(format!("Update {v}")))
                     .on_click(cx.listener(|this, _, w, cx| this.open_update_dialog(w, cx))),
             )
         })

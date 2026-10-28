@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.1
+
+- Refine the toolbar update button with a compact, accent-tinted appearance and a download icon.
+
 ## v0.6.0
 
 ### Backups
