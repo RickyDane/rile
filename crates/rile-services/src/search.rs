@@ -24,7 +24,8 @@ const MAX_LINE_CHARS: usize = 200;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NameMatch {
-    /// Plain substring; an empty string matches everything.
+    /// Substring; whitespace also matches filename separators (`_`, `-`, `.`).
+    /// An empty string matches everything. Use regex for literal whitespace.
     Substring(String),
     /// Shell glob matched against the file name (e.g. `*.rs`).
     Glob(String),
@@ -124,6 +125,10 @@ impl NameMatcher {
     pub(crate) fn new(m: &NameMatch, case_sensitive: bool) -> Result<Self> {
         Ok(match m {
             NameMatch::Substring(s) if s.is_empty() => Self::All,
+            NameMatch::Substring(s) if s.chars().any(char::is_whitespace) && !s.trim().is_empty() => {
+                let pattern = s.split_whitespace().map(regex::escape).collect::<Vec<_>>().join(r"[\s_.-]+");
+                Self::Regex(regex::RegexBuilder::new(&pattern).case_insensitive(!case_sensitive).build()?)
+            }
             NameMatch::Substring(s) => Self::Substring {
                 needle: if case_sensitive { s.clone() } else { s.to_lowercase() },
                 case_sensitive,
@@ -531,6 +536,27 @@ mod tests {
         assert_eq!(s.matched, 2);
         q.case_sensitive = true;
         assert!(run(&q).0.is_empty());
+    }
+
+    #[test]
+    fn phrase_matches_filename_separators_without_broadening_literal_patterns() {
+        let tmp = tempfile::tempdir().unwrap();
+        for name in ["professor_layton.nds", "Professor-Layton.sav", "professor.layton.txt", "professor layton.pdf", "professor_unrelated_layton.nds", "layton_professor.nds"] {
+            fs::write(tmp.path().join(name), "").unwrap();
+        }
+        let mut q = SearchQuery::new(tmp.path());
+        q.name = NameMatch::Substring("Professor Layton".into());
+        assert_eq!(run(&q).0.len(), 4);
+        q.case_sensitive = true;
+        assert_eq!(names(&run(&q).0), ["Professor-Layton.sav"]);
+        q.case_sensitive = false;
+        q.name = NameMatch::Substring("professor_layton".into());
+        assert_eq!(names(&run(&q).0), ["professor_layton.nds"]);
+        q.name = NameMatch::Regex("professor layton".into());
+        assert_eq!(names(&run(&q).0), ["professor layton.pdf"]);
+        let literal = NameMatcher::new(&NameMatch::Substring("a+b c".into()), false).unwrap();
+        assert!(literal.is_match("a+b_c.txt"));
+        assert!(!literal.is_match("aaab_c.txt"));
     }
 
     #[test]

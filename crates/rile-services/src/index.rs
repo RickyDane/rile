@@ -306,6 +306,20 @@ mod tests {
     use crate::search::NameMatch;
 
     #[test]
+    fn phrase_search_matches_the_same_names_in_memory_and_on_disk() {
+        let tmp = tempfile::tempdir().unwrap();
+        fs::write(tmp.path().join("professor_layton.nds"), "").unwrap();
+        fs::write(tmp.path().join("unrelated.pdf"), "").unwrap();
+        let mut index = DiscoveryIndex::default();
+        index.record(tmp.path(), &rile_core::list_dir(tmp.path(), false).unwrap());
+        let mut query = SearchQuery::new(tmp.path());
+        query.name = NameMatch::Substring("Professor Layton".into());
+        let hits = index.query(&query);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].name.as_ref(), "professor_layton.nds");
+    }
+
+    #[test]
     fn discovered_photo_paths_exclude_folders_and_non_images() {
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path();

@@ -4,7 +4,7 @@
 
 Browse local files and remote servers, preview what matters, and search your files. Rile brings tabs, multiple views, file operations, and on-device intelligence together in a native desktop interface.
 
-[**Download for macOS**](https://github.com/RickyDane/rile/releases/latest) · [What's new in v0.6.1](CHANGELOG.md)
+[**Download for macOS**](https://github.com/RickyDane/rile/releases/latest) · [What's new in v0.6.2](CHANGELOG.md)
 
 ## See it in action
 

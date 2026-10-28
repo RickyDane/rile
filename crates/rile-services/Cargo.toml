@@ -42,6 +42,7 @@ uzers = { version = "0.12", default-features = false, features = ["cache"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"
 block2 = "0.6"
+objc2-uniform-type-identifiers = { version = "0.3", default-features = false, features = ["std", "UTType", "UTCoreTypes"] }
 
 [dev-dependencies]
 tempfile.workspace = true
@@ -57,7 +58,7 @@ features = ["std", "NSString", "NSData", "NSDictionary", "NSGeometry", "NSArray"
 [target.'cfg(target_os = "macos")'.dependencies.objc2-app-kit]
 version = "0.3"
 default-features = false
-features = ["std", "NSWorkspace", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphicsContext", "objc2-core-graphics", "block2"]
+features = ["std", "NSWorkspace", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphicsContext", "objc2-core-graphics", "block2", "objc2-uniform-type-identifiers"]
 
 [target.'cfg(target_os = "macos")'.dependencies.objc2-core-graphics]
 version = "0.3"

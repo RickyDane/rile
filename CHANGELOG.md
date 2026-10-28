@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.6.2
+
+### Search fixes
+- Match multi-word filename searches across spaces, underscores, hyphens, and dots, consistently in live searches and discovery memory; preserve case-sensitive matching and literal glob/regex behavior.
+- Check the requested scope for matching filenames before Smart Search consults the AI model, so undiscovered files are not missed; preserve search filters, cancellation, and streamed results.
+- Prevent malformed AI replies or invalid folder-opening actions from returning unrelated files as Smart Search results.
+
+### macOS integration
+- Set and detect the default file manager using the registered folder content type instead of inspecting a sample folder, avoiding access to the protected `/Users` directory.
+- Check system API availability before offering to make Rile the default file manager, and include the macOS error domain and code when changing the folder handler fails.
+
+### Maintenance
+- Add regression tests for filename matching, discovery-memory consistency, Smart Search fallbacks, and folder-type association; update macOS type-identifier dependencies.
+
 ## v0.6.1
 
 - Refine the toolbar update button with a compact, accent-tinted appearance and a download icon.

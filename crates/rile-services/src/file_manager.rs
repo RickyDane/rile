@@ -29,6 +29,7 @@ mod mac {
     use objc2::{rc::Retained, sel};
     use objc2_app_kit::NSWorkspace;
     use objc2_foundation::{NSBundle, NSError, NSGlobalDomain, NSObjectProtocol, NSString, NSURL, NSUserDefaults};
+    use objc2_uniform_type_identifiers::{UTType, UTTypeFolder};
 
     use super::Status;
 
@@ -41,13 +42,17 @@ mod mac {
         Some((bundle.bundleURL(), bundle.bundleIdentifier()?.to_string()))
     }
 
-    fn folder_url() -> Retained<NSURL> {
-        // A directory with public.folder type; do not use an app bundle/package.
-        NSURL::fileURLWithPath(&NSString::from_str("/Users"))
+    fn folder_type() -> &'static UTType {
+        // Address the registered folder type directly rather than deriving it
+        // through a sample filesystem item such as the protected /Users folder.
+        // SAFETY: UniformTypeIdentifiers provides an immutable system constant.
+        unsafe { UTTypeFolder }
     }
 
     fn folder_handler() -> Option<String> {
-        let url = NSWorkspace::sharedWorkspace().URLForApplicationToOpenURL(&folder_url())?;
+        let workspace = NSWorkspace::sharedWorkspace();
+        if !workspace.respondsToSelector(sel!(URLForApplicationToOpenContentType:)) { return None; }
+        let url = workspace.URLForApplicationToOpenContentType(folder_type())?;
         NSBundle::bundleWithURL(&url)?.bundleIdentifier().map(|id| id.to_string())
     }
 
@@ -62,7 +67,8 @@ mod mac {
         objc2::rc::autoreleasepool(|_| {
             let bundle = rile_bundle();
             Status {
-                can_set_rile: bundle.is_some(),
+                can_set_rile: bundle.is_some() && NSWorkspace::sharedWorkspace()
+                    .respondsToSelector(sel!(setDefaultApplicationAtURL:toOpenContentType:completionHandler:)),
                 is_default: bundle.is_some_and(|(_, id)| folder_handler().as_deref() == Some(&id) && viewer().as_deref() == Some(&id)),
             }
         })
@@ -82,7 +88,7 @@ mod mac {
     pub fn set_default(rile: bool, complete: impl FnOnce(Result<()>) + Send + 'static) {
         let setup = (|| -> Result<_> {
             let workspace = NSWorkspace::sharedWorkspace();
-            if !workspace.respondsToSelector(sel!(setDefaultApplicationAtURL:toOpenContentTypeOfFileAtURL:completionHandler:)) {
+            if !workspace.respondsToSelector(sel!(setDefaultApplicationAtURL:toOpenContentType:completionHandler:)) {
                 bail!("Changing the default file manager requires macOS 12 or later");
             }
             let (url, id) = if rile {
@@ -104,7 +110,7 @@ mod mac {
             let Some(complete) = complete.lock().unwrap().take() else { return };
             // NSError is borrowed only for the duration of this completion block.
             let result = if let Some(error) = unsafe { error.as_ref() } {
-                Err(anyhow!("macOS didn't change the folder handler: {}", error.localizedDescription()))
+                Err(anyhow!("macOS didn't change the folder handler: {} ({} {})", error.localizedDescription(), error.domain(), error.code()))
             } else if folder_handler().as_deref() != Some(&id) {
                 Err(anyhow!("macOS kept the existing folder handler"))
             } else {
@@ -112,12 +118,19 @@ mod mac {
             };
             complete(result);
         });
-        workspace.setDefaultApplicationAtURL_toOpenContentTypeOfFileAtURL_completionHandler(&url, &folder_url(), Some(&block));
+        workspace.setDefaultApplicationAtURL_toOpenContentType_completionHandler(&url, folder_type(), Some(&block));
     }
 
     #[cfg(test)]
     mod tests {
         use super::*;
+
+        #[test]
+        fn association_targets_the_registered_folder_type() {
+            assert_eq!(folder_type().identifier().to_string(), "public.folder");
+            // Lookup needs no sample directory, filesystem access or writes.
+            assert!(folder_handler().is_some());
+        }
 
         #[test]
         fn standalone_binary_cannot_become_default() {

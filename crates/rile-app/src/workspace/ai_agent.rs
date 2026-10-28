@@ -321,6 +321,39 @@ pub fn smart_search(
     if cancel.load(Ordering::Relaxed) {
         bail!("Cancelled");
     }
+    // Never let model guesses or incomplete discovery memory hide a real
+    // filename match. Walk the requested scope before semantic expansion,
+    // using the same separator-aware matcher and filters as ordinary search.
+    if !request.trim().is_empty() {
+        log("Searching file names…".into());
+        let mut query = base.clone();
+        query.root = start.to_path_buf();
+        query.name = NameMatch::Substring(request.trim().to_string());
+        // A subject-folder name alone must still go through the semantic
+        // path, which retrieves its contents rather than just the folder.
+        if query.kind == KindFilter::Any {
+            query.kind = KindFilter::Files;
+        }
+        let batch = std::sync::Mutex::new((Vec::new(), Instant::now()));
+        let stats = rile_services::search::search(&query, cancel, |hit| {
+            let mut batch = batch.lock().unwrap();
+            batch.0.push(hit.entry);
+            if batch.0.len() >= 256 || batch.1.elapsed() >= Duration::from_millis(50) {
+                push(std::mem::take(&mut batch.0));
+                batch.1 = Instant::now();
+            }
+        })?;
+        if cancel.load(Ordering::Relaxed) {
+            bail!("Cancelled");
+        }
+        let rest = batch.into_inner().unwrap().0;
+        if !rest.is_empty() {
+            push(rest);
+        }
+        if stats.matched > 0 {
+            return Ok(stats.matched as usize);
+        }
+    }
     log("Understanding the request…".into());
     let plan = parse_plan(&complete(&format!("Request: {request}"), PLAN_INSTRUCTIONS)?).unwrap_or_default();
     let memory_root = if start.starts_with(home()) { home() } else { start.to_path_buf() };
@@ -344,7 +377,7 @@ pub fn smart_search(
     if found > 0 {
         return Ok(found);
     }
-    let found = browse_search(request, start, &plan, cancel, log)?;
+    let found = browse_search(request, start, &plan, cancel, log, complete)?;
     let count = found.len();
     if count > 0 && !cancel.load(Ordering::Relaxed) {
         push(found);
@@ -352,7 +385,10 @@ pub fn smart_search(
     Ok(count)
 }
 
-fn browse_search(request: &str, start: &Path, plan: &Plan, cancel: &AtomicBool, log: Log) -> Result<Vec<Entry>> {
+fn browse_search(
+    request: &str, start: &Path, plan: &Plan, cancel: &AtomicBool, log: Log,
+    mut respond: impl FnMut(&str, &str) -> Result<String>,
+) -> Result<Vec<Entry>> {
     let cancelled = || cancel.load(Ordering::Relaxed);
 
     let mut candidates: Vec<Candidate> = Vec::new();
@@ -375,7 +411,7 @@ fn browse_search(request: &str, start: &Path, plan: &Plan, cancel: &AtomicBool, 
     };
     remembered.sort_by_cached_key(|(p, dir)| (!hits_keyword(p), !p.starts_with(start), !dir, p.clone()));
     let mut remembered_folders = Vec::new();
-    for entry in semantic_memory(request, &remembered, cancel, log, complete)? {
+    for entry in semantic_memory(request, &remembered, cancel, log, &mut respond)? {
         if entry.is_dir {
             remembered_folders.push(entry.path.clone());
         }
@@ -465,11 +501,11 @@ fn browse_search(request: &str, start: &Path, plan: &Plan, cancel: &AtomicBool, 
             prompt.push_str("\nNo more folders can be opened: answer with \"done\".\n");
         }
         log(if round == 0 { "Thinking about where to look…".into() } else { "Comparing what it found…".into() });
-        let reply = complete(&prompt, PICK_INSTRUCTIONS)?;
+        let reply = respond(&prompt, PICK_INSTRUCTIONS)?;
         let step = match parse_step(&reply).or_else(|_| memory_picks(&reply).map(Step::Done)) {
             Ok(s) => s,
-            // A garbled reply: settle for the plan's best matches.
-            Err(_) => Step::Done((1..=shown.len().min(20)).filter(|i| matches_plan(&shown[i - 1].entry, &plan)).collect()),
+            // Type/date filters alone are not evidence of subject relevance.
+            Err(_) => Step::Done(Vec::new()),
         };
         match step {
             Step::Open(n) if round < MAX_EXPLORE && n >= 1 && n <= closed.len() => {
@@ -494,8 +530,8 @@ fn browse_search(request: &str, start: &Path, plan: &Plan, cancel: &AtomicBool, 
                 }
             }
             Step::Open(_) => {
-                // Out of range or out of rounds: decide with what we have.
-                let picks: Vec<Entry> = shown.iter().filter(|c| matches_plan(&c.entry, &plan)).take(20).map(|c| c.entry.clone()).collect();
+                // An invalid open action must not turn arbitrary files into hits.
+                let picks: Vec<Entry> = shown.iter().filter(|c| c.note == SEMANTIC_NOTE).map(|c| c.entry.clone()).collect();
                 return Ok(picks);
             }
             Step::Done(picks) => {
@@ -681,6 +717,41 @@ pub fn collect_taggable(paths: &[PathBuf], limit: usize, cancel: &AtomicBool) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn smart_search_finds_unremembered_filename_before_calling_the_model() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("Games")).unwrap();
+        std::fs::create_dir(tmp.path().join("professor_layton_notes")).unwrap();
+        let game = tmp.path().join("Games/professor_layton_and_the_curious_village.nds");
+        std::fs::write(&game, "").unwrap();
+        std::fs::write(tmp.path().join("Games/.professor_layton.nds"), "").unwrap();
+        std::fs::write(tmp.path().join("unrelated_invoice.pdf"), "").unwrap();
+        let entries = std::sync::Mutex::new(Vec::new());
+        let query = SearchQuery::new(tmp.path());
+        let count = smart_search("Professor layton", tmp.path(), &query, &AtomicBool::new(false), &|_| {}, &|batch| entries.lock().unwrap().extend(batch)).unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(entries.lock().unwrap()[0].path, game);
+        assert!(smart_search("Professor layton", tmp.path(), &query, &AtomicBool::new(true), &|_| {}, &|_| panic!("emitted after cancellation")).is_err());
+    }
+
+    #[test]
+    fn browsing_does_not_return_unrelated_files_for_invalid_model_responses() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("unrelated_invoice.pdf"), "").unwrap();
+        for reply in ["not valid json", r#"{"action":"open","folder":999}"#] {
+            let mut calls = 0;
+            let found = browse_search("Professor layton", tmp.path(), &Plan::default(), &AtomicBool::new(false), &|_| {}, |_, instructions| {
+                if instructions == MEMORY_INSTRUCTIONS {
+                    return Ok(r#"{"action":"done","picks":[]}"#.into());
+                }
+                calls += 1;
+                Ok(if calls == 1 { r#"{"action":"open","folder":1}"# } else { reply }.into())
+            }).unwrap();
+            assert_eq!(calls, 2);
+            assert!(found.is_empty());
+        }
+    }
 
     #[test]
     fn parses_plans_and_steps() {
