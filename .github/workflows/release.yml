@@ -41,7 +41,7 @@ jobs:
             arch: x86_64
             # On-device AI (Foundation Models) is Apple Silicon only.
             flags: "--no-default-features"
-    runs-on: macos-26
+    runs-on: avrea-macos-latest-16-vcpu
     steps:
       - uses: actions/checkout@v4
         with:
@@ -110,7 +110,7 @@ jobs:
 
   release:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: avrea-ubuntu-latest-2-vcpu
     steps:
       - uses: actions/download-artifact@v4
         with:
