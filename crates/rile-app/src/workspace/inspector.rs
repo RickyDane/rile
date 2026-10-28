@@ -102,7 +102,7 @@ impl Workspace {
                     .ghost()
                     .xsmall()
                     .icon(crate::icons::icon(IconName::X).size(px(13.)))
-                    .tooltip("Hide inspector (⇧⌘P)")
+                    .tooltip(format!("Hide inspector ({})", crate::views::chrome::shortcut("shift-mod-p")))
                     .on_click(cx.listener(|this, _, w, cx| this.toggle_preview_panel(&TogglePreviewPanel, w, cx))),
             );
 
@@ -240,7 +240,7 @@ impl Workspace {
                 )
             })
             .child(
-                round("inspector-open", IconName::Maximize2, if is_dir { "Open folder" } else { "Quick Look" }, false).on_click(
+                round("inspector-open", IconName::Maximize2, if is_dir { "Open folder" } else { crate::platform_text::preview() }, false).on_click(
                     cx.listener(move |this, _, w, cx| {
                         if is_dir {
                             this.pane().update(cx, |p, cx| p.open_selected(cx));
@@ -287,7 +287,7 @@ impl Workspace {
             }
         }
 
-        let open_label: SharedString = if is_dir { "Open folder".into() } else { "Quick Look".into() };
+        let open_label: SharedString = if is_dir { "Open folder".into() } else { crate::platform_text::preview().into() };
         let open_button = h_flex()
             .id("inspector-primary")
             .mx(px(20.))

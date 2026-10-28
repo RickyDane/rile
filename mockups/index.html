@@ -10,10 +10,14 @@
   <link rel="stylesheet" href="start.css">
   <link rel="stylesheet" href="native.css">
   <link rel="stylesheet" href="overview.css">
+  <link rel="stylesheet" href="windows.css">
+  <link rel="stylesheet" href="workspace.css">
+  <script src="windows.js" defer></script>
   <script src="overview-art.js" defer></script>
   <script src="start.js" defer></script>
-  <script src="icons.js" defer></script>
+  <script src="icons.js?v=workspace" defer></script>
   <script src="explorer.js" defer></script>
+  <script src="workspace-pages.js" defer></script>
 </head>
 <body data-design="native">
   <div class="explorer">
@@ -21,16 +25,17 @@
       <header class="sidebar-header"><div class="traffic-lights" aria-hidden="true"><i></i><i></i><i></i></div><span class="wordmark">rile<span>.</span></span></header>
       <div class="workspace-label"><span class="workspace-mark">r</span><span>Personal<small>Local workspace</small></span><span class="local-dot" title="On this device"></span></div>
       <nav class="places" aria-label="Places">
-        <div class="nav-section"><h2>Library</h2><button data-location="start"><span data-icon="home"></span><span>Home</span></button><button data-location="recents"><span data-icon="clock"></span><span>Recents</span></button><button data-location="favorites"><span data-icon="heart"></span><span>Favorites</span></button></div>
-        <div class="nav-section"><h2>Favorites</h2><button data-location="desktop"><span data-icon="desktop"></span><span>Desktop</span></button><button data-location="documents"><span data-icon="file"></span><span>Documents</span></button><button data-location="downloads"><span data-icon="download"></span><span>Downloads</span><small>4</small></button><button data-location="pictures"><span data-icon="image"></span><span>Pictures</span></button><button data-location="projects"><span data-icon="folder"></span><span>Projects</span></button></div>
+        <div class="nav-section"><h2>Library</h2><button data-location="start"><span data-icon="home"></span><span>Home</span></button><button data-location="photos"><span data-icon="image"></span><span>Photos</span></button><button data-location="space"><span data-icon="pie"></span><span>Space Analyzer</span></button><button data-location="backups"><span data-icon="backup"></span><span>Backups</span></button></div>
+        <div class="nav-section"><h2>Favorites</h2><button data-location="rile"><span data-icon="folder"></span><span>rile</span></button><button data-location="projects"><span data-icon="folder"></span><span>Projects</span></button><button data-location="pictures"><span data-icon="image"></span><span>Pictures</span></button></div>
+        <div class="nav-section"><h2>Locations</h2><button data-location="home"><span data-icon="home"></span><span>Home</span></button><button data-location="desktop"><span data-icon="desktop"></span><span>Desktop</span></button><button data-location="documents"><span data-icon="file"></span><span>Documents</span></button><button data-location="downloads"><span data-icon="download"></span><span>Downloads</span></button><button data-location="pictures"><span data-icon="image"></span><span>Pictures</span></button></div>
         <div class="nav-section"><h2>Devices</h2><button data-location="mac"><span data-icon="laptop"></span><span>MacBook Pro</span><i class="device-dot"></i></button><button data-location="disk"><span data-icon="drive"></span><span>Macintosh HD</span></button><button data-location="ssd"><span data-icon="drive"></span><span>Studio SSD</span><small class="device-caption">USB</small></button></div>
-        <div class="nav-section tag-navigation"><h2>Tags</h2><button data-location="tag-work"><i class="tag-dot blue"></i><span>Work</span></button><button data-location="tag-personal"><i class="tag-dot violet"></i><span>Personal</span></button><button data-location="tag-important"><i class="tag-dot orange"></i><span>Important</span></button></div>
+        <div class="nav-section"><h2>Network</h2><button data-location="network"><span data-icon="server"></span><span>Connect to server</span><span data-icon="plus"></span></button></div>
       </nav>
-      <footer class="sidebar-footer"><div class="drive-summary"><span data-icon="drive"></span><span>Macintosh HD<small>228 GB available of 512 GB</small></span></div><div class="storage-track"><i></i></div><div class="sidebar-footnote"><span class="local-dot"></span> On your device. Not in an index.</div></footer>
+      <footer class="sidebar-footer"><div class="drive-summary"><span data-icon="drive"></span><span>Macintosh HD<small>228 GB available of 512 GB</small></span></div><div class="sidebar-utilities"><button class="icon-button" data-location="settings" aria-label="Appearance settings" title="Appearance settings"><span data-icon="settings"></span></button><span>Interactive preview</span><a id="platform-link" href="?platform=windows">Windows ↗</a></div></footer>
     </aside>
     <main class="main">
       <header class="toolbar">
-        <div class="navigation-controls"><button id="sidebar-toggle" class="icon-button" aria-label="Toggle sidebar" aria-pressed="true" title="Toggle sidebar"><span data-icon="sidebar"></span></button><span class="toolbar-divider"></span><button id="back" class="icon-button" aria-label="Back" title="Back"><span data-icon="left"></span></button><button id="forward" class="icon-button" aria-label="Forward" title="Forward"><span data-icon="right"></span></button></div>
+        <div class="navigation-controls"><button id="sidebar-toggle" class="icon-button" aria-label="Toggle sidebar" aria-pressed="true" title="Toggle sidebar"><span data-icon="sidebar"></span></button><span class="toolbar-divider"></span><button id="back" class="icon-button" aria-label="Back" title="Back"><span data-icon="left"></span></button><button class="icon-button" data-navigate="start" aria-label="Go Home" title="Go Home"><span data-icon="home"></span></button><button id="forward" class="icon-button" aria-label="Forward" title="Forward"><span data-icon="right"></span></button></div>
         <div class="toolbar-path" id="toolbar-path"></div>
         <label class="search"><span data-icon="search"></span><input id="search" type="search" placeholder="Search this folder" aria-label="Search this folder" autocomplete="off"><kbd>⌘ F</kbd></label>
         <button id="inspector-toggle" class="icon-button active" aria-label="Toggle inspector" aria-pressed="true" title="Toggle inspector"><span data-icon="inspector"></span></button>
@@ -50,5 +55,6 @@
   <dialog id="folder-dialog"><form id="folder-form"><div class="dialog-icon" data-icon="folder-plus"></div><h2>New folder</h2><p id="folder-parent"></p><label for="folder-name">Name</label><input id="folder-name" required maxlength="80" placeholder="Untitled folder" autocomplete="off"><div class="dialog-actions"><button type="button" id="cancel-folder">Cancel</button><button type="submit" class="primary-button">Create folder</button></div><small>Sample workspace only. Your files are untouched.</small></form></dialog>
   <dialog id="quicklook"><header><span id="quicklook-name"></span><button id="close-quicklook" class="icon-button" aria-label="Close Quick Look"><span data-icon="close"></span></button></header><div id="quicklook-content"></div><footer id="quicklook-meta"></footer></dialog>
   <div class="toast" id="toast" role="status"></div>
+  <dialog id="workspace-dialog" aria-labelledby="workspace-dialog-title"></dialog>
 </body>
 </html>

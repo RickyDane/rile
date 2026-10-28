@@ -272,7 +272,20 @@ impl Walker<'_> {
         meta.blocks() * 512
     }
 
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    fn allocated(&self, meta: &std::fs::Metadata) -> u64 {
+        use std::os::windows::fs::MetadataExt;
+        let _ = &self.links;
+        // OneDrive and other cloud placeholders take no space until opened.
+        const FILE_ATTRIBUTE_OFFLINE: u32 = 0x1000;
+        const FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS: u32 = 0x40_0000;
+        if meta.file_attributes() & (FILE_ATTRIBUTE_OFFLINE | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS) != 0 {
+            return 0;
+        }
+        meta.len()
+    }
+
+    #[cfg(not(any(unix, windows)))]
     fn allocated(&self, meta: &std::fs::Metadata) -> u64 {
         let _ = &self.links;
         meta.len()
@@ -498,7 +511,7 @@ fn visit(node: &Node, path: &mut PathBuf, in_downloads: bool, now: u64, out: &mu
                 push(SuggestionKind::Logs, "App logs");
             }
         } else if child.is_dir {
-            if &*child.name == ".Trash" || is_bundle(child) || child.name.ends_with(".photoslibrary") {
+            if &*child.name == ".Trash" || child.name.eq_ignore_ascii_case("$Recycle.Bin") || is_bundle(child) || child.name.ends_with(".photoslibrary") {
                 // The Trash is already on its way out; bundles are managed by their app.
             } else if let Some(note) = developer_dir(node, child).filter(|_| child.size >= MIN_DIR) {
                 push(SuggestionKind::Developer, note);
@@ -531,11 +544,33 @@ fn visit(node: &Node, path: &mut PathBuf, in_downloads: bool, now: u64, out: &mu
 pub fn is_protected(path: &Path) -> bool {
     let name = |p: &Path| p.file_name().and_then(|n| n.to_str()).map(str::to_owned);
     let depth = path.components().count();
+    if cfg!(windows) {
+        return is_protected_windows(path, depth, name);
+    }
     depth <= 2
         || name(path).as_deref() == Some("Library")
         || path.parent().and_then(name).as_deref() == Some("Library")
         || path.parent().is_some_and(|p| p == Path::new("/Users"))
-        || std::env::var_os("HOME").is_some_and(|h| Path::new(&h) == path)
+        || dirs::home_dir().is_some_and(|h| h == path)
+}
+
+/// Windows: drive roots and their top-level folders (`C:\Windows`,
+/// `C:\Users`, `pagefile.sys`…), user profiles, `AppData` and its
+/// `Local`/`Roaming`/`LocalLow`, the direct children of `Program Files`, and
+/// everything inside the Windows folder.
+fn is_protected_windows(path: &Path, depth: usize, name: impl Fn(&Path) -> Option<String>) -> bool {
+    let lower = |s: Option<String>| s.map(|s| s.to_ascii_lowercase()).unwrap_or_default();
+    let parent = path.parent();
+    let system_root = std::env::var_os("SystemRoot").map(PathBuf::from);
+    // Prefix + root is the drive itself; one more is a top-level item.
+    depth <= 3
+        || system_root.is_some_and(|w| crate::path_key(path).starts_with(crate::path_key(&w)))
+        || dirs::home_dir().is_some_and(|h| crate::path_key(&h) == crate::path_key(path))
+        || lower(name(path)) == "appdata"
+        || parent.is_some_and(|p| lower(name(p)) == "appdata")
+        || parent.is_some_and(|p| {
+            p.components().count() == 3 && matches!(lower(name(p)).as_str(), "users" | "program files" | "program files (x86)" | "programdata")
+        })
 }
 
 /// Package-manager stores whose contents look like projects (Go's module cache
@@ -614,7 +649,7 @@ mod tests {
     #[test]
     fn sizes_roll_up_and_children_are_sorted() {
         let tmp = tempfile::tempdir().unwrap();
-        let root = tmp.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(tmp.path()).unwrap();
         write(&root.join("big/a.mov"), 300_000);
         write(&root.join("big/deep/b.png"), 100_000);
         write(&root.join("small.txt"), 10);
@@ -633,7 +668,7 @@ mod tests {
     #[test]
     fn largest_files_and_removal_patch_the_tree() {
         let tmp = tempfile::tempdir().unwrap();
-        let root = tmp.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(tmp.path()).unwrap();
         for i in 0..20 {
             write(&root.join(format!("d{}/f{i}.bin", i % 3)), 10_000 * (i + 1));
         }
@@ -658,7 +693,7 @@ mod tests {
     #[test]
     fn suggestions_need_their_project_file_and_do_not_nest() {
         let tmp = tempfile::tempdir().unwrap();
-        let root = tmp.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(tmp.path()).unwrap();
         write(&root.join("app/package.json"), 10);
         write(&root.join("app/node_modules/x/node_modules/y/big.js"), 2_000_000);
         write(&root.join("crate/Cargo.toml"), 10);
@@ -709,7 +744,7 @@ mod tests {
     #[test]
     fn hard_links_and_symlinks_count_once() {
         let tmp = tempfile::tempdir().unwrap();
-        let root = tmp.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(tmp.path()).unwrap();
         write(&root.join("a"), 100_000);
         fs::hard_link(root.join("a"), root.join("b")).unwrap();
         std::os::unix::fs::symlink(&root, root.join("loop")).unwrap();

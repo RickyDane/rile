@@ -23,7 +23,8 @@ pub fn apply(settings: &Settings, window: &mut Window, cx: &mut App) {
     // (sidebar and toolbar) lets that show through. Floating surfaces stay
     // opaque: window blur does not blur content drawn inside this window.
     window.set_background_appearance(if settings.glass {
-        gpui_kit::WindowBackgroundAppearance::Blurred
+        // Windows 11 draws Mica; Windows 10 only has the older blur.
+        if windows_11() { gpui_kit::WindowBackgroundAppearance::MicaBackdrop } else { gpui_kit::WindowBackgroundAppearance::Blurred }
     } else {
         gpui_kit::WindowBackgroundAppearance::Opaque
     });
@@ -354,4 +355,18 @@ impl Chrome {
 /// The current chrome palette (falls back to deriving one before `apply`).
 pub fn chrome(cx: &App) -> Chrome {
     cx.try_global::<Chrome>().copied().unwrap_or_else(|| Chrome::new(&Settings::default(), cx))
+}
+
+/// Windows 11 is Windows 10.0 with build 22000 or later.
+fn windows_11() -> bool {
+    #[cfg(windows)]
+    {
+        use windows::Win32::System::SystemInformation::{GetVersionExW, OSVERSIONINFOW};
+        let mut info = OSVERSIONINFOW { dwOSVersionInfoSize: size_of::<OSVERSIONINFOW>() as u32, ..Default::default() };
+        #[allow(deprecated)]
+        let ok = unsafe { GetVersionExW(&mut info) }.is_ok();
+        ok && info.dwMajorVersion >= 10 && info.dwBuildNumber >= 22000
+    }
+    #[cfg(not(windows))]
+    false
 }

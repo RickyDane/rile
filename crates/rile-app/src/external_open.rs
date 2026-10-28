@@ -212,7 +212,7 @@ pub mod mac {
         #[test]
         fn reveal_decodes_file_urls_and_lists() {
             let dir = tempfile::tempdir().unwrap();
-            let root = dir.path().canonicalize().unwrap();
+            let root = dunce::canonicalize(dir.path()).unwrap();
             std::fs::write(root.join("Rile file #ü"), "test").unwrap();
             // Preserve the spelling on disk, including composed Unicode on APFS.
             let path = std::fs::read_dir(&root).unwrap().next().unwrap().unwrap().path();
@@ -227,7 +227,7 @@ pub mod mac {
         #[test]
         fn reveal_preserves_symlinks() {
             let dir = tempfile::tempdir().unwrap();
-            let root = dir.path().canonicalize().unwrap();
+            let root = dunce::canonicalize(dir.path()).unwrap();
             let target = root.join("target");
             std::fs::write(&target, "test").unwrap();
             std::os::unix::fs::symlink(&target, root.join("shortcut ü")).unwrap();
@@ -246,7 +246,8 @@ mod tests {
 
     #[test]
     fn accepts_only_local_file_urls_and_decodes_paths() {
-        assert_eq!(file_paths(vec!["file:///tmp/a%20b%23%C3%BC".into(), "https://example.com".into(), "garbage".into()]), vec![PathBuf::from("/tmp/a b#ü")]);
+        let (url, path) = if cfg!(windows) { ("file:///C:/tmp/a%20b%23%C3%BC", r"C:\tmp\a b#ü") } else { ("file:///tmp/a%20b%23%C3%BC", "/tmp/a b#ü") };
+        assert_eq!(file_paths(vec![url.into(), "https://example.com".into(), "garbage".into()]), vec![PathBuf::from(path)]);
     }
 
     #[test]

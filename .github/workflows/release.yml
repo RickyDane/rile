@@ -6,12 +6,16 @@ name: Release
 #   rile-<triple>.app.zip   app bundle (preferred by the updater when running from Rile.app)
 #   rile-<triple>.tar.gz    bare binary
 #   Rile-<version>-<arch>.dmg  for manual installs
+#   rile-x86_64-pc-windows-msvc.zip   Windows rile.exe (used by the updater)
+#   Rile-<version>-x64-setup.exe      per-user Windows installer
 #   SHA256SUMS              checksums verified by the updater
 #
 # Optional secrets (without them the app is ad-hoc signed and not notarized):
 #   MACOS_CERT_P12        base64 of a "Developer ID Application" .p12
 #   MACOS_CERT_PASSWORD   password of that .p12
 #   APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD   for notarization
+#   WINDOWS_CERT_PFX      base64 of an Authenticode code-signing .pfx (optional)
+#   WINDOWS_CERT_PASSWORD password of that .pfx
 
 on:
   push:
@@ -108,8 +112,58 @@ jobs:
           name: rile-${{ matrix.target }}
           path: out/*
 
+  build-windows:
+    runs-on: avrea-windows-latest-16-vcpu
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Check tag matches Cargo version
+        shell: bash
+        run: |
+          VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -1)
+          [[ "v$VERSION" == "$TAG" ]] || { echo "::error::Tag $TAG != Cargo.toml version $VERSION"; exit 1; }
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: x86_64-pc-windows-msvc
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup --no-progress -y }
+
+      - name: Build rile.exe
+        run: cargo build --release --locked --target x86_64-pc-windows-msvc -p rile-app
+
+      - name: Sign rile.exe
+        env:
+          PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          PFX_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        if: env.PFX != ''
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\cert.pfx", [Convert]::FromBase64String($env:PFX))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName | Select-Object -Last 1
+          & $signtool.FullName sign /f "$env:RUNNER_TEMP\cert.pfx" /p $env:PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 target\x86_64-pc-windows-msvc\release\rile.exe
+          Remove-Item "$env:RUNNER_TEMP\cert.pfx"
+
+      - name: Bundle zip and installer
+        shell: pwsh
+        run: ./scripts/bundle-windows.ps1 -SkipBuild
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rile-x86_64-pc-windows-msvc
+          path: |
+            dist/rile-x86_64-pc-windows-msvc.zip
+            dist/Rile-*-x64-setup.exe
+
   release:
-    needs: build
+    needs: [build, build-windows]
     runs-on: avrea-ubuntu-latest-2-vcpu
     steps:
       - uses: actions/download-artifact@v4

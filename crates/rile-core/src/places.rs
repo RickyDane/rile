@@ -30,7 +30,7 @@ pub fn standard_places() -> Vec<Place> {
         (dirs::download_dir(), "Downloads", PlaceIcon::Downloads),
         (dirs::picture_dir(), "Pictures", PlaceIcon::Pictures),
         (dirs::audio_dir(), "Music", PlaceIcon::Music),
-        (dirs::video_dir(), "Movies", PlaceIcon::Videos),
+        (dirs::video_dir(), if cfg!(target_os = "macos") { "Movies" } else { "Videos" }, PlaceIcon::Videos),
     ];
     candidates
         .into_iter()
@@ -72,7 +72,16 @@ pub fn volumes() -> Vec<Volume> {
         })
         .map(|d| {
             let mut name = d.name().to_string_lossy().into_owned();
-            if name.is_empty() || d.mount_point() == std::path::Path::new("/") {
+            if cfg!(windows) {
+                // Explorer style: "Local Disk (C:)", "USB Stick (E:)".
+                let letter = d.mount_point().to_string_lossy().trim_end_matches('\\').to_string();
+                let label = if name.is_empty() {
+                    if d.is_removable() { "USB Drive" } else { "Local Disk" }
+                } else {
+                    &name
+                };
+                name = format!("{label} ({letter})");
+            } else if name.is_empty() || d.mount_point() == std::path::Path::new("/") {
                 name = if cfg!(target_os = "macos") { "Macintosh HD".into() } else { d.mount_point().display().to_string() };
             }
             Volume {
@@ -84,6 +93,7 @@ pub fn volumes() -> Vec<Volume> {
             }
         })
         .collect();
-    out.dedup_by(|a, b| a.mount_point == b.mount_point);
+    let mut seen = std::collections::HashSet::new();
+    out.retain(|v| seen.insert(v.mount_point.clone()));
     out
 }

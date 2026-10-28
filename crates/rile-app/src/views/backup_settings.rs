@@ -322,11 +322,13 @@ impl Render for BackupSettingsView {
                 })
                 .into_any_element()
         };
-        let mac = cfg!(target_os = "macos");
+        let mac = cfg!(any(target_os = "macos", windows));
         let background_hint = if !mac {
-            "Only available on macOS".to_string()
+            "Only available on macOS and Windows".to_string()
         } else if job.schedule == Schedule::Manual {
             "Pick a schedule to run it in the background".to_string()
+        } else if cfg!(windows) {
+            "Task Scheduler keeps the schedule while Rile is closed".to_string()
         } else {
             "macOS keeps the schedule while Rile is closed".to_string()
         };
@@ -391,13 +393,18 @@ impl Render for BackupSettingsView {
                 cx,
             ))
             .when_some(agent_error, |d, e| d.child(kit::notice(format!("Background backups: {e}"), true, cx)))
-            .when(cfg!(target_os = "macos"), |d| {
+            .when(cfg!(any(target_os = "macos", windows)), |d| {
                 let ws = self.ws.clone();
+                let (title, label, hint) = if cfg!(windows) {
+                    ("NOTIFICATION AREA", "Show in notification area", "Follow, start and stop backups from the taskbar's notification area, also while Rile is closed")
+                } else {
+                    ("MENU BAR", "Show in menu bar", "Follow, start and stop backups from the menu bar, also while Rile is closed")
+                };
                 d.child(section(
-                    "MENU BAR",
+                    title,
                     vec![r(
-                        "Show in menu bar",
-                        "Follow, start and stop backups from the menu bar, also while Rile is closed".into(),
+                        label,
+                        hint.into(),
                         Switch::new("bk-menu-bar").cursor_pointer().checked(menu_bar)
                             .on_click(move |v, _, cx| {
                                 let v = *v;

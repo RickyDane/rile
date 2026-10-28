@@ -840,7 +840,7 @@ impl Workspace {
                                     .on_click(cx.listener(|this, _, w, cx| this.close_quicklook_ui(w, cx))),
                             ),
                     ))
-                    .child(div().px_3().py_1().text_xs().text_color(theme.muted_foreground).child(if editing { "⌘S save · Esc done" } else { "↑↓ browse · Space/Esc close" }))
+                    .child(div().px_3().py_1().text_xs().text_color(theme.muted_foreground).child(if editing { format!("{} save · Esc done", crate::views::chrome::shortcut("mod-s")) } else { "↑↓ browse · Space/Esc close".into() }))
                     .child(div().flex_1().min_h_0().child(body)),
             )
             .into_any_element()

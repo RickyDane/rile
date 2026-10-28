@@ -109,8 +109,11 @@ impl Target for LocalTarget {
         // A missing parent or volume means an unplugged drive: don't create
         // the folder on the startup disk instead.
         let volume: PathBuf = self.root.components().take(3).collect();
+        // Windows: the drive (`E:\`) itself.
+        let drive: PathBuf = self.root.components().take(2).collect();
         let missing = match self.root.parent() {
             _ if self.root.starts_with("/Volumes") && !volume.exists() => Some(volume),
+            _ if cfg!(windows) && !drive.exists() => Some(drive),
             Some(parent) if !parent.as_os_str().is_empty() && !parent.exists() => Some(parent.to_path_buf()),
             _ => None,
         };
@@ -181,6 +184,17 @@ impl Target for LocalTarget {
             fs::remove_file(&tmp).ok();
             return Err(e);
         }
+        // Windows won't replace a read-only file (the copy of a read-only
+        // source from an earlier run).
+        #[cfg(windows)]
+        if let Ok(meta) = fs::metadata(&dest) {
+            let mut perms = meta.permissions();
+            if perms.readonly() {
+                #[allow(clippy::permissions_set_readonly_false)]
+                perms.set_readonly(false);
+                fs::set_permissions(&dest, perms).ok();
+            }
+        }
         fs::rename(&tmp, &dest).with_context(|| format!("replacing {}", dest.display()))
     }
 
@@ -221,10 +235,9 @@ impl Target for LocalTarget {
 
     fn remove_all(&mut self, path: &str) -> Result<()> {
         let p = self.abs(path);
-        match fs::symlink_metadata(&p) {
-            Ok(m) if m.is_dir() => fs::remove_dir_all(&p)?,
-            Ok(_) => fs::remove_file(&p)?,
-            Err(_) => {}
+        if fs::symlink_metadata(&p).is_ok() {
+            // Also clears read-only attributes, which block deletes on Windows.
+            rile_core::ops::remove_permanently(&p)?;
         }
         Ok(())
     }

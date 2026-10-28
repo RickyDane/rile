@@ -65,18 +65,35 @@ pub fn load(path: &Path, max_text_bytes: usize) -> Result<Preview> {
     let read_all = (buf.len() as u64) < want;
 
     match decode_text(&buf, max_text_bytes, read_all) {
-        Some(text) => {
-            let truncated = (text.len() as u64) < size;
+        Some((text, cut)) => {
+            let truncated = cut || !read_all;
             Ok(Preview::Text { text, truncated, language: ext.filter(|e| !e.is_empty()) })
         }
         None => Ok(Preview::Binary { size, hex: hexdump(&buf[..buf.len().min(HEX_BYTES)]) }),
     }
 }
 
-/// Returns the text if `buf` looks like UTF-8 text, truncated to at most
-/// `max_bytes` on a char boundary. `complete` says whether `buf` is the whole
-/// file (if not, an incomplete trailing char is tolerated).
-fn decode_text(buf: &[u8], max_bytes: usize, complete: bool) -> Option<String> {
+/// Returns the text if `buf` looks like UTF-8 text (or UTF-16 with a byte
+/// order mark, as Windows' "Unicode" files are), truncated to at most
+/// `max_bytes` on a char boundary, and whether it was cut there. `complete`
+/// says whether `buf` is the whole file (if not, an incomplete trailing char
+/// is tolerated).
+fn decode_text(buf: &[u8], max_bytes: usize, complete: bool) -> Option<(String, bool)> {
+    let utf16 = match buf {
+        [0xff, 0xfe, rest @ ..] => Some((rest, u16::from_le_bytes as fn([u8; 2]) -> u16)),
+        [0xfe, 0xff, rest @ ..] => Some((rest, u16::from_be_bytes as fn([u8; 2]) -> u16)),
+        _ => None,
+    };
+    // A whole file of UTF-16 has an even length.
+    if let Some((rest, unit)) = utf16.filter(|(rest, _)| !complete || rest.len() % 2 == 0) {
+        let units: Vec<u16> = rest.chunks_exact(2).map(|c| unit([c[0], c[1]])).collect();
+        let text = String::from_utf16_lossy(&units);
+        if text.contains('\0') {
+            return None;
+        }
+        return Some(cut_at(&text, max_bytes));
+    }
+    let buf = buf.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(buf);
     if buf[..buf.len().min(SNIFF_BYTES)].contains(&0) {
         return None;
     }
@@ -89,19 +106,23 @@ fn decode_text(buf: &[u8], max_bytes: usize, complete: bool) -> Option<String> {
         }
         Err(_) => return None,
     };
-    let mut end = valid.len().min(max_bytes);
-    while !valid.is_char_boundary(end) {
+    Some(cut_at(valid, max_bytes))
+}
+
+fn cut_at(text: &str, max_bytes: usize) -> (String, bool) {
+    let mut end = text.len().min(max_bytes);
+    while !text.is_char_boundary(end) {
         end -= 1;
     }
-    Some(valid[..end].to_string())
+    (text[..end].to_string(), end < text.len())
 }
 
 fn load_dir(path: &Path) -> Result<Preview> {
     let mut names: Vec<(String, String)> = fs::read_dir(path)
         .with_context(|| format!("Cannot list {}", path.display()))?
         .filter_map(|e| e.ok())
+        .filter(|e| !rile_core::fs_entry::is_hidden_entry(e))
         .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| !n.starts_with('.'))
         .map(|n| (n.to_lowercase(), n))
         .collect();
     let total = names.len();

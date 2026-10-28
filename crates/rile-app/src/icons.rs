@@ -243,7 +243,12 @@ pub fn is_app_bundle(entry: &Entry) -> bool {
     entry.is_dir && entry.path.extension().is_some_and(|e| e.eq_ignore_ascii_case("app"))
 }
 
+/// Items whose look is their own icon: app bundles on macOS; programs,
+/// shortcuts and icon files on Windows (Explorer shows them that way).
 fn wants_native_icon(entry: &Entry) -> bool {
+    if cfg!(windows) {
+        return !entry.is_dir && matches!(&*entry.extension(), "exe" | "lnk" | "url" | "ico" | "msi" | "appref-ms");
+    }
     cfg!(target_os = "macos") && is_app_bundle(entry)
 }
 
@@ -293,7 +298,7 @@ fn native_icon_for(path: &std::path::Path, view: gpui_kit::EntityId, cx: &mut gp
 pub fn app_icon<V: 'static>(app: &std::path::Path, size: f32, color: gpui_kit::Hsla, cx: &mut gpui_kit::Context<V>) -> gpui_kit::AnyElement {
     use gpui_kit::{IntoElement, Styled, StyledImage};
     let view = cx.entity_id();
-    match cfg!(target_os = "macos").then(|| native_icon_for(app, view, cx)).flatten() {
+    match cfg!(any(target_os = "macos", windows)).then(|| native_icon_for(app, view, cx)).flatten() {
         Some(image) => gpui_kit::img(image).size(gpui_kit::px(size)).object_fit(gpui_kit::ObjectFit::Contain).into_any_element(),
         None => icon(IconName::AppWindow).size(gpui_kit::px(size * 0.8)).text_color(color).into_any_element(),
     }

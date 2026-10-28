@@ -4,7 +4,7 @@
 
 Browse local files and remote servers, preview what matters, and search your files. Rile brings tabs, multiple views, file operations, and on-device intelligence together in a native desktop interface.
 
-[**Download for macOS**](https://github.com/RickyDane/rile/releases/latest) · [What's new in v0.6.2](CHANGELOG.md)
+[**Download for macOS and Windows**](https://github.com/RickyDane/rile/releases/latest) · [What's new in v0.7.0](CHANGELOG.md)
 
 ## See it in action
 
@@ -82,6 +82,9 @@ The default `ai` feature uses Apple Foundation Models on Apple Silicon with macO
 cargo run -p rile-app --no-default-features
 ```
 
+You can also use local GGUF models or download them from Hugging Face in **Settings → AI**.
+Install the llama.cpp runtime directly from AI Settings or use your own executable; see [local model setup](docs/local-models.md).
+
 ### Build a macOS app
 
 ```sh
@@ -90,11 +93,26 @@ sh crates/rile-app/scripts/bundle_macos.sh
 
 The bundle is written to `target/release/Rile.app`. Add `--debug` for `target/debug/Rile.app`. The release packaging script, [`scripts/bundle-macos.sh`](scripts/bundle-macos.sh), also supports signing, notarization, and DMG creation. Normal builds do not require the icon-generation tools; see [`gen_app_icon.sh`](crates/rile-app/scripts/gen_app_icon.sh) if you change the icon artwork.
 
+### Build for Windows
+
+On Windows 10 or 11 with the Rust MSVC toolchain and the Windows SDK (gpui compiles its shaders with `fxc.exe`):
+
+```powershell
+cargo run -p rile-app
+pwsh scripts/bundle-windows.ps1   # dist/rile-x86_64-pc-windows-msvc.zip and the installer (needs Inno Setup 6)
+```
+
+The installer installs per user to `%LOCALAPPDATA%\Programs\Rile` without administrator rights. It adds **Open in Rile** to the context menu of folders and drives, and registers `rile://` links. Background backups run as a Task Scheduler task (`Rile\dev.rile.backup`), and the backup status helper sits in the notification area. Search through the OS index uses Windows Search; photo descriptions use the Windows text recognizer, and Apple Intelligence is not available. For AI features, choose a llama.cpp model in **Settings → AI**. From macOS you can type-check the Windows build with `cargo xwin check --workspace --target x86_64-pc-windows-msvc`.
+
 ### Use Rile as the default file manager
+
+On Windows, choose **Make Rile Default** in **Settings → General → Windows Integration**. Folders opened from Explorer, shortcuts and other apps then open in Rile. **Restore Explorer** undoes it. Win+E and the desktop still use Explorer.
 
 On macOS 12 or later, move `Rile.app` to Applications and launch that copy. In **Settings → General → macOS Integration**, choose **Make Rile Default** and approve macOS's confirmation if prompted. This changes folder opening and compatible **Reveal/Show in Finder** actions. Choose **Restore Finder** in the same section to revert; do this before uninstalling Rile.
 
 Other applications may cache the previous viewer: restart them, or log out and back in, if necessary. Finder still manages the desktop, system Open/Save dialogs are unchanged, and applications that explicitly target Finder may continue to use it. Running the bare binary with `cargo run` does not provide the app-bundle registration required to become the default.
+
+Some macOS versions reject folder associations, even when restoring Finder. In that case Rile still updates the separate file-viewer preference for compatible **Reveal/Show in Finder** actions and reports the partial change. Folder opening remains unchanged; this is not a full default-file-manager replacement. **Restore Finder** also restores the file-viewer preference in this situation. Cancelling a consent prompt does not apply this fallback.
 
 ## Keyboard shortcuts
 
@@ -111,7 +129,7 @@ Other applications may cache the previous viewer: restart them, or log out and b
 
 ## Configuration and plugins
 
-On macOS, settings are stored in `~/Library/Application Support/rile/settings.toml`. Set `RILE_CONFIG_DIR` to use another configuration directory. Plugins live in its `plugins/` folder; see the [plugin guide](plugins/README.md) for development and installation details.
+On macOS, settings are stored in `~/Library/Application Support/rile/settings.toml`. On Windows they are in `%APPDATA%\rile\settings.toml`, and downloaded models and AI runtimes are in `%LOCALAPPDATA%\rile`. Set `RILE_CONFIG_DIR` to use another configuration directory. Plugins live in its `plugins/` folder; see the [plugin guide](plugins/README.md) for development and installation details.
 
 ## Development
 

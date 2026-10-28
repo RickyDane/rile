@@ -223,6 +223,7 @@ fn rates_are_smoothed_and_formatted() {
 
 /// A folder the destination refuses (here: read-only) is reported once and
 /// doesn't stop the rest of the backup.
+#[cfg(unix)]
 #[test]
 fn an_unwritable_folder_does_not_abort_the_run() {
     use std::os::unix::fs::PermissionsExt;

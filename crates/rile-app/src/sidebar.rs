@@ -16,7 +16,7 @@ use gpui_kit::{Animation, AnimationExt, DragMoveEvent, ExternalPaths, pulsating_
 use crate::icons::icon_for_place;
 use crate::pane::{DraggedFiles, Pane};
 use crate::theme::chrome;
-use crate::views::chrome::{Width, icon_button, mod_key, width_class, window_drag};
+use crate::views::chrome::{Width, icon_button, width_class, window_drag};
 use crate::workspace::{Workspace, display_name};
 
 /// Limits for a sidebar width set by dragging its edge.
@@ -418,7 +418,7 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
             .when(!rail && !mac, |d| d.justify_start())
             .when(!rail, |d| {
                 d.child(
-                    icon_button("sidebar-toggle", IconName::PanelLeft, format!("Toggle sidebar (⇧{}S)", mod_key()), &ch)
+                    icon_button("sidebar-toggle", IconName::PanelLeft, format!("Toggle sidebar ({})", crate::views::chrome::shortcut("shift-mod-s")), &ch)
                         .debug_selector(|| "sidebar-toggle".into())
                         .on_click(cx.listener(|this, _, w, cx| this.toggle_sidebar(&crate::actions::ToggleSidebar, w, cx))),
                 )

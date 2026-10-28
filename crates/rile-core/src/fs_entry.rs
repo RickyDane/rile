@@ -96,16 +96,34 @@ impl Entry {
     }
 }
 
+/// Whether the OS marks the file hidden beyond the dot-name convention: the
+/// `UF_HIDDEN` flag on macOS, the Hidden/System attributes on Windows
+/// (`desktop.ini`, `$Recycle.Bin`, `NTUSER.DAT`).
 #[cfg(target_os = "macos")]
-fn is_hidden_os(meta: &fs::Metadata) -> bool {
+pub fn is_hidden_os(meta: &fs::Metadata) -> bool {
     use std::os::macos::fs::MetadataExt;
     const UF_HIDDEN: u32 = 0x8000;
     meta.st_flags() & UF_HIDDEN != 0
 }
 
-#[cfg(not(target_os = "macos"))]
-fn is_hidden_os(_meta: &fs::Metadata) -> bool {
+#[cfg(windows)]
+pub fn is_hidden_os(meta: &fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    const FILE_ATTRIBUTE_HIDDEN: u32 = 0x2;
+    const FILE_ATTRIBUTE_SYSTEM: u32 = 0x4;
+    meta.file_attributes() & (FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM) != 0
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
+pub fn is_hidden_os(_meta: &fs::Metadata) -> bool {
     false
+}
+
+/// Dot names plus whatever the OS marks hidden, for callers that walk the
+/// disk themselves instead of building [`Entry`]s. Cheap: on Windows the
+/// attributes come with the directory listing.
+pub fn is_hidden_entry(entry: &fs::DirEntry) -> bool {
+    entry.file_name().to_string_lossy().starts_with('.') || (cfg!(any(target_os = "macos", windows)) && entry.metadata().is_ok_and(|m| is_hidden_os(&m)))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]

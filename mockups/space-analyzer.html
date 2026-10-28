@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>rile — Space Analyzer</title>
+<!-- Keep old study links working; the current native page lives in the workspace. -->
+<script>
+  const previewParams = new URLSearchParams(location.search);
+  if (!previewParams.has('legacy')) {
+    previewParams.set('page', 'space');
+    location.replace('index.html?' + previewParams);
+  }
+</script>
 <link rel="stylesheet" href="explorer.css">
 <link rel="stylesheet" href="start.css">
 <link rel="stylesheet" href="native.css">

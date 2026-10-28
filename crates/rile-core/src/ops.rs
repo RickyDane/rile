@@ -109,7 +109,7 @@ pub fn transfer(
     mut on_progress: impl FnMut(Progress),
 ) -> Result<Vec<PathBuf>> {
     for src in sources {
-        if src.is_dir() && dest_dir.starts_with(src) {
+        if src.is_dir() && path_starts_with(dest_dir, src) {
             bail!("Can't {} \"{}\" into itself", if kind == TransferKind::Copy { "copy" } else { "move" }, src.display());
         }
     }
@@ -120,7 +120,7 @@ pub fn transfer(
     let mut created = Vec::new();
     for src in sources {
         let name = src.file_name().context("source has no file name")?.to_string_lossy();
-        if kind == TransferKind::Move && src.parent() == Some(dest_dir) {
+        if kind == TransferKind::Move && src.parent().is_some_and(|p| path_starts_with(p, dest_dir) && path_starts_with(dest_dir, p)) {
             progress.items_done += 1;
             created.push(src.clone());
             continue;
@@ -172,10 +172,18 @@ fn copy_tree(
         std::os::unix::fs::symlink(target, dest)?;
         #[cfg(windows)]
         {
-            if src.is_dir() {
-                std::os::windows::fs::symlink_dir(target, dest)?
+            let made = if src.is_dir() {
+                std::os::windows::fs::symlink_dir(target, dest)
             } else {
-                std::os::windows::fs::symlink_file(target, dest)?
+                std::os::windows::fs::symlink_file(target, dest)
+            };
+            // Creating symlinks needs Developer Mode or admin rights; without
+            // them (ERROR_PRIVILEGE_NOT_HELD) skip the link instead of
+            // failing the whole transfer.
+            const ERROR_PRIVILEGE_NOT_HELD: i32 = 1314;
+            match made {
+                Err(e) if e.raw_os_error() == Some(ERROR_PRIVILEGE_NOT_HELD) => {}
+                other => other?,
             }
         }
         progress.files_done += 1;
@@ -193,10 +201,12 @@ fn copy_tree(
         progress.file_bytes_total = meta.len();
         copy_file(src, dest, cancel, progress, on_progress)?;
         progress.files_done += 1;
-        fs::set_permissions(dest, meta.permissions()).ok();
+        // Times before permissions: a read-only copy can't be reopened for
+        // writing (common on Windows, where read-only is a plain attribute).
         if let Ok(m) = meta.modified() {
             fs::File::options().write(true).open(dest).and_then(|f| f.set_modified(m)).ok();
         }
+        fs::set_permissions(dest, meta.permissions()).ok();
     }
     Ok(())
 }
@@ -243,12 +253,47 @@ pub fn move_to_trash(paths: &[PathBuf]) -> Result<()> {
 
 pub fn remove_permanently(path: &Path) -> Result<()> {
     let meta = fs::symlink_metadata(path)?;
+    // Windows refuses to delete read-only files; Unix only cares about the
+    // parent folder's permissions.
+    #[cfg(windows)]
+    clear_readonly(path, &meta);
     if meta.is_dir() {
         fs::remove_dir_all(path)
     } else {
         fs::remove_file(path)
     }
     .with_context(|| format!("deleting {}", path.display()))
+}
+
+#[cfg(windows)]
+fn clear_readonly(path: &Path, meta: &fs::Metadata) {
+    if meta.file_type().is_symlink() {
+        return;
+    }
+    if meta.is_dir() {
+        for e in fs::read_dir(path).into_iter().flatten().flatten() {
+            if let Ok(m) = e.metadata() {
+                clear_readonly(&e.path(), &m);
+            }
+        }
+    }
+    let mut perms = meta.permissions();
+    if perms.readonly() {
+        #[allow(clippy::permissions_set_readonly_false)]
+        perms.set_readonly(false);
+        fs::set_permissions(path, perms).ok();
+    }
+}
+
+/// `path.starts_with(base)`, ignoring letter case where the filesystem does
+/// (Windows), so `C:\Users\a` and `c:\users\A` count as the same folder.
+pub fn path_starts_with(path: &Path, base: &Path) -> bool {
+    if cfg!(windows) {
+        let lower = |p: &Path| PathBuf::from(p.to_string_lossy().to_lowercase());
+        lower(path).starts_with(lower(base))
+    } else {
+        path.starts_with(base)
+    }
 }
 
 pub fn rename(path: &Path, new_name: &str) -> Result<PathBuf> {
@@ -287,10 +332,39 @@ pub fn duplicate(paths: &[PathBuf], cancel: &AtomicBool) -> Result<Vec<PathBuf>>
 }
 
 fn validate_name(name: &str) -> Result<()> {
-    if name.is_empty() || name == "." || name == ".." || name.contains('/') || name.contains('\0') {
+    if !is_safe_component(name) {
         bail!("Invalid name \"{name}\"");
     }
     Ok(())
+}
+
+/// Whether `name` can be a single path component on this OS without escaping
+/// its folder: no separators, `.`/`..` or NUL anywhere; on Windows also none
+/// of `\ : * ? " < > |`, no trailing dot or space and no reserved device name
+/// (`CON`, `NUL`, `COM1`…). Use it for names that come from outside (user
+/// input, archives, remote servers) before joining them onto a local path.
+pub fn is_safe_component(name: &str) -> bool {
+    if name.is_empty() || name == "." || name == ".." || name.contains(['/', '\0']) {
+        return false;
+    }
+    if cfg!(windows) {
+        if name.contains(['\\', ':', '*', '?', '"', '<', '>', '|']) || name.chars().any(|c| (c as u32) < 32) {
+            return false;
+        }
+        if name.ends_with(['.', ' ']) {
+            return false;
+        }
+        let stem = name.split('.').next().unwrap_or(name).trim_end().to_ascii_uppercase();
+        let reserved = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+            || ((stem.starts_with("COM") || stem.starts_with("LPT"))
+                && stem.len() == 4
+                && stem.as_bytes()[3].is_ascii_digit()
+                && stem.as_bytes()[3] != b'0');
+        if reserved {
+            return false;
+        }
+    }
+    true
 }
 
 #[cfg(test)]
@@ -325,7 +399,8 @@ mod tests {
         assert_eq!(last.bytes_done, last.bytes_total);
         // src, src/sub and src/sub/f.bin
         assert_eq!((last.files_done, last.files_total), (3, 3));
-        assert_eq!(last.current.as_deref(), Some("src/sub/f.bin"));
+        let expected = Path::new("src").join("sub").join("f.bin");
+        assert_eq!(last.current.as_deref(), Some(&*expected.to_string_lossy()));
         assert_eq!(last.file_fraction(), Some(1.0));
         assert_eq!(fs::read(dst.join("src/sub/f.bin")).unwrap().len(), 3 * COPY_BUF + 5);
 

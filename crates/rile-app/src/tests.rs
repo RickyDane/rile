@@ -13,14 +13,14 @@ use crate::workspace::Workspace;
 
 const TIMEOUT: Duration = Duration::from_secs(5);
 
-fn setup(dir: &Path, cx: &mut TestAppContext) -> (AnyWindowHandle, Entity<Workspace>) {
+pub(crate) fn setup(dir: &Path, cx: &mut TestAppContext) -> (AnyWindowHandle, Entity<Workspace>) {
     // No network update checks or plugin compilation in tests.
     setup_with(dir, "update_check_on_start = false\nplugins_enabled = false\nfavorites = []\n", None, cx)
 }
 
 /// RILE_CONFIG_DIR is process-global: `setup` holds this until the workspace has
 /// read it; tests that save and reload settings hold it across both.
-fn config_lock() -> std::sync::MutexGuard<'static, ()> {
+pub(crate) fn config_lock() -> std::sync::MutexGuard<'static, ()> {
     static SETUP: std::sync::Mutex<()> = std::sync::Mutex::new(());
     SETUP.lock().unwrap_or_else(|e| e.into_inner())
 }
@@ -85,10 +85,26 @@ fn wait_until(cx: &mut TestAppContext, what: &str, mut check: impl FnMut(&mut gp
     }
 }
 
+/// Presses `keys`, written with macOS bindings; off macOS they become the
+/// equivalents `actions::bind_keys` registers there.
 fn press(cx: &mut TestAppContext, window: AnyWindowHandle, keys: &[&str]) {
     for k in keys {
-        cx.simulate_keystrokes(window, k);
+        cx.simulate_keystrokes(window, &platform_keys(k));
         cx.run_until_parked();
+    }
+}
+
+fn platform_keys(keys: &str) -> String {
+    if cfg!(target_os = "macos") {
+        return keys.to_string();
+    }
+    match keys {
+        "cmd-alt-n" => "ctrl-shift-e".into(),
+        "cmd-ctrl-t" => "ctrl-shift-b".into(),
+        "cmd-alt-c" => "ctrl-shift-c".into(),
+        "cmd-alt-o" => "ctrl-shift-right".into(),
+        "cmd-y" => "f3".into(),
+        _ => keys.replace("cmd-", "ctrl-"),
     }
 }
 
@@ -130,7 +146,7 @@ async fn dock_reopen_after_window_close(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn external_open_queues_reveal_before_launch(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir(root.join("sub")).unwrap();
     let requests = crate::external_open::Requests::default();
     requests.dispatch(vec![root.join("sub")], true);
@@ -147,7 +163,7 @@ async fn external_open_queues_reveal_before_launch(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn external_open_reuses_window_and_reveals_in_current_folder(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir(root.join("sub")).unwrap();
     let a = root.join("a.txt");
     let b = root.join("b.txt");
@@ -181,7 +197,7 @@ async fn external_open_reuses_window_and_reveals_in_current_folder(cx: &mut Test
 #[gpui_kit::test]
 async fn external_open_recovers_after_close_and_opens_multiple_folders(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir(root.join("one")).unwrap();
     fs::create_dir(root.join("two")).unwrap();
     let (window, ws) = setup(&root, cx);
@@ -200,7 +216,7 @@ async fn external_open_recovers_after_close_and_opens_multiple_folders(cx: &mut 
 #[gpui_kit::test]
 async fn copy_paste_rename_and_navigate(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir(root.join("sub")).unwrap();
     fs::write(root.join("a.txt"), "hello").unwrap();
 
@@ -248,7 +264,7 @@ async fn copy_paste_rename_and_navigate(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn paste_clipboard_images(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &[]).await;
 
@@ -285,7 +301,7 @@ async fn paste_clipboard_images(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn paste_image_overrides_cut_files_in_current_directory(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir(root.join("sub")).unwrap();
     fs::write(root.join("a.txt"), "keep me").unwrap();
     let (window, ws) = setup(&root, cx);
@@ -316,7 +332,7 @@ async fn pdf_page_layout_and_control_scroll_zoom(cx: &mut TestAppContext) {
     use crate::workspace::preview::Loaded;
 
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let path = root.join("two-pages.pdf");
     fs::write(&path, "preview fixture").unwrap();
     let (window, ws) = setup(&root, cx);
@@ -405,7 +421,7 @@ async fn pdf_page_layout_and_control_scroll_zoom(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn sorting_and_hidden_files(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("big.bin"), vec![0u8; 1000]).unwrap();
     fs::write(root.join("small.bin"), "x").unwrap();
     fs::write(root.join(".secret"), "").unwrap();
@@ -432,7 +448,7 @@ async fn sorting_and_hidden_files(cx: &mut TestAppContext) {
 async fn views_quicklook_properties_and_typeahead(cx: &mut TestAppContext) {
     use rile_core::settings::ViewKind;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     for name in ["apple.txt", "banana.txt", "cherry.txt", "date.txt"] {
         fs::write(root.join(name), format!("{name}\nsecond line")).unwrap();
     }
@@ -496,7 +512,7 @@ async fn quicklook_code_edit_and_save(cx: &mut TestAppContext) {
         ("App.slnx", "xml", "<Solution />\n"),
     ] {
         let tmp = tempfile::tempdir().unwrap();
-        let root = tmp.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(tmp.path()).unwrap();
         let path = root.join(name);
         fs::write(&path, text).unwrap();
         assert!(crate::workspace::text_edit::is_editable(&path));
@@ -527,7 +543,7 @@ async fn quicklook_code_edit_and_save(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn quicklook_markdown_edit_and_save(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("notes.md"), "# Title\n\n- item\n").unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &["notes.md"]).await;
@@ -559,7 +575,7 @@ async fn properties_footer_stays_visible_while_scrolling(cx: &mut TestAppContext
     use gpui_kit::{ScrollDelta, ScrollEvent, VisualTestContext, point, px};
 
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("file.txt"), "properties fixture").unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &["file.txt"]).await;
@@ -632,7 +648,7 @@ async fn connect_footer_stays_visible_while_scrolling(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn filter_search_and_dual_pane(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir_all(root.join("a/b")).unwrap();
     fs::create_dir(root.join("dest")).unwrap();
     fs::write(root.join("a/b/needle.md"), "hay\nfind the NEEDLE here").unwrap();
@@ -702,7 +718,7 @@ async fn filter_search_and_dual_pane(cx: &mut TestAppContext) {
 async fn dual_pane_move_requires_confirmation(cx: &mut TestAppContext) {
     use gpui_kit::component::WindowExt;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let dest = root.join("dest");
     fs::create_dir(&dest).unwrap();
     fs::write(root.join("file.txt"), "keep me").unwrap();
@@ -732,7 +748,7 @@ async fn wasm_plugin_commands_and_preview(cx: &mut TestAppContext) {
         return;
     }
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("data.csv"), "name,qty\napple,3\nbanana,12\n").unwrap();
     let (window, ws) = setup_with(&root, "update_check_on_start = false\nfavorites = []\n", Some(&wasm), cx);
     wait_for_names(cx, window, &ws, &["data.csv"]).await;
@@ -761,7 +777,7 @@ async fn wasm_plugin_commands_and_preview(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn dual_pane_starts_with_left_active(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("f"), "").unwrap();
     let (window, ws) = setup_with(&root, "update_check_on_start = false\nplugins_enabled = false\ndual_pane = true\n", None, cx);
     wait_for_names(cx, window, &ws, &["f"]).await;
@@ -775,7 +791,7 @@ async fn dual_pane_starts_with_left_active(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn backspace_navigates_only_the_active_pane(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let child = root.join("child");
     fs::create_dir(&child).unwrap();
     let (window, ws) = setup_with(&root, "update_check_on_start = false\nplugins_enabled = false\ndual_pane = true\n", None, cx);
@@ -802,7 +818,7 @@ async fn backspace_navigates_only_the_active_pane(cx: &mut TestAppContext) {
 async fn dual_pane_only_allows_list_view(cx: &mut TestAppContext) {
     use rile_core::settings::ViewKind;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &[]).await;
     press(cx, window, &["cmd-2", "cmd-shift-d"]);
@@ -821,7 +837,7 @@ async fn dual_pane_only_allows_list_view(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn drive_selector_shortcuts_target_each_pane(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let (window, ws) = setup_with(&root, "update_check_on_start = false\nplugins_enabled = false\ndual_pane = true\n", None, cx);
     wait_for_names(cx, window, &ws, &[]).await;
     let modifier = if cfg!(target_os = "macos") { "cmd" } else { "ctrl" };
@@ -864,7 +880,7 @@ async fn drive_selector_shortcuts_target_each_pane(cx: &mut TestAppContext) {
 async fn dialogs_open_from_shortcuts(cx: &mut TestAppContext) {
     use gpui_kit::component::WindowExt;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("notes.txt"), "hello").unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &["notes.txt"]).await;
@@ -895,7 +911,7 @@ async fn dialogs_open_from_shortcuts(cx: &mut TestAppContext) {
 async fn drag_file_onto_folder_in_same_pane(cx: &mut TestAppContext) {
     use gpui_kit::{Modifiers, MouseButton, VisualTestContext};
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir(root.join("sub")).unwrap();
     fs::write(root.join("a.txt"), "x").unwrap();
     let (window, ws) = setup(&root, cx);
@@ -923,7 +939,7 @@ async fn external_drag_payload_includes_selected_files_and_folders(cx: &mut Test
     use crate::pane::DraggedFiles;
     use gpui_kit::{ExternalDragPayload, FileDragPaths};
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir(root.join("sub")).unwrap();
     fs::write(root.join("a.txt"), "x").unwrap();
     let (window, ws) = setup(&root, cx);
@@ -948,7 +964,7 @@ async fn external_drag_payload_only_exports_local_dragged_entries(cx: &mut TestA
     use crate::pane::DraggedFiles;
     use gpui_kit::{ExternalDragPayload, FileDragPaths};
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("a.txt"), "a").unwrap();
     fs::write(root.join("b.txt"), "b").unwrap();
     let (window, ws) = setup(&root, cx);
@@ -973,7 +989,7 @@ async fn external_drag_payload_only_exports_local_dragged_entries(cx: &mut TestA
 async fn rubber_band_new_file_and_mouse_navigation(cx: &mut TestAppContext) {
     use gpui_kit::{Modifiers, MouseButton, NavigationDirection, VisualTestContext, point, px};
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir(root.join("dir")).unwrap();
     for f in ["a.txt", "b.txt", "c.txt"] {
         fs::write(root.join(f), "").unwrap();
@@ -1080,13 +1096,13 @@ mod ftp_server {
 #[gpui_kit::test]
 async fn ftp_browse_transfer_and_edit(cx: &mut TestAppContext) {
     let server = tempfile::tempdir().unwrap();
-    let server_root = server.path().canonicalize().unwrap();
+    let server_root = dunce::canonicalize(server.path()).unwrap();
     fs::create_dir(server_root.join("docs")).unwrap();
     fs::write(server_root.join("hello.txt"), "hello from ftp\nline 2").unwrap();
     let port = ftp_server::start(server_root.clone());
 
     let local = tempfile::tempdir().unwrap();
-    let local_root = local.path().canonicalize().unwrap();
+    let local_root = dunce::canonicalize(local.path()).unwrap();
     fs::write(local_root.join("up.txt"), "uploaded").unwrap();
 
     let (window, ws) = setup(&local_root, cx);
@@ -1164,7 +1180,7 @@ async fn ftp_browse_transfer_and_edit(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn tabs_open_switch_and_close(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir(root.join("sub")).unwrap();
     fs::write(root.join("sub/inner.txt"), "").unwrap();
     let (window, ws) = setup(&root, cx);
@@ -1205,7 +1221,7 @@ async fn tabs_open_switch_and_close(cx: &mut TestAppContext) {
 async fn dual_pane_header_toggle(cx: &mut TestAppContext) {
     use gpui_kit::{Modifiers, MouseButton, VisualTestContext};
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &[]).await;
 
@@ -1224,7 +1240,7 @@ async fn dual_pane_header_toggle(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn sidebar_animation_reverses_and_finishes(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &[]).await;
     let width = cx.update_window(window, |_, window, cx| ws.read(cx).sidebar_display_width(window)).unwrap();
@@ -1246,7 +1262,7 @@ async fn sidebar_animation_reverses_and_finishes(cx: &mut TestAppContext) {
 async fn sidebar_toggle_button_moves_with_visibility(cx: &mut TestAppContext) {
     use gpui_kit::{Modifiers, MouseButton, VisualTestContext};
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &[]).await;
 
@@ -1277,7 +1293,7 @@ async fn sidebar_toggle_button_moves_with_visibility(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn inspector_metadata_and_sidebar_toggle(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     // A 3×2 PNG (header is all imagesize needs).
     let png: &[u8] = &[
         0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52, 0, 0, 0, 3, 0, 0, 0, 2, 8, 6, 0, 0, 0,
@@ -1312,7 +1328,7 @@ async fn inspector_metadata_and_sidebar_toggle(cx: &mut TestAppContext) {
 fn overview_stats_from_places() {
     use rile_core::places::{Place, PlaceIcon};
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir(root.join("folder")).unwrap();
     for name in ["a.png", "b.rs", "c.pdf", "d.zip", "e.bin"] {
         fs::write(root.join(name), "x").unwrap();
@@ -1338,7 +1354,7 @@ fn overview_stats_from_places() {
 async fn preview_cache_is_keyed_by_connection(cx: &mut TestAppContext) {
     use crate::workspace::preview::Loaded;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("notes.txt"), "local text").unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &["notes.txt"]).await;
@@ -1365,7 +1381,7 @@ async fn preview_cache_is_keyed_by_connection(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn search_field_follows_active_pane(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     for n in ["apple", "banana"] {
         fs::write(root.join(n), "").unwrap();
     }
@@ -1413,7 +1429,7 @@ async fn overview_layout_follows_slot_width(cx: &mut TestAppContext) {
     assert_eq!((overview_layout(580.).storage_cols, overview_layout(700.).storage_cols), (1, 2));
 
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("f"), "").unwrap();
     let (window, ws) = setup_with(&root, "update_check_on_start = false\nplugins_enabled = false\ndual_pane = true\n", None, cx);
     wait_for_names(cx, window, &ws, &["f"]).await;
@@ -1439,7 +1455,7 @@ async fn overview_layout_follows_slot_width(cx: &mut TestAppContext) {
 async fn glass_overlay_surfaces_stay_opaque_in_both_themes(cx: &mut TestAppContext) {
     use rile_core::settings::ThemeMode;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let (window, ws) = setup(&root, cx);
     for (mode, glass) in [
         (ThemeMode::Dark, true), (ThemeMode::Light, true),
@@ -1472,7 +1488,7 @@ async fn glass_overlay_surfaces_stay_opaque_in_both_themes(cx: &mut TestAppConte
 async fn glass_tint_and_translucency_apply_only_to_chrome(cx: &mut TestAppContext) {
     use rile_core::settings::ThemeMode;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let (window, ws) = setup(&root, cx);
     for mode in [ThemeMode::Dark, ThemeMode::Light] {
         for translucency in [0, 50, 100, 255] {
@@ -1510,7 +1526,7 @@ async fn glass_tint_and_translucency_apply_only_to_chrome(cx: &mut TestAppContex
 async fn trophy_unlock_animation_renders_without_changing_location(cx: &mut TestAppContext) {
     use gpui_kit::VisualTestContext;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("keep.txt"), "x").unwrap();
     let (window, ws) = setup_with(&root, "update_check_on_start = false\nplugins_enabled = false\nglass = true\n", None, cx);
     wait_for_names(cx, window, &ws, &["keep.txt"]).await;
@@ -1556,7 +1572,7 @@ fn toolbar_clears_traffic_lights() {
 async fn sidebar_sections_reorder_and_persist(cx: &mut TestAppContext) {
     use rile_core::settings::SidebarSection::*;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("f"), "").unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &["f"]).await;
@@ -1574,7 +1590,7 @@ async fn sidebar_sections_reorder_and_persist(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn opened_folders_are_remembered_for_search(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir_all(root.join("sub/deep")).unwrap();
     fs::write(root.join("sub/deep/needle-report.txt"), "").unwrap();
     let (window, ws) = setup(&root, cx);
@@ -1599,18 +1615,18 @@ async fn opened_folders_are_remembered_for_search(cx: &mut TestAppContext) {
     assert_eq!(names, ["needle-report.txt"]);
 }
 
-/// Intelligent search shares the main field; empty requests and ⌘K
-/// focus it without opening a dialog.
+/// Intelligent search shares the main field; empty requests focus it
+/// without opening a dialog.
 #[gpui_kit::test]
 async fn intelligent_search_uses_main_field(cx: &mut TestAppContext) {
     use gpui_kit::component::WindowExt;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("report.txt"), "").unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &["report.txt"]).await;
 
-    press(cx, window, &["cmd-k", "shift-enter"]);
+    press(cx, window, &["cmd-f", "shift-enter"]);
     cx.update_window(window, |_, window, cx| {
         assert!(!window.has_active_dialog(cx));
         let input = ws.read(cx).search_input.clone();
@@ -1633,6 +1649,73 @@ async fn intelligent_search_uses_main_field(cx: &mut TestAppContext) {
     wait_for_names(cx, window, &ws, &["report.txt"]).await;
 }
 
+/// ⌘K opens the Ask palette with its field focused; ⇧↩ hands the text to
+/// intelligent search, Esc returns focus to the pane, and reopening on the
+/// same folder keeps the conversation.
+#[gpui_kit::test]
+async fn ask_palette_opens_and_hands_off_to_search(cx: &mut TestAppContext) {
+    use gpui_kit::component::WindowExt;
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    fs::write(root.join("report.txt"), "").unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["report.txt"]).await;
+
+    press(cx, window, &["cmd-k"]);
+    let palette = cx.update_window(window, |_, window, cx| {
+        assert!(window.has_active_dialog(cx));
+        let palette = ws.read(cx).ask.clone().expect("palette");
+        let input = palette.read(cx).input.clone();
+        assert!(gpui_kit::Focusable::focus_handle(input.read(cx), cx).is_focused(window));
+        palette
+    }).unwrap();
+
+    // Return belongs to the field (it asks); the dialog's own Confirm must
+    // not close the palette. Empty, so no model request is made.
+    press(cx, window, &["enter"]);
+    cx.update_window(window, |_, window, cx| assert!(window.has_active_dialog(cx))).unwrap();
+
+    press(cx, window, &["escape"]);
+    cx.update_window(window, |_, window, cx| {
+        assert!(!window.has_active_dialog(cx));
+        assert!(ws.read(cx).pane().read(cx).focus_handle.is_focused(window));
+    }).unwrap();
+    cx.update(|cx| assert!(!palette.read(cx).open, "Esc marks the palette closed"));
+
+    // A conversation still working in the background is reopened even from
+    // another folder (simulated, so no model runs).
+    fs::create_dir(root.join("elsewhere")).unwrap();
+    let open = |cx: &mut TestAppContext, dir: std::path::PathBuf| {
+        cx.update(|cx| ws.update(cx, |ws, cx| ws.pane().update(cx, |p, cx| p.navigate(Location::Dir(dir), cx))))
+    };
+    cx.update(|cx| palette.update(cx, |p, _| p.running = true));
+    open(cx, root.join("elsewhere"));
+    press(cx, window, &["cmd-k"]);
+    cx.update(|cx| {
+        assert_eq!(ws.read(cx).ask.as_ref().map(|p| p.entity_id()), Some(palette.entity_id()));
+        assert!(palette.read(cx).open);
+        palette.update(cx, |p, _| p.running = false);
+    });
+    press(cx, window, &["escape"]);
+    open(cx, root.clone());
+
+    press(cx, window, &["cmd-k"]);
+    cx.update(|cx| assert_eq!(ws.read(cx).ask.as_ref().map(|p| p.entity_id()), Some(palette.entity_id())));
+    cx.simulate_input(window, "reports from last week");
+    press(cx, window, &["shift-enter"]);
+    cx.update_window(window, |_, window, cx| {
+        assert!(!window.has_active_dialog(cx));
+        // AI search started in the pane with the palette's text.
+        let search = ws.read(cx).pane().read(cx).search.as_ref().map(|s| s.label.to_string());
+        assert_eq!(search.as_deref(), Some("AI: \"reports from last week\""));
+    }).unwrap();
+
+    // With AI off the palette doesn't open.
+    cx.update(|cx| ws.update(cx, |ws, _| ws.settings.ai_enabled = false));
+    press(cx, window, &["cmd-k"]);
+    cx.update_window(window, |_, window, cx| assert!(!window.has_active_dialog(cx))).unwrap();
+}
+
 /// With no model compiled in, errors stay inline in the search results,
 /// rather than opening the assistant or running a literal-name search.
 #[cfg(not(feature = "ai"))]
@@ -1640,7 +1723,7 @@ async fn intelligent_search_uses_main_field(cx: &mut TestAppContext) {
 async fn intelligent_search_reports_errors_inline(cx: &mut TestAppContext) {
     use gpui_kit::component::WindowExt;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let (window, ws) = setup(&root, cx);
     press(cx, window, &["cmd-f"]);
     cx.simulate_input(window, "  invoices from last month  ");
@@ -1661,7 +1744,7 @@ async fn intelligent_search_reports_errors_inline(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn cmd_f_focuses_search_on_overview(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("f"), "").unwrap();
     let (window, ws) = setup(&root, cx);
     wait_for_names(cx, window, &ws, &["f"]).await;
@@ -1687,7 +1770,7 @@ async fn cmd_f_focuses_search_on_overview(cx: &mut TestAppContext) {
 async fn blank_click_preserves_search_results(cx: &mut TestAppContext) {
     use gpui_kit::{Modifiers, MouseButton, VisualTestContext, point, px};
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::create_dir(root.join("sub")).unwrap();
     fs::write(root.join("sub/found.txt"), "").unwrap();
     fs::write(root.join("other.txt"), "").unwrap();
@@ -1731,7 +1814,7 @@ async fn escape_stops_search_and_keeps_results(cx: &mut TestAppContext) {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("found.txt"), "").unwrap();
     fs::write(root.join("late.txt"), "").unwrap();
     let (window, ws) = setup(&root, cx);
@@ -1782,7 +1865,7 @@ async fn escape_stops_search_and_keeps_results(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn enter_on_file_does_not_crash(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     fs::write(root.join("a.txt"), "hello").unwrap();
 
     let (window, ws) = setup(&root, cx);
@@ -1801,7 +1884,7 @@ async fn enter_on_file_does_not_crash(cx: &mut TestAppContext) {
 async fn plugin_page_waits_for_root_and_shows_scan_progress(cx: &mut TestAppContext) {
     use gpui_kit::VisualTestContext;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let (window, ws) = setup(&root, cx);
     let key = ("test.pages".to_string(), "page".to_string());
     cx.update_window(window, |_, window, cx| {
@@ -1863,7 +1946,7 @@ fn space_fixture(root: &Path) {
 #[gpui_kit::test]
 async fn space_analyzer_navigates_from_cache(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     space_fixture(&root);
     let (window, ws) = setup(&root, cx);
     analyze(cx, window, &ws, &root);
@@ -1894,7 +1977,7 @@ async fn space_analyzer_navigates_from_cache(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 async fn space_analyzer_selection_and_suggestions(cx: &mut TestAppContext) {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     space_fixture(&root);
     let (window, ws) = setup(&root, cx);
     analyze(cx, window, &ws, &root);
@@ -1925,7 +2008,7 @@ async fn space_analyzer_layout_fits_wide_and_narrow_windows(cx: &mut TestAppCont
     use gpui_kit::{VisualTestContext, px, size};
     use crate::workspace::space::SpaceTab;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     space_fixture(&root);
     let (window, ws) = setup(&root, cx);
     cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.open_space_analyzer(window, cx))).unwrap();
@@ -1959,7 +2042,7 @@ async fn space_analyzer_layout_fits_wide_and_narrow_windows(cx: &mut TestAppCont
 async fn plugin_root_is_chosen_in_rile_and_cancel_keeps_results(cx: &mut TestAppContext) {
     use gpui_kit::VisualTestContext;
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let child = root.join("project");
     fs::create_dir(&child).unwrap();
     let (window, ws) = setup(&root, cx);
@@ -2013,7 +2096,7 @@ fn wait_for_backup(cx: &mut TestAppContext, ws: &Entity<Workspace>) {
 async fn backup_job_runs_incrementally(cx: &mut TestAppContext) {
     use rile_backup::{BackupConfig, Destination, Outcome, Schedule, Trigger};
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let (src, dest) = (root.join("Docs"), root.join("Backup"));
     fs::create_dir_all(src.join("sub")).unwrap();
     fs::write(src.join("a.txt"), "one").unwrap();
@@ -2082,7 +2165,7 @@ fn click_selector(vcx: &mut gpui_kit::VisualTestContext, selector: &'static str)
 async fn backups_page_restores_and_deletes_runs(cx: &mut TestAppContext) {
     use rile_backup::{Destination, Schedule, Trigger};
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().canonicalize().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
     let (src, dest) = (root.join("Docs"), root.join("Backup"));
     fs::create_dir_all(&src).unwrap();
     fs::write(src.join("a.txt"), "one").unwrap();

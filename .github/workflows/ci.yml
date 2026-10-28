@@ -20,3 +20,49 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --workspace --locked
       - run: cargo test --workspace --locked
+
+  test-windows:
+    runs-on: avrea-windows-latest-16-vcpu
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip2
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --workspace --locked
+      - run: cargo test --workspace --locked
+        env:
+          # Keep tests from touching the runner's Task Scheduler and registry.
+          RILE_NO_LAUNCH_AGENTS: "1"
+
+  # A release build compiles gpui's HLSL shaders with the Windows SDK's
+  # fxc.exe (debug builds skip that), so CI catches shader/SDK breakage
+  # before a release. Pushes to master also get a downloadable test build.
+  build-windows:
+    runs-on: avrea-windows-latest-16-vcpu
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-x86_64-pc-windows-msvc
+      - name: Build rile.exe (release)
+        run: cargo build --release --locked --target x86_64-pc-windows-msvc -p rile-app
+      - name: Install Inno Setup
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup --no-progress -y }
+      - name: Bundle zip and installer
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: ./scripts/bundle-windows.ps1 -SkipBuild
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: rile-windows-${{ github.sha }}
+          path: |
+            dist/rile-x86_64-pc-windows-msvc.zip
+            dist/Rile-*-x64-setup.exe
+          retention-days: 14

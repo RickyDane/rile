@@ -813,7 +813,22 @@ fn civil_time(secs: i64) -> (i64, u8, u8, u8, u8, u8) {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Windows: zip's DOS times are local time, like Explorer writes them.
+#[cfg(windows)]
+fn civil_time(secs: i64) -> (i64, u8, u8, u8, u8, u8) {
+    use windows::Win32::Foundation::{FILETIME, SYSTEMTIME};
+    use windows::Win32::System::Time::{FileTimeToSystemTime, SystemTimeToTzSpecificLocalTime};
+    let ticks = (secs + 11_644_473_600) as u64 * 10_000_000;
+    let ft = FILETIME { dwLowDateTime: ticks as u32, dwHighDateTime: (ticks >> 32) as u32 };
+    let (mut utc, mut local) = (SYSTEMTIME::default(), SYSTEMTIME::default());
+    let ok = unsafe { FileTimeToSystemTime(&ft, &mut utc).is_ok() && SystemTimeToTzSpecificLocalTime(None, &utc, &mut local).is_ok() };
+    if !ok || secs < 0 {
+        return utc_civil(secs);
+    }
+    (local.wYear as i64, local.wMonth as u8, local.wDay as u8, local.wHour as u8, local.wMinute as u8, local.wSecond as u8)
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 fn civil_time(secs: i64) -> (i64, u8, u8, u8, u8, u8) {
     utc_civil(secs)
 }
@@ -969,6 +984,10 @@ fn safe_relative(raw: &Path) -> Result<Option<PathBuf>> {
     let mut out = PathBuf::new();
     for c in raw.components() {
         match c {
+            // Windows also refuses `CON`, `a:stream`, trailing dots and the like.
+            Component::Normal(p) if !rile_core::ops::is_safe_component(&p.to_string_lossy()) => {
+                bail!("Refusing to extract \"{}\": the name isn't valid on this computer", raw.display())
+            }
             Component::Normal(p) => out.push(p),
             Component::CurDir => {}
             Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
@@ -1107,7 +1126,20 @@ impl Sink {
             let abs = self.prepare_leaf(rel)?;
             #[cfg(unix)]
             std::os::unix::fs::symlink(target, &abs)?;
-            #[cfg(not(unix))]
+            // Needs Developer Mode or admin rights on Windows; without them
+            // the link is skipped, as before.
+            #[cfg(windows)]
+            {
+                let target = PathBuf::from(target.to_string_lossy().replace('/', "\\"));
+                let resolved = abs.parent().map(|p| p.join(&target));
+                let made = if resolved.is_some_and(|p| p.is_dir()) {
+                    std::os::windows::fs::symlink_dir(&target, &abs)
+                } else {
+                    std::os::windows::fs::symlink_file(&target, &abs)
+                };
+                made.ok();
+            }
+            #[cfg(not(any(unix, windows)))]
             let _ = abs;
         }
         let mut t = t.borrow_mut();

@@ -235,9 +235,15 @@ async fn agent_auth(handle: &mut Handle<ClientHandler>, user: &str) -> Result<bo
 
 #[cfg(windows)]
 async fn agent_auth(handle: &mut Handle<ClientHandler>, user: &str) -> Result<bool> {
+    // Windows' built-in OpenSSH agent first, then PuTTY's Pageant.
+    if let Ok(mut agent) = keys::agent::client::AgentClient::connect_named_pipe(r"\\.\pipe\openssh-ssh-agent").await {
+        if agent_try_all(handle, user, &mut agent).await? {
+            return Ok(true);
+        }
+    }
     let mut agent = keys::agent::client::AgentClient::connect_pageant()
         .await
-        .context("could not connect to Pageant")?;
+        .context("could not connect to the OpenSSH Authentication Agent service or Pageant")?;
     agent_try_all(handle, user, &mut agent).await
 }
 

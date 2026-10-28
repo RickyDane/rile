@@ -1,11 +1,12 @@
-//! The backups menu bar item (`rile --backup-menu`): a small helper process,
-//! started at login by its launch agent, that shows running backups from any
+//! The backups menu bar item (`rile --backup-menu`; a notification-area icon
+//! on Windows): a small helper process, started at login by its agent, that shows running backups from any
 //! process (the app, the scheduler agent or itself), starts and stops them,
 //! posts a notification when one fails, and opens Rile on the Backups page.
 //!
 //! Everything it shows comes from the files the backup engine shares in the
 //! config folder (jobs, history, live status), so it never talks to the app.
 
+#[cfg(target_os = "macos")]
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
@@ -31,6 +32,7 @@ pub struct MenuModel {
 impl MenuModel {
     /// What decides the menu's items (not their titles): while it stays the
     /// same, the open menu is updated in place instead of rebuilt.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     pub fn shape(&self) -> Vec<(String, bool, usize)> {
         self.jobs.iter().map(|j| (j.id.clone(), j.running, j.details.len())).collect()
     }
@@ -44,6 +46,7 @@ pub enum Icon {
 }
 
 impl Icon {
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     fn symbol(self) -> &'static str {
         match self {
             Icon::Idle => "externaldrive.badge.timemachine",
@@ -215,6 +218,7 @@ impl Tray {
 
 /// Posts a macOS notification (via AppleScript, which works without an app
 /// bundle or notification entitlement).
+#[cfg(target_os = "macos")]
 fn notify(title: &str, body: &str) {
     let quote = |s: &str| s.replace('\\', "\\\\").replace('"', "\\\"");
     let script = format!("display notification \"{}\" with title \"{}\"", quote(body), quote(title));
@@ -282,6 +286,7 @@ fn stop_job(id: &str) {
 
 /// Opens Rile at `rile://<page>`: through the URL scheme when running from
 /// the app bundle, else by starting this binary on the Backups page.
+#[cfg(target_os = "macos")]
 fn open_rile(page: &str) {
     let exe = std::env::current_exe().unwrap_or_default();
     if exe.to_string_lossy().contains(".app/Contents/MacOS/") {
@@ -293,6 +298,7 @@ fn open_rile(page: &str) {
 
 // ---------------------------------------------------------------- AppKit
 
+#[cfg(target_os = "macos")]
 mod mac {
     use objc2::rc::Retained;
     use objc2::runtime::{AnyObject, Sel};
@@ -534,7 +540,194 @@ pub fn run() {
         rile_backup::agent::uninstall(rile_backup::agent::Agent::MenuBar).ok();
         return;
     }
+    #[cfg(target_os = "macos")]
     mac::run();
+    #[cfg(windows)]
+    win::run();
+}
+
+// ---------------------------------------------------------------- Windows
+
+/// Shows a toast through the Start menu shortcut's app id (set by the
+/// installer); silently does nothing for unregistered (zip) installs.
+#[cfg(windows)]
+fn notify(title: &str, body: &str) {
+    use windows::Data::Xml::Dom::XmlDocument;
+    use windows::UI::Notifications::{ToastNotification, ToastNotificationManager, ToastTemplateType};
+    use windows::core::HSTRING;
+    let show = || -> windows::core::Result<()> {
+        let xml: XmlDocument = ToastNotificationManager::GetTemplateContent(ToastTemplateType::ToastText02)?;
+        let texts = xml.GetElementsByTagName(&HSTRING::from("text"))?;
+        texts.Item(0)?.AppendChild(&xml.CreateTextNode(&HSTRING::from(title))?)?;
+        texts.Item(1)?.AppendChild(&xml.CreateTextNode(&HSTRING::from(body))?)?;
+        let toast = ToastNotification::CreateToastNotification(&xml)?;
+        ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(win::APP_ID))?.Show(&toast)
+    };
+    show().ok();
+}
+
+/// Opens Rile at `rile://<page>`; a running Rile picks the link up from the
+/// new process (see `instance`).
+#[cfg(windows)]
+fn open_rile(page: &str) {
+    use std::os::windows::process::CommandExt;
+    if let Ok(exe) = std::env::current_exe() {
+        std::process::Command::new(exe).arg(format!("rile://{page}")).creation_flags(0x0800_0000).spawn().ok();
+    }
+}
+
+#[cfg(windows)]
+mod win {
+    use std::time::{Duration, Instant};
+
+    use tray_icon::menu::{IsMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
+    use tray_icon::{Icon as TrayImage, TrayIconBuilder};
+
+    use super::{Icon, Tray, exit_cleanly, model, open_rile, quit_title, start_job, stop_job};
+    use rile_backup::BackupConfig;
+
+    /// AppUserModelID of the Start menu shortcut (packaging/windows/rile.iss).
+    pub const APP_ID: &str = "dev.rile.Rile";
+
+    /// The app icon with a status dot: accent for running, red for a problem.
+    fn image(icon: Icon) -> Option<TrayImage> {
+        const PNG: &[u8] = include_bytes!("../assets/app-icons/folio-bolt/blue.png");
+        let mut img = image::load_from_memory(PNG).ok()?.resize(32, 32, image::imageops::FilterType::Lanczos3).to_rgba8();
+        let dot = match icon {
+            Icon::Idle => None,
+            Icon::Running => Some([0x2f, 0xb3, 0x4a, 0xff]),
+            Icon::Problem => Some([0xe0, 0x3c, 0x31, 0xff]),
+        };
+        if let Some(color) = dot {
+            let (cx, cy, r) = (24.0f32, 24.0f32, 7.0f32);
+            for (x, y, px) in img.enumerate_pixels_mut() {
+                let d = ((x as f32 + 0.5 - cx).powi(2) + (y as f32 + 0.5 - cy).powi(2)).sqrt();
+                if d <= r + 1.5 {
+                    // White ring around the dot keeps it readable on the icon.
+                    px.0 = if d <= r { color } else { [0xff, 0xff, 0xff, 0xff] };
+                }
+            }
+        }
+        let (w, h) = img.dimensions();
+        TrayImage::from_rgba(img.into_raw(), w, h).ok()
+    }
+
+    fn build(tray: &Tray, model: &super::MenuModel) -> Menu {
+        let menu = Menu::new();
+        let header = MenuItem::new(if model.title.is_empty() { "Backups" } else { &model.title }, false, None);
+        menu.append(&header).ok();
+        menu.append(&PredefinedMenuItem::separator()).ok();
+        for (ix, job) in model.jobs.iter().enumerate() {
+            let sub = Submenu::new(&job.title, true);
+            for line in &job.details {
+                sub.append(&MenuItem::new(line, false, None)).ok();
+            }
+            sub.append(&PredefinedMenuItem::separator()).ok();
+            if job.running {
+                sub.append(&MenuItem::with_id(format!("stop:{ix}"), "Stop", true, None)).ok();
+            } else {
+                sub.append(&MenuItem::with_id(format!("run:{ix}"), "Back Up Now", job.can_run, None)).ok();
+            }
+            menu.append(&sub).ok();
+        }
+        let _ = tray;
+        let items: [&dyn IsMenuItem; 8] = [
+            &PredefinedMenuItem::separator(),
+            &MenuItem::with_id("all", "Back Up All Now", model.jobs.iter().any(|j| j.can_run), None),
+            &PredefinedMenuItem::separator(),
+            &MenuItem::with_id("open", "Open Backups…", true, None),
+            &MenuItem::with_id("settings", "Backup Settings…", true, None),
+            &PredefinedMenuItem::separator(),
+            &MenuItem::with_id("hide", "Hide from Notification Area", true, None),
+            &MenuItem::with_id("quit", quit_title(), true, None),
+        ];
+        menu.append_items(&items).ok();
+        menu
+    }
+
+    /// Pumps this thread's window messages (the tray icon's hidden window).
+    fn pump() {
+        use windows::Win32::UI::WindowsAndMessaging::{DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage};
+        let mut msg = MSG::default();
+        while unsafe { PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE) }.as_bool() {
+            unsafe {
+                let _ = TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+        }
+    }
+
+    pub fn run() {
+        let mut tray = Tray::default();
+        tray.refresh();
+        let shown = model(&tray.config, &tray.history, &tray.live, chrono::Utc::now().timestamp());
+        let Ok(icon) = TrayIconBuilder::new()
+            .with_tooltip("Backups")
+            .with_menu(Box::new(build(&tray, &shown)))
+            .with_icon(image(shown.icon).unwrap_or_else(|| TrayImage::from_rgba(vec![0; 4], 1, 1).expect("1px icon")))
+            .build()
+        else {
+            return;
+        };
+        tray.order = shown.jobs.iter().map(|j| j.id.clone()).collect();
+        tray.shown = Some(shown);
+        let mut next_refresh = Instant::now();
+        loop {
+            pump();
+            while let Ok(event) = MenuEvent::receiver().try_recv() {
+                let id = event.id().0.as_str();
+                let job = |prefix: &str| id.strip_prefix(prefix).and_then(|ix| ix.parse::<usize>().ok()).and_then(|ix| tray.order.get(ix).cloned());
+                match id {
+                    "all" => {
+                        for job in tray.shown.iter().flat_map(|m| m.jobs.iter()).filter(|j| j.can_run) {
+                            start_job(&job.id);
+                        }
+                    }
+                    "open" => open_rile("backups"),
+                    "settings" => open_rile("backup-settings"),
+                    "hide" => {
+                        // Turning it off in the config also removes the login item.
+                        let mut config = BackupConfig::load();
+                        config.menu_bar = false;
+                        config.save().ok();
+                        rile_backup::agent::uninstall(rile_backup::agent::Agent::MenuBar).ok();
+                        exit_cleanly();
+                    }
+                    "quit" => exit_cleanly(),
+                    _ if id.starts_with("run:") => {
+                        if let Some(job) = job("run:") {
+                            start_job(&job);
+                        }
+                    }
+                    _ if id.starts_with("stop:") => {
+                        if let Some(job) = job("stop:") {
+                            stop_job(&job);
+                        }
+                    }
+                    _ => {}
+                }
+                next_refresh = Instant::now();
+            }
+            if Instant::now() >= next_refresh {
+                next_refresh = Instant::now() + Duration::from_secs(1);
+                tray.refresh();
+                if !tray.config.wants_menu_bar() {
+                    std::process::exit(0);
+                }
+                let model = model(&tray.config, &tray.history, &tray.live, chrono::Utc::now().timestamp());
+                if tray.shown.as_ref() != Some(&model) {
+                    if tray.shown.as_ref().is_none_or(|m| m.icon != model.icon) {
+                        icon.set_icon(image(model.icon)).ok();
+                    }
+                    icon.set_tooltip(Some(if model.title.is_empty() { "Backups" } else { &model.title })).ok();
+                    icon.set_menu(Some(Box::new(build(&tray, &model))));
+                    tray.order = model.jobs.iter().map(|j| j.id.clone()).collect();
+                    tray.shown = Some(model);
+                }
+            }
+            std::thread::sleep(Duration::from_millis(30));
+        }
+    }
 }
 
 #[cfg(test)]

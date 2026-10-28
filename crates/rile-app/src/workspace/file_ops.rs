@@ -19,6 +19,34 @@ use crate::dialogs;
 
 impl Workspace {
 
+    /// Registers work whose worker and progress stream are owned by another view.
+    pub(crate) fn track_job(&mut self, label: impl Into<SharedString>, cancel: Arc<AtomicBool>, cx: &mut Context<Self>) -> usize {
+        let id = self.next_op_id;
+        self.next_op_id += 1;
+        self.ops.push(RunningOp {
+            id,
+            label: label.into(),
+            progress: Progress::default(),
+            cancel,
+            started: Instant::now(),
+            backgrounded: true,
+            speed: 0.,
+            last_sample: None,
+            _task: gpui_kit::Task::ready(()),
+        });
+        cx.notify();
+        id
+    }
+
+    pub(crate) fn finish_tracked_job(&mut self, id: usize, error: Option<SharedString>, cx: &mut Context<Self>) {
+        if let Some(ix) = self.ops.iter().position(|op| op.id == id) {
+            let op = self.ops.remove(ix);
+            self.finished_jobs.insert(0, super::FinishedJob { label: op.label, error, finished: Instant::now() });
+            self.finished_jobs.truncate(6);
+            cx.notify();
+        }
+    }
+
     /// Runs `work` on a background thread with a status-bar progress entry.
     /// Paths it returns get selected once the active pane reloads.
     pub fn start_op(
@@ -242,8 +270,8 @@ impl Workspace {
         if self.settings.confirm_trash {
             let ws = cx.entity().downgrade();
             dialogs::confirm(
-                format!("Move {} to the Trash?", item_count(paths.len())),
-                "Move to Trash",
+                format!("Move {} to the {}?", item_count(paths.len()), crate::platform_text::trash()),
+                if cfg!(target_os = "macos") { "Move to Trash" } else { "Delete" },
                 false,
                 window,
                 cx,
@@ -258,7 +286,7 @@ impl Workspace {
     }
 
     pub(crate) fn trash_paths(&mut self, paths: Vec<PathBuf>, window: &mut Window, cx: &mut Context<Self>) {
-        let label = format!("Moving {} to Trash", item_count(paths.len()));
+        let label = format!("Moving {} to {}", item_count(paths.len()), crate::platform_text::trash());
         self.start_op(label, window, cx, move |_, _| ops::move_to_trash(&paths).map(|_| Vec::new()));
     }
 
@@ -478,7 +506,7 @@ impl Workspace {
     fn confirm_transfer_to_other(&mut self, copy: bool, window: &mut Window, cx: &mut Context<Self>) {
         let verb = if copy { "Copy" } else { "Move" };
         let Some((dest, dest_conn)) = self.other_dir(cx) else {
-            window.push_notification(Notification::info(format!("Open dual-pane view (⇧⌘D) to {} to the other pane", verb.to_lowercase())), cx);
+            window.push_notification(Notification::info(format!("Open dual-pane view ({}) to {} to the other pane", crate::views::chrome::shortcut("shift-mod-d"), verb.to_lowercase())), cx);
             return;
         };
         let paths = self.selection(cx);

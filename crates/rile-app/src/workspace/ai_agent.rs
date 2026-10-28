@@ -73,7 +73,7 @@ pub fn complete(prompt: &str, instructions: &str) -> Result<String> {
     while let Ok(item) = rx.recv_blocking() {
         last = item.map_err(|e| anyhow!(e))?;
     }
-    Ok(last)
+    Ok(super::ai::visible(&last).to_string())
 }
 
 /// The first JSON object in a model reply.
@@ -145,19 +145,19 @@ struct Candidate {
     note: String,
 }
 
-fn home() -> PathBuf {
-    std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"))
+pub(super) fn home() -> PathBuf {
+    dirs::home_dir().unwrap_or_else(|| PathBuf::from(std::path::MAIN_SEPARATOR_STR))
 }
 
 /// `~/…` for paths under the home folder.
-fn short(path: &Path) -> String {
+pub(super) fn short(path: &Path) -> String {
     match path.strip_prefix(home()) {
-        Ok(rel) => format!("~/{}", rel.display()),
+        Ok(rel) => format!("~{}{}", std::path::MAIN_SEPARATOR, rel.display()),
         Err(_) => path.display().to_string(),
     }
 }
 
-fn describe_entry(e: &Entry) -> String {
+pub(super) fn describe_entry(e: &Entry) -> String {
     let mut parts = vec![if e.is_dir { "folder".to_string() } else { humansize::format_size(e.size, humansize::DECIMAL) }];
     if let Some(m) = e.modified {
         parts.push(chrono::DateTime::<chrono::Local>::from(m).format("%Y-%m-%d").to_string());
@@ -185,11 +185,11 @@ fn matches_plan(e: &Entry, plan: &Plan) -> bool {
 /// Resolves a folder the model named ("Documents", "~/Projects/x", a bare
 /// project name) to existing directories.
 fn resolve_folder(name: &str, start: &Path) -> Vec<PathBuf> {
-    let name = name.trim().trim_end_matches('/');
+    let name = name.trim().trim_end_matches(['/', std::path::MAIN_SEPARATOR]);
     let mut out = Vec::new();
-    let direct = if let Some(rest) = name.strip_prefix("~/") {
+    let direct = if let Some(rest) = name.strip_prefix("~/").or_else(|| name.strip_prefix("~\\")) {
         home().join(rest)
-    } else if name.starts_with('/') {
+    } else if name.starts_with('/') || Path::new(name).is_absolute() {
         PathBuf::from(name)
     } else {
         home().join(name)
@@ -618,6 +618,56 @@ pub fn folder_summary_prompt(selection: &[PathBuf], focus: &str) -> Result<Strin
         "Summarize the file(s) above."
     });
     Ok(prompt)
+}
+
+/// Prompt for a free-form question from the Ask palette: the current
+/// folder's listing, excerpts of the selected files, earlier turns of the
+/// conversation, then the question.
+pub fn ask_prompt(question: &str, history: &[(String, String)], dir: Option<&Path>, location: &str, selection: &[PathBuf]) -> String {
+    const PER_FILE: usize = 4_000;
+    const PER_ANSWER: usize = 1_500;
+    let mut prompt = String::new();
+    match dir {
+        Some(dir) => {
+            let mut entries = rile_core::list_dir(dir, false).unwrap_or_default();
+            entries.sort_by(|a, b| b.modified.cmp(&a.modified));
+            prompt.push_str(&format!("Current folder: {} ({} items)\nItems (newest first):\n", short(dir), entries.len()));
+            for e in entries.iter().take(60) {
+                let note = tags::get(&e.path).map(|r| format!(" — {}", r.description)).filter(|n| n.len() > 3).unwrap_or_default();
+                prompt.push_str(&format!("- {}{} ({}){note}\n", e.name, if e.is_dir { "/" } else { "" }, describe_entry(e)));
+            }
+            if entries.len() > 60 {
+                prompt.push_str(&format!("- … and {} more\n", entries.len() - 60));
+            }
+        }
+        None => prompt.push_str(&format!("Current view: {location}\n")),
+    }
+    for path in selection.iter().take(4) {
+        if path.is_dir() {
+            let count = std::fs::read_dir(path).map(|d| d.count()).unwrap_or(0);
+            prompt.push_str(&format!("\nSelected folder: {} ({count} items)\n", short(path)));
+            continue;
+        }
+        let tagged = tags::get(path).filter(|r| !r.description.is_empty() || !r.text.is_empty());
+        let text = tagged.map(|r| format!("{} {}", r.description, r.text.chars().take(PER_FILE).collect::<String>())).or_else(|| {
+            let mut buf = vec![0u8; PER_FILE];
+            let n = std::io::Read::read(&mut std::fs::File::open(path).ok()?, &mut buf).ok()?;
+            (!buf[..n].contains(&0)).then(|| String::from_utf8_lossy(&buf[..n]).into_owned())
+        });
+        match text {
+            Some(text) => prompt.push_str(&format!("\nSelected file: {}\n---\n{}\n---\n", short(path), text.trim())),
+            None => prompt.push_str(&format!("\nSelected file: {} (binary)\n", short(path))),
+        }
+    }
+    if selection.len() > 4 {
+        prompt.push_str(&format!("\n… and {} more selected items\n", selection.len() - 4));
+    }
+    for (q, a) in history {
+        let a: String = a.chars().take(PER_ANSWER).collect();
+        prompt.push_str(&format!("\nEarlier question: {q}\nYour answer: {a}\n"));
+    }
+    prompt.push_str(&format!("\nQuestion: {question}"));
+    prompt
 }
 
 fn secs(t: Option<std::time::SystemTime>) -> u64 {

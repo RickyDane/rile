@@ -4,7 +4,7 @@ members = ["crates/rile-core", "crates/rile-services", "crates/rile-plugins", "c
 exclude = ["plugins", "vendor/smb"]
 
 [workspace.package]
-version = "0.6.2"
+version = "0.7.0"
 edition = "2024"
 license = "MIT"
 
@@ -19,6 +19,9 @@ anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 dirs = "6"
+dunce = "1"
+windows = "0.62"
+windows-registry = "0.6"
 notify = "8"
 trash = "5"
 open = "5"

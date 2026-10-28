@@ -225,7 +225,7 @@ fn job_card(ws: &Workspace, ix: usize, job: &BackupJob, ch: &Chrome, cx: &mut Co
                         move |_, window, cx| {
                             confirm_restore(weak.clone(), restore.clone(), RestoreFrom::Latest,
                                 format!("Restore “{name}”?"),
-                                "Copies the files of the latest backup back to this Mac. Files that are already identical are skipped; files that differ are replaced, and their current versions are moved to the Trash.".into(),
+                                format!("Copies the files of the latest backup back to {}. Files that are already identical are skipped; files that differ are replaced, and their current versions are moved to the {}.", crate::platform_text::this_computer_lower(), crate::platform_text::trash()),
                                 window, cx)
                         }
                     }),
@@ -464,7 +464,7 @@ fn run_row(card: usize, i: usize, job: &BackupJob, r: &RunRecord, busy: bool, we
             .on_click(move |_, window, cx| {
                 confirm_restore(weak.clone(), id.clone(), RestoreFrom::Run(v.clone()),
                     format!("Restore files from the run of {date}?"),
-                    "Restores the older versions this run kept — the files it replaced or removed — as they were before it. Identical local files are skipped; others are replaced, with their current versions moved to the Trash.".into(),
+                    format!("Restores the older versions this run kept — the files it replaced or removed — as they were before it. Identical local files are skipped; others are replaced, with their current versions moved to the {}.", crate::platform_text::trash()),
                     window, cx)
             })
     });

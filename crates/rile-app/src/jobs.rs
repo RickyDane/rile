@@ -63,7 +63,7 @@ pub fn op_status(op: &RunningOp) -> OpStatus {
     } else if p.items_total > 0 {
         totals.push(format!("{} of {} items", p.items_done, p.items_total));
     }
-    if p.bytes_total > 0 && p.files_total > 0 {
+    if p.bytes_total > 0 && (p.files_total > 0 || p.items_total <= 1) {
         totals.push(format!("{} of {}", fmt_bytes(p.bytes_done), fmt_bytes(p.bytes_total)));
     }
     let elapsed = op.started.elapsed();
@@ -221,7 +221,7 @@ pub fn render_panel(ws: &mut Workspace, _window: &mut Window, cx: &mut Context<W
                             .border_color(ch.hairline)
                             .child(crate::icons::icon(IconName::Check).size(px(20.)).text_color(ch.text_faint))
                             .child(div().text_size(px(12.)).text_color(ch.text_muted).child("Nothing running"))
-                            .child(div().text_size(px(10.)).text_color(ch.text_faint).child("Copies, moves and server transfers show up here.")),
+                            .child(div().text_size(px(10.)).text_color(ch.text_faint).child("File transfers and AI model downloads show up here.")),
                     )
                 })
                 .when(has_finished, |d| {

@@ -1,5 +1,6 @@
-//! On-device image understanding via Apple's Vision framework: scene
-//! classification labels and OCR text.
+//! On-device image understanding: scene classification labels and OCR text
+//! via Apple's Vision framework on macOS; OCR text (no labels — Windows has
+//! no built-in classifier) via Windows.Media.Ocr on Windows.
 
 use std::path::Path;
 
@@ -84,9 +85,34 @@ pub fn analyze_image(path: &Path) -> Result<ImageTags> {
     })
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Windows: text only, in the user's profile languages.
+#[cfg(windows)]
+pub fn analyze_image(path: &Path) -> Result<ImageTags> {
+    use anyhow::Context;
+    use windows::Graphics::Imaging::BitmapDecoder;
+    use windows::Media::Ocr::OcrEngine;
+    use windows::Storage::{FileAccessMode, StorageFile};
+    use windows::core::HSTRING;
+
+    let _com = crate::win::ComScope::new();
+    let engine = OcrEngine::TryCreateFromUserProfileLanguages().context("no OCR language installed")?;
+    let file = StorageFile::GetFileFromPathAsync(&HSTRING::from(dunce::simplified(path).as_os_str()))?.join().context("opening the image")?;
+    let stream = file.OpenAsync(FileAccessMode::Read)?.join()?;
+    let decoder = BitmapDecoder::CreateAsync(&stream)?.join().context("unsupported image")?;
+    let max = OcrEngine::MaxImageDimension()?;
+    if decoder.PixelWidth()? > max || decoder.PixelHeight()? > max {
+        return Ok(ImageTags::default());
+    }
+    let bitmap = decoder.GetSoftwareBitmapAsync()?.join()?;
+    let result = engine.RecognizeAsync(&bitmap)?.join().context("recognizing text")?;
+    let lines = result.Lines()?;
+    let text: Vec<String> = (0..lines.Size()?).filter_map(|i| lines.GetAt(i).ok()?.Text().ok().map(|t| t.to_string())).collect();
+    Ok(ImageTags { labels: Vec::new(), text: cap_chars(text.join("\n"), MAX_TEXT_CHARS) })
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn analyze_image(_path: &Path) -> Result<ImageTags> {
-    anyhow::bail!("image analysis is only available on macOS")
+    anyhow::bail!("image analysis is only available on macOS and Windows")
 }
 
 /// `"sky_blue"` -> `"sky blue"`.
@@ -95,7 +121,7 @@ fn humanize(identifier: &str) -> String {
     identifier.replace('_', " ")
 }
 
-#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+#[cfg_attr(not(any(target_os = "macos", windows)), allow(dead_code))]
 fn cap_chars(mut s: String, max: usize) -> String {
     if let Some((idx, _)) = s.char_indices().nth(max) {
         s.truncate(idx);

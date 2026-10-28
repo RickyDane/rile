@@ -107,7 +107,7 @@ pub fn asset_name_for_platform() -> String {
 
 /// The `.app` bundle containing the running executable, if any.
 pub fn current_app_bundle() -> Option<PathBuf> {
-    let exe = std::env::current_exe().ok()?.canonicalize().ok()?;
+    let exe = dunce::canonicalize(std::env::current_exe().ok()?).ok()?;
     app_bundle_of(&exe)
 }
 
@@ -398,7 +398,7 @@ fn archive_kind(path: &Path) -> ArchiveKind {
 /// Installs a file produced by [`download`]: replaces the running app bundle
 /// (macOS, when the archive contains a `.app`) or the running executable.
 pub fn install(downloaded: &Path) -> Result<InstallOutcome> {
-    let exe = std::env::current_exe()?.canonicalize()?;
+    let exe = dunce::canonicalize(std::env::current_exe()?)?;
     let exe_name = exe.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     let kind = archive_kind(downloaded);
 
@@ -438,6 +438,17 @@ pub fn install(downloaded: &Path) -> Result<InstallOutcome> {
     .ok_or_else(|| anyhow!("Archive does not contain a '{}' executable", wanted[1]))?;
     set_executable(&bin)?;
     self_replace::self_replace(&bin).context("Failed to replace executable")?;
+    // Windows installs are a folder: refresh the files shipped next to
+    // rile.exe too (the running exe was swapped above).
+    #[cfg(windows)]
+    if let (Some(from), Some(to)) = (bin.parent(), exe.parent()) {
+        for entry in fs::read_dir(from)?.flatten() {
+            let path = entry.path();
+            if path != bin && path.is_file() {
+                fs::copy(&path, to.join(entry.file_name())).with_context(|| format!("Updating {}", entry.file_name().to_string_lossy()))?;
+            }
+        }
+    }
     Ok(replaced_msg(&exe))
 }
 

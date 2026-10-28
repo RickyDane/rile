@@ -1,7 +1,10 @@
-//! PDF page counting and rasterization (CoreGraphics on macOS).
+//! PDF page counting and rasterization (CoreGraphics on macOS,
+//! Windows.Data.Pdf on Windows).
 
+#[cfg(not(windows))]
 use std::path::Path;
 
+#[cfg(not(windows))]
 use anyhow::Result;
 
 /// Number of pages in the PDF at `path`.
@@ -10,7 +13,10 @@ pub fn page_count(path: &Path) -> Result<usize> {
     objc2::rc::autoreleasepool(|_| Ok(mac::open(path)?.number_of_pages()))
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(windows)]
+pub use win::{page_count, render_page};
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn page_count(_path: &Path) -> Result<usize> {
     anyhow::bail!("PDF rendering is only available on macOS")
 }
@@ -85,7 +91,7 @@ pub fn render_page(path: &Path, page_index: usize, max_px: u32) -> Result<Vec<u8
     })
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn render_page(_path: &Path, _page_index: usize, _max_px: u32) -> Result<Vec<u8>> {
     anyhow::bail!("PDF rendering is only available on macOS")
 }
@@ -169,5 +175,50 @@ mod tests {
         let f = dir.path().join("x.pdf");
         std::fs::write(&f, "not a pdf").unwrap();
         assert!(super::page_count(&f).is_err());
+    }
+}
+
+#[cfg(windows)]
+mod win {
+    use std::path::Path;
+
+    use anyhow::{Context, Result};
+    use windows::Data::Pdf::{PdfDocument, PdfPageRenderOptions};
+    use windows::Storage::StorageFile;
+    use windows::Storage::Streams::{DataReader, InMemoryRandomAccessStream};
+    use windows::UI::Color;
+    use windows::core::HSTRING;
+
+    fn open(path: &Path) -> Result<PdfDocument> {
+        let path = HSTRING::from(dunce::simplified(path).as_os_str());
+        let file = StorageFile::GetFileFromPathAsync(&path)?.join().context("opening the PDF")?;
+        PdfDocument::LoadFromFileAsync(&file)?.join().context("reading the PDF")
+    }
+
+    pub fn page_count(path: &Path) -> Result<usize> {
+        let _com = crate::win::ComScope::new();
+        Ok(open(path)?.PageCount()? as usize)
+    }
+
+    pub fn render_page(path: &Path, page_index: usize, max_px: u32) -> Result<Vec<u8>> {
+        let _com = crate::win::ComScope::new();
+        let doc = open(path)?;
+        let page = doc.GetPage(u32::try_from(page_index)?).context("no such page")?;
+        let size = page.Size()?;
+        anyhow::ensure!(size.Width > 0. && size.Height > 0., "empty page");
+        let scale = max_px as f32 / size.Width.max(size.Height);
+        let options = PdfPageRenderOptions::new()?;
+        options.SetDestinationWidth((size.Width * scale).round().max(1.) as u32)?;
+        options.SetDestinationHeight((size.Height * scale).round().max(1.) as u32)?;
+        options.SetBackgroundColor(Color { A: 255, R: 255, G: 255, B: 255 })?;
+        // PNG is the default encoding.
+        let stream = InMemoryRandomAccessStream::new()?;
+        page.RenderWithOptionsToStreamAsync(&stream, &options)?.join().context("rendering the page")?;
+        let len = u32::try_from(stream.Size()?)?;
+        let reader = DataReader::CreateDataReader(&stream.GetInputStreamAt(0)?)?;
+        reader.LoadAsync(len)?.join()?;
+        let mut png = vec![0u8; len as usize];
+        reader.ReadBytes(&mut png)?;
+        Ok(png)
     }
 }

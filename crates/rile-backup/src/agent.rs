@@ -1,8 +1,9 @@
-//! macOS launch agents for backups:
-//! - the scheduler, which launchd starts every few minutes as
-//!   `rile --run-backups` to run due background jobs while Rile is closed;
-//! - the menu bar helper (`rile --backup-menu`), started at login, which
-//!   shows running backups and their state.
+//! Background agents for backups:
+//! - the scheduler, started every 15 minutes as `rile --run-backups` to run
+//!   due background jobs while Rile is closed (a launchd agent on macOS, a
+//!   Task Scheduler task on Windows);
+//! - the status helper (`rile --backup-menu`), started at login, which shows
+//!   running backups in the menu bar (macOS) or notification area (Windows).
 
 use std::path::{Path, PathBuf};
 
@@ -12,6 +13,9 @@ use anyhow::{Context, Result};
 pub const RUN_FLAG: &str = "--run-backups";
 /// Command-line flag that makes the app binary run the menu bar helper.
 pub const MENU_FLAG: &str = "--backup-menu";
+/// `--config-dir <dir>`: sets `RILE_CONFIG_DIR` for agents started by
+/// Windows, which can't pass environment variables to scheduled tasks.
+pub const CONFIG_DIR_FLAG: &str = "--config-dir";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Agent {
@@ -34,6 +38,7 @@ impl Agent {
         }
     }
 
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     fn log_name(self) -> &'static str {
         match self {
             Agent::Scheduler => "agent.log",
@@ -89,6 +94,7 @@ pub fn plist(agent: Agent, exe: &Path, log: &Path) -> String {
     )
 }
 
+#[cfg(not(windows))]
 pub fn is_installed(agent: Agent) -> bool {
     plist_path(agent).is_some_and(|p| p.exists())
 }
@@ -141,18 +147,135 @@ pub fn start(agent: Agent) {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn install(_agent: Agent, _exe: &Path) -> Result<()> {
-    anyhow::bail!("Background backups are only available on macOS")
+    anyhow::bail!("Background backups are only available on macOS and Windows")
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn uninstall(_agent: Agent) -> Result<()> {
     Ok(())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn start(_agent: Agent) {}
+
+#[cfg(windows)]
+pub use win::{install, is_installed, start, uninstall};
+
+/// The scheduler is a per-user Task Scheduler task (no elevation needed);
+/// the status helper starts at login from the `Run` key.
+#[cfg(windows)]
+mod win {
+    use std::os::windows::process::CommandExt;
+    use std::path::Path;
+    use std::process::{Command, Stdio};
+
+    use anyhow::{Context, Result, bail};
+    use windows_registry::CURRENT_USER;
+
+    use super::Agent;
+
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
+
+    fn task_name(agent: Agent) -> String {
+        format!(r"Rile\{}", agent.label())
+    }
+
+    /// The command line the agent runs, quoted for Task Scheduler and Run.
+    fn command_line(agent: Agent, exe: &Path) -> String {
+        let mut cmd = format!("\"{}\" {}", exe.display(), agent.flag());
+        // Agents must read the same config as the app that installed them.
+        if let Some(dir) = std::env::var_os("RILE_CONFIG_DIR") {
+            cmd.push_str(&format!(" {} \"{}\"", super::CONFIG_DIR_FLAG, dir.to_string_lossy()));
+        }
+        cmd
+    }
+
+    fn schtasks(args: &[&str]) -> std::io::Result<std::process::Output> {
+        Command::new("schtasks.exe").args(args).stdin(Stdio::null()).creation_flags(CREATE_NO_WINDOW).output()
+    }
+
+    /// The command an installed scheduler task runs, if any.
+    fn installed_task_command(agent: Agent) -> Option<String> {
+        let out = schtasks(&["/Query", "/TN", &task_name(agent), "/XML"]).ok().filter(|o| o.status.success())?;
+        // schtasks /XML writes UTF-16 when redirected on some systems.
+        let xml = if out.stdout.starts_with(&[0xff, 0xfe]) {
+            String::from_utf16_lossy(&out.stdout[2..].chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect::<Vec<_>>())
+        } else {
+            String::from_utf8_lossy(&out.stdout).into_owned()
+        };
+        let tag = |name: &str| {
+            let start = xml.find(&format!("<{name}>"))? + name.len() + 2;
+            let end = xml[start..].find(&format!("</{name}>"))? + start;
+            Some(xml[start..end].replace("&quot;", "\"").replace("&amp;", "&"))
+        };
+        Some(format!("\"{}\" {}", tag("Command")?.trim_matches('"'), tag("Arguments").unwrap_or_default()).trim_end().to_string())
+    }
+
+    pub fn is_installed(agent: Agent) -> bool {
+        match agent {
+            Agent::Scheduler => installed_task_command(agent).is_some(),
+            Agent::MenuBar => CURRENT_USER.open(RUN_KEY).and_then(|k| k.get_string(agent.label())).is_ok(),
+        }
+    }
+
+    pub fn install(agent: Agent, exe: &Path) -> Result<()> {
+        let cmd = command_line(agent, exe);
+        match agent {
+            Agent::Scheduler => {
+                if installed_task_command(agent).is_some_and(|c| c == cmd) {
+                    return Ok(());
+                }
+                let out = schtasks(&["/Create", "/F", "/SC", "MINUTE", "/MO", "15", "/TN", &task_name(agent), "/TR", &cmd])
+                    .context("running schtasks")?;
+                if !out.status.success() {
+                    bail!("Couldn't schedule background backups: {}", String::from_utf8_lossy(&out.stderr).trim());
+                }
+            }
+            Agent::MenuBar => CURRENT_USER.create(RUN_KEY)?.set_string(agent.label(), &cmd).context("adding Rile to startup apps")?,
+        }
+        Ok(())
+    }
+
+    pub fn uninstall(agent: Agent) -> Result<()> {
+        match agent {
+            Agent::Scheduler => {
+                if is_installed(agent) {
+                    schtasks(&["/Delete", "/F", "/TN", &task_name(agent)]).context("running schtasks")?;
+                }
+            }
+            Agent::MenuBar => {
+                if let Ok(key) = CURRENT_USER.create(RUN_KEY) {
+                    key.remove_value(agent.label()).ok();
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Launches the status helper now (it exits at once when one already runs).
+    pub fn start(agent: Agent) {
+        if agent == Agent::MenuBar && is_installed(agent) {
+            if let Ok(exe) = std::env::current_exe() {
+                let mut cmd = Command::new(exe);
+                cmd.arg(agent.flag()).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).creation_flags(CREATE_NO_WINDOW);
+                if let Some(dir) = std::env::var_os("RILE_CONFIG_DIR") {
+                    cmd.arg(super::CONFIG_DIR_FLAG).arg(dir);
+                }
+                cmd.spawn().ok();
+            }
+        }
+    }
+}
+
+/// Removes both agents (used by the Windows uninstaller).
+pub fn uninstall_all() {
+    for agent in [Agent::Scheduler, Agent::MenuBar] {
+        uninstall(agent).ok();
+    }
+}
 
 #[cfg(target_os = "macos")]
 fn domain() -> String {
@@ -182,7 +305,7 @@ pub fn sync(config: &crate::BackupConfig) -> Result<()> {
     }
     let exe = std::env::current_exe().context("locating the Rile program")?;
     let mut result = Ok(());
-    for (agent, wanted) in [(Agent::Scheduler, config.wants_agent()), (Agent::MenuBar, cfg!(target_os = "macos") && config.wants_menu_bar())] {
+    for (agent, wanted) in [(Agent::Scheduler, config.wants_agent()), (Agent::MenuBar, cfg!(any(target_os = "macos", windows)) && config.wants_menu_bar())] {
         let r = if wanted { install(agent, &exe) } else { uninstall(agent) };
         if r.is_err() && result.is_ok() {
             result = r;

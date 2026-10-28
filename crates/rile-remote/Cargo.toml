@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+rile-core.workspace = true
 anyhow.workspace = true
 serde = { version = "1", features = ["derive"] }
 dirs = "6"

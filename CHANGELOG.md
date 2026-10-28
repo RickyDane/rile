@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.7.0
+
+### Windows support
+- Run Rile natively on Windows 10 and 11. The toolbar holds the window's minimize, maximize and close buttons and drags the window, with Snap support. Shortcuts use Ctrl and follow Explorer's keys (Alt+←/→/↑, Alt+D, Ctrl+Shift+C to copy a path), and AltGr keeps typing characters. Labels use Windows terms such as Recycle Bin and Preview.
+- Show Explorer's icons and thumbnails, Open With from the file type's registered apps or any Start menu program, PDF previews (Windows.Data.Pdf), Windows Search for index search and the photo library, photo metadata, text recognition in photos, owner, attributes and size on disk in Properties, and Safely Remove for USB drives.
+- Hide files that have the Hidden or System attribute. Reject file names that Windows doesn't allow. Copy and delete read-only files, and skip symlinks when Windows doesn't allow creating them.
+- One Rile per session: opening folders, `rile://` links or Rile again reuses the running window. Explorer gets **Open in Rile**, and Rile can optionally become the default folder handler.
+- Background backups through Task Scheduler and a backup status icon in the notification area. Stale backup locks are detected on Windows too.
+- Store downloaded models and llama.cpp runtimes in `%LOCALAPPDATA%`, show installed memory, and stop the runtime together with Rile.
+- Ship a per-user Inno Setup installer and a `rile.exe` zip for the in-app updater; CI also builds and tests on Windows.
+
+### Fixes on all platforms
+- Skip remote files whose names would write outside the download folder.
+- Keep a copied file's modification date when the file is read-only.
+- Preview UTF-16 text files (with a byte order mark) as text.
+- Store SSH known hosts in Rile's configuration folder, so `RILE_CONFIG_DIR` applies to them too.
+
 ## v0.6.2
 
 ### Search fixes
@@ -7,7 +24,18 @@
 - Check the requested scope for matching filenames before Smart Search consults the AI model, so undiscovered files are not missed; preserve search filters, cancellation, and streamed results.
 - Prevent malformed AI replies or invalid folder-opening actions from returning unrelated files as Smart Search results.
 
+### AI settings
+- Redesign Settings → AI to the design guide: an overview with the master switch and live model status, Apple Intelligence / Local model tabs with a numbered runtime and model-file setup, and a Photo descriptions group with **Describe All** and a confirmed **Clear…**. Photo actions explain why they're unavailable when AI is off.
+- Pick any already downloaded GGUF model from a list in Local model mode; vision projectors and later shards of split models are left out.
+- Run MLX models from Hugging Face on Apple silicon: a new **MLX** tab installs the mlx-lm runtime (checksum-verified uv with its own Python; no Homebrew or Terminal), downloads a whole MLX repository such as `mlx-community/Qwen3-4B-4bit` with SHA-256 checks, and lists downloaded MLX folders. Intelligent search and summaries stream from `mlx_lm.server` on loopback.
+- Load the selected local model in the background when Rile starts and keep it in memory, so intelligent search and summaries no longer wait for the model on every request. The AI overview shows when the model is loading or loaded. Turning AI off or choosing Apple Intelligence frees the memory.
+- Ask before switching away from the local model in use, since switching unloads it and loads the new selection.
+- Delete downloaded GGUF and MLX models from the Downloaded models list after a confirmation; split models go with all their shards, emptied folders are removed, and deleting the model in use unloads it first.
+- Overhaul model downloads: each local tab lists recommended models (Qwen 3.5 2B/4B/9B, Gemma 4 E4B, Qwen 3.8 27B) with download size, memory needs checked against this computer, and one-click **Download**. Progress, speed and **Cancel** show on the model's own row, downloaded models are grouped under **On this computer**, and runtime installs show progress on the Runtime step. **Custom from Hugging Face** lists a repository's GGUF files to pick from instead of typing the exact filename.
+- Model downloads and runtime installs keep running after Settings closes; reopening Settings shows their progress again, and a notification reports the result. Progress now shows transfer speed (MB/s) and time left.
+
 ### macOS integration
+- Apply the file-viewer preference independently when macOS rejects folder bindings with an invalid-parameter error; report partial integration without claiming folder opening changed, and allow restoring the viewer to Finder.
 - Set and detect the default file manager using the registered folder content type instead of inspecting a sample folder, avoiding access to the protected `/Users` directory.
 - Check system API availability before offering to make Rile the default file manager, and include the macOS error domain and code when changing the folder handler fails.
 

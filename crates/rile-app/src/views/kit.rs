@@ -203,6 +203,154 @@ pub fn notice(text: impl Into<SharedString>, error: bool, cx: &App) -> Div {
         .child(div().flex_1().min_w_0().child(text.into()))
 }
 
+/// Button hierarchy from the design guide (docs/design-guide.md, "Buttons").
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Tone {
+    /// The main action of a group: accent fill with dark text.
+    Primary,
+    /// Ordinary supporting actions: neutral control fill.
+    Secondary,
+    /// Low-emphasis or dismissive actions: no fill until hovered.
+    Ghost,
+    /// Removes or irreversibly changes data; pair with an explicit label.
+    Destructive,
+}
+
+/// Fill, text, hover and pressed colors for a [`Tone`].
+fn tone_colors(tone: Tone, ch: &Chrome) -> (gpui_kit::Hsla, gpui_kit::Hsla, gpui_kit::Hsla, gpui_kit::Hsla) {
+    use gpui_kit::hsla;
+    let a = ch.accent;
+    let clear = gpui_kit::transparent_black();
+    match (tone, ch.dark) {
+        // #86baf5 on #15283d at the Blue accent; other accents keep the hue.
+        (Tone::Primary, true) => (hsla(a.h, a.s.min(0.85), 0.74, 1.), hsla(a.h, 0.49, 0.16, 1.), hsla(a.h, a.s.min(0.85), 0.79, 1.), hsla(a.h, a.s.min(0.85), 0.68, 1.)),
+        (Tone::Primary, false) => (a, hsla(0., 0., 1., 1.), hsla(a.h, a.s, (a.l + 0.05).min(0.9), 1.), hsla(a.h, a.s, (a.l - 0.06).max(0.1), 1.)),
+        (Tone::Secondary, true) => (rgba(0x383b41ff).into(), ch.text_strong, rgba(0x43464dff).into(), rgba(0x31343aff).into()),
+        (Tone::Secondary, false) => (ch.text.opacity(0.06), ch.text, ch.text.opacity(0.1), ch.text.opacity(0.14)),
+        (Tone::Ghost, _) => (clear, ch.text, ch.hover_strong, ch.hover),
+        (Tone::Destructive, true) => (rgba(0x533236ff).into(), rgba(0xffb4b4ff).into(), rgba(0x5f393eff).into(), rgba(0x482b2fff).into()),
+        (Tone::Destructive, false) => (rgba(0xfde8e8ff).into(), rgba(0xb42318ff).into(), rgba(0xfbd5d5ff).into(), rgba(0xf8c4c4ff).into()),
+    }
+}
+
+/// A button from the design guide: 34 px (27 px `compact`) high, 8/7 px
+/// corners and a semibold 12 px label. Add `.pointer_unless(..)` for
+/// disabled states and `.on_click(..)`.
+pub fn button(id: impl Into<ElementId>, label: impl Into<SharedString>, tone: Tone, compact: bool, cx: &App) -> gpui_kit::component::button::Button {
+    let label = label.into();
+    styled_button(gpui_kit::component::button::Button::new(id).label(label), tone, compact, cx)
+}
+
+/// [`button`] with a leading glyph (16 px, 6 px from the label), such as the
+/// Apple Intelligence symbol on AI actions.
+pub fn button_with_glyph(
+    id: impl Into<ElementId>,
+    glyph: AnyElement,
+    label: impl Into<SharedString>,
+    tone: Tone,
+    compact: bool,
+    cx: &App,
+) -> gpui_kit::component::button::Button {
+    let label = label.into();
+    let content = h_flex().gap(px(6.)).items_center().child(glyph).child(div().whitespace_nowrap().child(label.clone()));
+    styled_button(gpui_kit::component::button::Button::new(id).accessibility_label(label).child(content), tone, compact, cx)
+}
+
+fn styled_button(button: gpui_kit::component::button::Button, tone: Tone, compact: bool, cx: &App) -> gpui_kit::component::button::Button {
+    use gpui_kit::component::{Sizable, button::{ButtonCustomVariant, ButtonVariants}};
+    let ch = chrome(cx);
+    let (bg, fg, hover, active) = tone_colors(tone, &ch);
+    let border = match tone {
+        Tone::Secondary if ch.dark => Some(gpui_kit::Hsla::from(rgba(0xffffff18))),
+        Tone::Secondary => Some(ch.hairline),
+        _ => None,
+    };
+    button
+        .xsmall()
+        .custom(ButtonCustomVariant::new(cx).color(bg).foreground(fg).hover(hover).active(active).shadow(false))
+        // The custom variant paints only a 20% tint of `color`; set the full fill.
+        .bg(bg)
+        .h(px(if compact { 27. } else { 34. }))
+        .px(px(if compact { 9. } else { 13. }))
+        .rounded(px(if compact { 7. } else { 8. }))
+        .font_weight(FontWeight::SEMIBOLD)
+        .when_some(border, |b, color| b.border_1().border_color(color))
+        .cursor_pointer()
+}
+
+/// Inset container for [`tab`]s (4 px padding, modest gap).
+pub fn tabs(cx: &App) -> Div {
+    let ch = chrome(cx);
+    h_flex()
+        .gap(px(4.))
+        .p(px(4.))
+        .rounded(px(9.))
+        .bg(if ch.dark { gpui_kit::Hsla::from(rgba(0x202125ff)) } else { ch.segmented_bg })
+        .border_1()
+        .border_color(ch.hairline)
+}
+
+/// One tab of a [`tabs`] container: a raised neutral fill and bright text
+/// when selected, transparent with muted text otherwise. Labels stay
+/// visible next to the optional glyph.
+pub fn tab(id: impl Into<ElementId>, glyph: Option<AnyElement>, label: impl Into<SharedString>, selected: bool, cx: &App) -> gpui_kit::component::button::Button {
+    use gpui_kit::component::{Sizable, button::{ButtonCustomVariant, ButtonVariants}};
+    let ch = chrome(cx);
+    let label = label.into();
+    let fill = if ch.dark { gpui_kit::Hsla::from(rgba(0x474b52ff)) } else { ch.segmented_active };
+    let (bg, fg, hover) = if selected { (fill, ch.text_strong, fill) } else { (gpui_kit::transparent_black(), ch.text_muted, ch.hover_strong) };
+    gpui_kit::component::button::Button::new(id)
+        .xsmall()
+        .accessibility_label(label.clone())
+        .toggled(selected)
+        .custom(ButtonCustomVariant::new(cx).color(bg).foreground(fg).hover(hover).active(if selected { fill } else { ch.hover }).shadow(false))
+        .bg(bg)
+        .h(px(28.))
+        .px(px(10.))
+        .rounded(px(5.))
+        .font_weight(if selected { FontWeight::SEMIBOLD } else { FontWeight::MEDIUM })
+        .when(selected && !ch.dark, |b| b.shadow_xs())
+        .child(h_flex().gap(px(6.)).items_center().children(glyph).child(div().whitespace_nowrap().child(label)))
+        .cursor_pointer()
+}
+
+/// A section heading (15 px semibold) with an optional supporting line.
+pub fn heading(title: impl Into<SharedString>, description: Option<SharedString>, cx: &App) -> Div {
+    let ch = chrome(cx);
+    v_flex()
+        .gap(px(3.))
+        .child(div().text_size(px(15.)).font_weight(FontWeight::SEMIBOLD).text_color(ch.text_strong).child(title.into()))
+        .children(description.map(|d| div().text_size(px(12.)).line_height(px(17.)).text_color(ch.text_muted).child(d)))
+}
+
+/// State of a [`status`] line.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Status {
+    Ready,
+    Pending,
+    Warning,
+    Off,
+}
+
+/// A small status line: a colored dot and a label, so the state is not
+/// carried by color alone.
+pub fn status(text: impl Into<SharedString>, state: Status, cx: &App) -> Div {
+    let ch = chrome(cx);
+    let dot: gpui_kit::Hsla = match state {
+        Status::Ready => ch.success,
+        Status::Pending => ch.text_muted,
+        Status::Warning => rgba(0xe5b567ff).into(),
+        Status::Off => ch.text_faint,
+    };
+    h_flex()
+        .gap(px(6.))
+        .min_w_0()
+        .text_size(px(11.))
+        .text_color(if state == Status::Warning { ch.text } else { ch.text_muted })
+        .child(div().flex_none().size(px(7.)).rounded_full().bg(dot))
+        .child(div().min_w_0().truncate().child(text.into()))
+}
+
 /// Right-aligned action row at the bottom of a dialog body.
 pub fn footer() -> Div {
     h_flex().pt(px(6.)).gap(px(8.)).justify_end()
@@ -266,6 +414,22 @@ mod tests {
             gpui_kit::init(cx);
             let mut button = close_button(gpui_kit::base::Button::new("close").cursor_pointer(), chrome(cx));
             assert_eq!(button.style().mouse_cursor, Some(CursorStyle::PointingHand));
+        });
+    }
+
+    #[gpui_kit::test]
+    fn action_cursor_tracks_disabled_state(cx: &mut TestAppContext) {
+        use gpui_kit::component::button::{Button, ButtonVariants};
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            for button in [Button::new("secondary").outline(), Button::new("primary").primary(), Button::new("ghost").ghost()] {
+                let mut button = button.pointer_unless(false);
+                assert_eq!(button.style().mouse_cursor, Some(CursorStyle::PointingHand));
+                button = button.pointer_unless(true);
+                assert_eq!(button.style().mouse_cursor, Some(CursorStyle::Arrow));
+                button = button.pointer_unless(false);
+                assert_eq!(button.style().mouse_cursor, Some(CursorStyle::PointingHand));
+            }
         });
     }
 

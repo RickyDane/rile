@@ -126,7 +126,7 @@ impl Workspace {
 
     /// Shows `dir` in the analyzer, scanning only if no cached scan covers it.
     pub fn analyze_folder(&mut self, dir: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
-        let dir = dir.canonicalize().unwrap_or(dir);
+        let dir = dunce::canonicalize(&dir).unwrap_or(dir);
         if !dir.is_dir() {
             window.push_notification(Notification::error(format!("Not a folder: {}", dir.display())), cx);
             return;
@@ -275,7 +275,7 @@ impl Workspace {
             }
             let names: Vec<String> = protected.iter().map(|p| p.display().to_string()).collect();
             window.push_notification(
-                Notification::warning(format!("{} is managed by macOS and can't be moved to the Trash. Open it to remove what's inside.", names.join(", "))),
+                Notification::warning(format!("{} is managed by {} and can't be moved to the {}. Open it to remove what's inside.", names.join(", "), if cfg!(windows) { "Windows" } else { "macOS" }, crate::platform_text::trash())),
                 cx,
             );
             cx.notify();
@@ -292,7 +292,7 @@ impl Workspace {
                 _ => format!("{} items are", locked.len()),
             };
             window.push_notification(
-                Notification::warning(format!("{what} inside a read-only folder and can't be moved to the Trash. Remove them with the tool that manages them.")),
+                Notification::warning(format!("{what} inside a read-only folder and can't be moved to the {}. Remove them with the tool that manages them.", crate::platform_text::trash())),
                 cx,
             );
             cx.notify();
@@ -305,9 +305,9 @@ impl Workspace {
             [one] => format!("“{}”", one.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| one.display().to_string())),
             _ => format!("{} items", paths.len()),
         };
-        let message = format!("Move {what} ({}) to the Trash?", humansize::format_size(bytes, humansize::DECIMAL));
+        let message = format!("Move {what} ({}) to the {}?", humansize::format_size(bytes, humansize::DECIMAL), crate::platform_text::trash());
         let ws = cx.entity().downgrade();
-        crate::dialogs::confirm(message, "Move to Trash", true, window, cx, move |window, cx| {
+        crate::dialogs::confirm(message, if cfg!(target_os = "macos") { "Move to Trash" } else { "Delete" }, true, window, cx, move |window, cx| {
             let paths = paths.clone();
             ws.update(cx, |ws, cx| ws.trash_space_paths(paths, window, cx)).ok();
         });
@@ -344,12 +344,12 @@ impl Workspace {
                 if moved > 0 {
                     let items = if moved == 1 { "1 item".to_string() } else { format!("{moved} items") };
                     window.push_notification(
-                        Notification::success(format!("Moved {items} to the Trash · {} freed", humansize::format_size(freed, humansize::DECIMAL))),
+                        Notification::success(format!("Moved {items} to the {} · {} freed", crate::platform_text::trash(), humansize::format_size(freed, humansize::DECIMAL))),
                         cx,
                     );
                 }
                 if !failed.is_empty() {
-                    let title = if failed.len() == 1 { "1 item couldn't be moved to the Trash".to_string() } else { format!("{} items couldn't be moved to the Trash", failed.len()) };
+                    let title = if failed.len() == 1 { format!("1 item couldn't be moved to the {}", crate::platform_text::trash()) } else { format!("{} items couldn't be moved to the {}", failed.len(), crate::platform_text::trash()) };
                     let mut lines: Vec<String> = failed.iter().take(3).cloned().collect();
                     if failed.len() > 3 {
                         lines.push(format!("…and {} more", failed.len() - 3));
@@ -375,7 +375,7 @@ fn trash_error(path: &Path, raw: &str) -> String {
     let reason = if parent_read_only(path) {
         "its folder is read-only"
     } else if lower.contains("permission") || lower.contains("not permitted") {
-        "no permission (it may be protected by macOS or owned by another user)"
+        if cfg!(windows) { "no permission (it may be protected by Windows or owned by another user)" } else { "no permission (it may be protected by macOS or owned by another user)" }
     } else if lower.contains("no such file") || lower.contains("doesn’t exist") || lower.contains("doesn't exist") {
         "it no longer exists"
     } else if lower.contains("in use") || lower.contains("busy") {

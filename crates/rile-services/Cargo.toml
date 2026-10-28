@@ -5,6 +5,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+dunce.workspace = true
+dirs.workspace = true
 rayon.workspace = true
 rile-core.workspace = true
 anyhow.workspace = true
@@ -35,6 +37,42 @@ brotli = "8"
 zstd = "0.13"
 # syntax highlighting
 syntect = { version = "5.2", default-features = false, features = ["default-fancy"] }
+
+[target.'cfg(windows)'.dependencies.windows]
+workspace = true
+features = [
+    "Data_Pdf",
+    "Foundation",
+    "Foundation_Collections",
+    "Graphics_Imaging",
+    "Media_Ocr",
+    "Storage",
+    "Storage_Streams",
+    "UI",
+    "Win32_Devices_DeviceAndDriverInstallation",
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Storage_EnhancedStorage",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_IO",
+    "Win32_System_Ioctl",
+    "Win32_System_JobObjects",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+    "Win32_System_Time",
+    "Win32_System_WindowsProgramming",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_PropertiesSystem",
+    "Win32_UI_WindowsAndMessaging",
+]
+
+[target.'cfg(windows)'.dependencies]
+windows-registry.workspace = true
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [target.'cfg(unix)'.dependencies]
 uzers = { version = "0.12", default-features = false, features = ["cache"] }

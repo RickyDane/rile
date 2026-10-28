@@ -529,7 +529,7 @@ impl Workspace {
                 msg.push_str(&format!(", {} already up to date", s.skipped));
             }
             if s.replaced > 0 {
-                msg.push_str(&format!("; {} replaced {} moved to the Trash", s.replaced, if s.replaced == 1 { "file was" } else { "files were" }));
+                msg.push_str(&format!("; {} replaced {} moved to the {}", s.replaced, if s.replaced == 1 { "file was" } else { "files were" }, crate::platform_text::trash()));
             }
             if let Some(first) = s.errors.first() {
                 anyhow::bail!("{msg}, but {} failed: {first}", s.error_count);

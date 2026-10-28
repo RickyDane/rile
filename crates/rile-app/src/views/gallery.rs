@@ -485,7 +485,7 @@ impl GalleryView {
                             }
                         }
                     })))
-                    .when(record.is_none() && cfg!(target_os = "macos"), |d| {
+                    .when(record.is_none() && cfg!(any(target_os = "macos", windows)), |d| {
                         d.child(Button::new("ph-tag").cursor_pointer().w_full().ghost().child(ai_label("Describe Photo", ch.accent, cx)).tooltip("Describe this photo on device so search finds it by what's in it").on_click(cx.listener({
                             let path = path.clone();
                             move |_, _, _, cx| {
@@ -763,7 +763,7 @@ impl Render for GalleryView {
                 } else {
                     format!("{total} photos · {described} described")
                 }))
-                .when(!self.scanning && cfg!(target_os = "macos") && described < total, |d| {
+                .when(!self.scanning && cfg!(any(target_os = "macos", windows)) && described < total, |d| {
                     d.child(
                         Button::new("gallery-describe")
                             .cursor_pointer()
@@ -836,7 +836,7 @@ impl Render for GalleryView {
                         .child(div().text_size(px(13.)).text_color(ch.text_muted).child(if searching {
                             "No photos match — try other words, or let them be described first"
                         } else {
-                            "No photos found. Spotlight indexes your pictures; check that it's on."
+                            if cfg!(windows) { "No photos found. Windows Search indexes your pictures; check that indexing is on." } else { "No photos found. Spotlight indexes your pictures; check that it's on." }
                         })),
                 )
             })

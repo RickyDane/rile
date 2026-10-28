@@ -6,6 +6,30 @@ use serde::{Deserialize, Serialize};
 
 use crate::{SortKey, SortOrder};
 
+/// Reasoning allowance for local text models. Apple Intelligence is unaffected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AiThinking {
+    None,
+    #[default]
+    Low,
+    Medium,
+    High,
+    Unlimited,
+}
+
+impl AiThinking {
+    pub fn token_budget(self) -> i32 {
+        match self {
+            Self::None => 0,
+            Self::Low => 64,
+            Self::Medium => 128,
+            Self::High => 256,
+            Self::Unlimited => -1,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ThemeMode {
@@ -317,6 +341,13 @@ pub struct Settings {
     pub index_discovered: bool,
     // AI
     pub ai_enabled: bool,
+    /// None selects Apple Intelligence; otherwise a local GGUF file or MLX model folder.
+    pub ai_model_path: Option<PathBuf>,
+    /// llama.cpp runtime executable (a path or a program on PATH).
+    pub ai_llama_server: String,
+    /// MLX runtime executable, `mlx_lm.server` (a path or a program on PATH).
+    pub ai_mlx_server: String,
+    pub ai_thinking: AiThinking,
     /// Describe images and documents on device so AI search and the photo
     /// library can find them by content.
     pub ai_smart_tags: bool,
@@ -365,6 +396,10 @@ impl Default for Settings {
             search_use_spotlight: false,
             index_discovered: true,
             ai_enabled: true,
+            ai_model_path: None,
+            ai_llama_server: "llama-server".into(),
+            ai_mlx_server: "mlx_lm.server".into(),
+            ai_thinking: AiThinking::default(),
             ai_smart_tags: true,
             update_check_on_start: true,
             update_repo: "RickyDane/rile".into(),
@@ -413,6 +448,17 @@ impl Settings {
         match std::env::var_os("RILE_CONFIG_DIR") {
             Some(d) => Some(PathBuf::from(d)),
             None => Some(dirs::config_dir()?.join("rile")),
+        }
+    }
+
+    /// Where large, machine-specific data lives (downloaded models and AI
+    /// runtimes). Same as [`Self::config_dir`] except on Windows, where it is
+    /// `%LOCALAPPDATA%\rile` so gigabytes don't roam with the profile.
+    pub fn data_dir() -> Option<PathBuf> {
+        match std::env::var_os("RILE_CONFIG_DIR") {
+            Some(d) => Some(PathBuf::from(d)),
+            None if cfg!(windows) => Some(dirs::data_local_dir()?.join("rile")),
+            None => Self::config_dir(),
         }
     }
 
@@ -502,16 +548,33 @@ mod tests {
 
     #[test]
     fn roundtrip_and_partial() {
-        let s = Settings { show_hidden: true, glass_hue: 215, glass_translucency: 72, ..Default::default() };
+        let s = Settings { show_hidden: true, glass_hue: 215, glass_translucency: 72,
+            ai_model_path: Some(PathBuf::from("/models/chat.gguf")), ai_llama_server: "/opt/bin/llama-server".into(), ..Default::default() };
         let parsed: Settings = toml::from_str(&toml::to_string(&s).unwrap()).unwrap();
         assert!(parsed.show_hidden);
         assert_eq!(parsed.glass_hue, 215);
         assert_eq!(parsed.glass_translucency, 72);
+        assert_eq!(parsed.ai_model_path, s.ai_model_path);
+        assert_eq!(parsed.ai_llama_server, s.ai_llama_server);
         let partial: Settings = toml::from_str("theme = \"dark\"").unwrap();
         assert_eq!(partial.theme, ThemeMode::Dark);
         assert_eq!(partial.glass_hue, 0);
         assert_eq!(partial.glass_translucency, 50);
         assert_eq!(partial.app_icon, AppIcon::FolioBolt);
+        assert_eq!(partial.ai_model_path, None);
+        assert_eq!(partial.ai_llama_server, "llama-server");
+        assert_eq!(partial.ai_thinking, AiThinking::Low);
+    }
+
+    #[test]
+    fn thinking_levels_roundtrip() {
+        for (level, budget) in [(AiThinking::None, 0), (AiThinking::Low, 64),
+            (AiThinking::Medium, 128), (AiThinking::High, 256), (AiThinking::Unlimited, -1)] {
+            let settings = Settings { ai_thinking: level, ..Default::default() };
+            let parsed: Settings = toml::from_str(&toml::to_string(&settings).unwrap()).unwrap();
+            assert_eq!(parsed.ai_thinking, level);
+            assert_eq!(parsed.ai_thinking.token_budget(), budget);
+        }
     }
 
     #[test]

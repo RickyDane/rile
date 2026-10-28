@@ -4,7 +4,7 @@
 //! where `pattern` is `host` for port 22 and `[host]:port` otherwise. FTPS entries use
 //! the key types `x509-sha256` (pinned self-signed/untrusted certificate fingerprint)
 //! and `x509-ca` (host previously presented a CA-verified certificate).
-//! Default location: `dirs::config_dir()/rile/known_hosts`.
+//! Default location: `<Rile config folder>/known_hosts` (`RILE_CONFIG_DIR` aware).
 
 use std::fs;
 use std::io::Write;
@@ -21,9 +21,8 @@ pub fn path() -> PathBuf {
     if let Some(p) = OVERRIDE.lock().unwrap_or_else(|e| e.into_inner()).clone() {
         return p;
     }
-    dirs::config_dir()
-        .unwrap_or_else(std::env::temp_dir)
-        .join("rile")
+    rile_core::settings::Settings::config_dir()
+        .unwrap_or_else(|| std::env::temp_dir().join("rile"))
         .join("known_hosts")
 }
 

@@ -166,54 +166,56 @@ fn open_settings_at(ws: Entity<Workspace>, settings: Settings, tab: Tab, job: Op
 pub fn open_shortcuts(window: &mut Window, cx: &mut App) {
     window.open_dialog(cx, |dialog, _, cx| {
         let ch = crate::theme::chrome(cx);
-        let m = if cfg!(target_os = "macos") { "⌘" } else { "Ctrl+" };
-        let fav = if cfg!(target_os = "macos") { "⌃⌘T".to_string() } else { "Ctrl+Alt+T".to_string() };
+        let mac = cfg!(target_os = "macos");
+        // Several keys, or the macOS / other-platform variant of one.
+        let keys = |list: &[&str]| list.iter().map(|k| crate::views::chrome::shortcut(k)).collect::<Vec<_>>().join("  ");
+        let pick = |m: &[&str], other: &[&str]| keys(if mac { m } else { other });
         let groups: Vec<(&str, Vec<(String, &str)>)> = vec![
             (
                 "Files",
                 vec![
-                    (format!("{m}C  {m}X  {m}V"), "Copy, cut, paste"),
-                    (format!("{m}D"), "Duplicate"),
+                    (keys(&["mod-c", "mod-x", "mod-v"]), "Copy, cut, paste"),
+                    (keys(&["mod-d"]), "Duplicate"),
                     ("F2".into(), "Rename"),
-                    (format!("⇧{m}N"), "New folder"),
-                    (format!("⌥{m}N"), "New file"),
-                    (format!("{m}⌫"), "Move to Trash"),
-                    (format!("⇧{m}⌫"), "Delete permanently"),
-                    (format!("{m}I"), "Properties"),
-                    ("Space".into(), "Quick Look"),
+                    (keys(&["shift-mod-n"]), "New folder"),
+                    (pick(&["alt-mod-n"], &["shift-mod-e"]), "New file"),
+                    (pick(&["mod-backspace"], &["delete"]), if mac { "Move to Trash" } else { "Move to Recycle Bin" }),
+                    (pick(&["shift-mod-backspace"], &["shift-delete"]), "Delete permanently"),
+                    (keys(&["mod-i"]), "Properties"),
+                    ("Space".into(), if mac { "Quick Look" } else { "Preview" }),
                     ("Type letters".into(), "Jump to item"),
-                    ("⌥ while dropping".into(), "Copy instead of move"),
+                    ((if mac { "⌥ while dropping" } else { "Alt while dropping" }).into(), "Copy instead of move"),
                 ],
             ),
             (
                 "Navigation",
                 vec![
-                    (format!("{m}[  {m}]"), "Back, forward"),
+                    (pick(&["mod-[", "mod-]"], &["alt-left", "alt-right"]), "Back, forward"),
                     ("Backspace".into(), "Back in focused pane"),
-                    (format!("{m}↑"), "Enclosing folder"),
-                    (format!("⇧{m}H"), "Home"),
-                    (format!("{m}L"), "Go to path"),
-                    (format!("{m}F  ⇧{m}F"), "Filter, advanced search"),
-                    (format!("{m}T  {m}W"), "New tab, close tab"),
-                    (format!("⌃Tab  ⇧{m}]  ⇧{m}["), "Next, previous tab"),
-                    (format!("⇧{m}O"), "Open folder in new tab"),
-                    (fav, "Add to Favorites"),
+                    (pick(&["mod-up"], &["alt-up"]), "Enclosing folder"),
+                    (keys(&["shift-mod-h"]), "Home"),
+                    (pick(&["mod-l"], &["mod-l", "alt-d"]), "Go to path"),
+                    (keys(&["mod-f", "shift-mod-f"]), "Filter, advanced search"),
+                    (keys(&["mod-t", "mod-w"]), "New tab, close tab"),
+                    (format!("{}  {}", if mac { "⌃Tab" } else { "Ctrl+Tab" }, keys(&["shift-mod-]", "shift-mod-["])), "Next, previous tab"),
+                    (keys(&["shift-mod-o"]), "Open folder in new tab"),
+                    (pick(&["ctrl-mod-t"], &["shift-mod-b"]), "Add to Favorites"),
                 ],
             ),
             (
                 "View",
                 vec![
-                    (format!("{m}1  {m}2  {m}3"), "List, icons, columns"),
-                    (format!("⇧{m}D"), "Dual pane"),
-                    (format!("{m}F1  {m}F2"), "Select left, right drive"),
+                    (keys(&["mod-1", "mod-2", "mod-3"]), "List, icons, columns"),
+                    (keys(&["shift-mod-d"]), "Dual pane"),
+                    (keys(&["mod-f1", "mod-f2"]), "Select left, right drive"),
                     ("Tab".into(), "Switch pane"),
                     ("F5  F6".into(), "Copy, move to other pane"),
-                    (format!("⇧{m}P"), "Inspector"),
-                    (format!("⇧{m}S"), "Sidebar"),
-                    (format!("⇧{m}."), "Hidden files"),
-                    (format!("⇧{m}T"), "Light, dark"),
-                    (format!("{m}K"), "AI assistant"),
-                    (format!("{m},"), "Settings"),
+                    (keys(&["shift-mod-p"]), "Inspector"),
+                    (keys(&["shift-mod-s"]), "Sidebar"),
+                    (keys(&["shift-mod-."]), "Hidden files"),
+                    (keys(&["shift-mod-t"]), "Light, dark"),
+                    (keys(&["mod-k"]), "Ask AI"),
+                    (keys(&["mod-,"]), "Settings"),
                 ],
             ),
         ];
@@ -235,7 +237,7 @@ pub fn open_shortcuts(window: &mut Window, cx: &mut App) {
         };
         let mut groups = groups.into_iter();
         let (files, nav, view) = (groups.next().unwrap(), groups.next().unwrap(), groups.next().unwrap());
-        kit::dialog(dialog, IconName::Keyboard, "Keyboard Shortcuts", Some(format!("{m}/ shows this list anytime").into()), 860., cx).child(
+        kit::dialog(dialog, IconName::Keyboard, "Keyboard Shortcuts", Some(format!("{} shows this list anytime", crate::views::chrome::shortcut("mod-/")).into()), 860., cx).child(
             h_flex()
                 .gap(px(14.))
                 .items_start()
@@ -270,12 +272,18 @@ pub struct SettingsView {
     file_manager_busy: bool,
     file_manager_message: Option<String>,
     backups: Entity<crate::views::backup_settings::BackupSettingsView>,
+    ai: Entity<crate::views::ai_settings::AiSettings>,
     _subs: Vec<Subscription>,
 }
 
 impl SettingsView {
     fn new(ws: Entity<Workspace>, s: Settings, backup_job: Option<String>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let backups = cx.new(|cx| crate::views::backup_settings::BackupSettingsView::new(ws.clone(), backup_job, window, cx));
+        // A download or runtime install started earlier keeps running after
+        // Settings closes; show its view again rather than a fresh one.
+        let ai = crate::views::ai_settings::AiSettings::running(&ws, cx).unwrap_or_else(|| {
+            cx.new(|cx| crate::views::ai_settings::AiSettings::new(ws.clone(), s.ai_llama_server.clone(), s.ai_mlx_server.clone(), s.ai_model_path.clone(), window, cx))
+        });
         let repo_input = cx.new(|cx| InputState::new(window, cx).default_value(s.update_repo.clone()).placeholder("owner/repo"));
         let max_results_input = cx.new(|cx| InputState::new(window, cx).default_value(s.search_max_results.to_string()));
         let glass_hue = cx.new(|_| SliderState::new().min(0.).max(360.).step(1.).default_value(s.glass_hue.min(360) as f32));
@@ -319,14 +327,14 @@ impl SettingsView {
         }
         Self {
             ws, tab: Tab::General, repo_input, max_results_input, glass_hue, glass_translucency, _subs: subs,
-            file_manager: rile_services::file_manager::status(), file_manager_busy: false, file_manager_message: None, backups,
+            file_manager: rile_services::file_manager::status(), file_manager_busy: false, file_manager_message: None, backups, ai,
         }
     }
 
     fn set_file_manager(&mut self, rile: bool, window: &mut Window, cx: &mut Context<Self>) {
         if self.file_manager_busy { return; }
         self.file_manager_busy = true;
-        self.file_manager_message = Some("Waiting for macOS approval…".into());
+        self.file_manager_message = Some(if cfg!(target_os = "macos") { "Waiting for macOS approval…" } else { "Updating…" }.into());
         cx.notify();
         let (tx, rx) = smol::channel::bounded(1);
         rile_services::file_manager::set_default(rile, move |result| { tx.try_send(result).ok(); });
@@ -336,7 +344,9 @@ impl SettingsView {
                 this.file_manager_busy = false;
                 this.file_manager = rile_services::file_manager::status();
                 this.file_manager_message = Some(match result {
-                    Ok(Ok(())) => "Updated. Restart other apps or log out if they still use the previous viewer.".into(),
+                    Ok(Ok(rile_services::file_manager::Outcome::Updated)) if !cfg!(target_os = "macos") => "Updated. Explorer windows that are already open keep their current behavior until reopened.".into(),
+                    Ok(Ok(rile_services::file_manager::Outcome::Updated)) => "Updated. Restart other apps or log out if they still use the previous viewer.".into(),
+                    Ok(Ok(rile_services::file_manager::Outcome::ViewerOnly)) => "File viewer preference updated for compatible Reveal in Finder actions. This macOS version rejected the folder association; folder opening is unchanged. Restart other apps or log out to apply the viewer preference.".into(),
                     Ok(Err(error)) => format!("{error:#}"),
                     Err(_) => "macOS didn't complete the change. Please try again.".into(),
                 });
@@ -346,11 +356,20 @@ impl SettingsView {
     }
 
     fn file_manager_controls(&self, cx: &mut Context<Self>) -> AnyElement {
+        let mac = cfg!(target_os = "macos");
         let message = self.file_manager_message.clone().unwrap_or_else(|| {
-            if !self.file_manager.can_set_rile {
+            if !mac {
+                if self.file_manager.is_default {
+                    "Opening a folder in Explorer opens it in Rile. Win+E and the desktop still use Explorer.".into()
+                } else {
+                    "\"Open in Rile\" is in the folder context menu; Explorer stays the default.".into()
+                }
+            } else if !self.file_manager.can_set_rile {
                 "Launch the installed Rile.app to make it the default.".into()
             } else if self.file_manager.is_default {
                 "Rile is the default file manager.".into()
+            } else if self.file_manager.is_viewer {
+                "Rile is the preferred viewer for compatible Reveal in Finder actions, but not the default folder handler.".into()
             } else {
                 "Finder's desktop and system Open/Save dialogs stay unchanged.".into()
             }
@@ -360,7 +379,7 @@ impl SettingsView {
                 .child(Button::new("s-default-manager").cursor_pointer().small().outline().label("Make Rile Default")
                     .pointer_unless(self.file_manager_busy || !self.file_manager.can_set_rile || self.file_manager.is_default)
                     .on_click(cx.listener(|this, _, window, cx| this.set_file_manager(true, window, cx))))
-                .child(Button::new("s-restore-finder").cursor_pointer().small().outline().label("Restore Finder")
+                .child(Button::new("s-restore-finder").cursor_pointer().small().outline().label(if mac { "Restore Finder" } else { "Restore Explorer" })
                     .pointer_unless(self.file_manager_busy)
                     .on_click(cx.listener(|this, _, window, cx| this.set_file_manager(false, window, cx)))))
             .child(div().max_w(px(340.)).text_size(px(11.)).text_color(cx.theme().muted_foreground).child(message))
@@ -577,13 +596,18 @@ impl Render for SettingsView {
                                     .into_any_element()
                             },
                         ),
-                        r("Confirm before moving to Trash", "Ask before trashing items", self.switch("s-trash", s.confirm_trash, |s, v| s.confirm_trash = v)),
+                        r(if cfg!(target_os = "macos") { "Confirm before moving to Trash" } else { "Confirm before moving to Recycle Bin" }, "Ask before deleting items", self.switch("s-trash", s.confirm_trash, |s, v| s.confirm_trash = v)),
                     ],
                     cx,
                 ))
                 .when(cfg!(target_os = "macos"), |body| body.child(section(
                     "MACOS INTEGRATION",
                     vec![r("Default file manager", "Open folders and handle compatible Reveal in Finder actions", self.file_manager_controls(cx))],
+                    cx,
+                )))
+                .when(cfg!(windows), |body| body.child(section(
+                    "WINDOWS INTEGRATION",
+                    vec![r("Default file manager", "Open folders from Explorer, shortcuts and other apps in Rile", self.file_manager_controls(cx))],
                     cx,
                 )))
                 .child(section(
@@ -734,7 +758,7 @@ impl Render for SettingsView {
                         v_flex().gap(px(8.)).child(kit::caption("ICONS", cx)).child(
                             kit::card(cx)
                                 .child(kit::row("Icon style", "Used across the sidebar, toolbar, menus and files", icon_sets, true, &ch))
-                                .child(kit::row("App icon", "Shown in the Dock while Rile runs; follows the accent color", app_icons, false, &ch).items_start()),
+                                .child(kit::row("App icon", if cfg!(windows) { "Shown in the taskbar and window title; follows the accent color" } else { "Shown in the Dock and Finder; follows the accent color" }, app_icons, false, &ch).items_start()),
                         ),
                     )
                     .child(section(
@@ -762,7 +786,7 @@ impl Render for SettingsView {
                     "SEARCH",
                     vec![
                         r("Respect .gitignore", "Skip ignored files in git repositories", self.switch("s-git", s.search_respect_gitignore, |s, v| s.search_respect_gitignore = v)),
-                        r("Prefer Spotlight index", "Advanced search uses macOS Spotlight by default", self.switch("s-spot", s.search_use_spotlight, |s, v| s.search_use_spotlight = v)),
+                        r(if cfg!(windows) { "Prefer Windows Search index" } else { "Prefer Spotlight index" }, if cfg!(windows) { "Advanced search uses Windows Search by default" } else { "Advanced search uses macOS Spotlight by default" }, self.switch("s-spot", s.search_use_spotlight, |s, v| s.search_use_spotlight = v)),
                         r("Max results", "Search stops after this many hits", div().w(px(110.)).child(Input::new(&self.max_results_input).small()).into_any_element()),
                     ],
                     cx,
@@ -780,7 +804,7 @@ impl Render for SettingsView {
                             ),
                             (
                                 SharedString::from("Remembered"),
-                                SharedString::from(format!("{items} items in {dirs} folders, on this Mac only")),
+                                SharedString::from(format!("{items} items in {dirs} folders, on {} only", crate::platform_text::this_computer_lower())),
                                 Button::new("s-index-clear").cursor_pointer()
                                     .small()
                                     .outline()
@@ -907,66 +931,7 @@ impl Render for SettingsView {
                     .into_any_element()
             }
             Tab::Backups => self.backups.clone().into_any_element(),
-            Tab::Ai => v_flex()
-                .gap(px(16.))
-                .child(section(
-                    "ASSISTANT",
-                    vec![r("Enable AI features", "Intelligent search (Shift+Enter), summaries and questions", self.switch("s-ai", s.ai_enabled, |s, v| s.ai_enabled = v))],
-                    cx,
-                ))
-                .child({
-                    let tagged = rile_services::tags::stats();
-                    let ws = self.ws.clone();
-                    section(
-                        "SMART TAGS",
-                        vec![
-                            r(
-                                "Describe photos automatically",
-                                "Describes new photos in the background after launch (objects, scenes, text)",
-                                self.switch("s-tags", s.ai_smart_tags, |s, v| s.ai_smart_tags = v),
-                            ),
-                            (
-                                SharedString::from("Describe all photos now"),
-                                SharedString::from("Runs as a background job; progress shows in the jobs panel"),
-                                {
-                                    let ws = self.ws.clone();
-                                    let running = self.ws.read(cx).photo_job.is_some_and(|id| self.ws.read(cx).ops.iter().any(|o| o.id == id));
-                                    Button::new("s-tags-run")
-                                        .cursor_pointer()
-                                        .small()
-                                        .outline()
-                                        .label(if running { "Running…" } else { "Start" })
-                                        .pointer_unless(running || !cfg!(target_os = "macos"))
-                                        .on_click(move |_, window, cx| {
-                                            ws.update(cx, |ws, cx| ws.start_photo_job(true, window, cx));
-                                        })
-                                        .into_any_element()
-                                },
-                            ),
-                            (
-                                SharedString::from("Described"),
-                                SharedString::from(format!("{tagged} images and documents, on this Mac only")),
-                                Button::new("s-tags-clear")
-                                    .cursor_pointer()
-                                    .small()
-                                    .outline()
-                                    .label("Clear")
-                                    .pointer_unless(tagged == 0)
-                                    .on_click(move |_, _, cx| {
-                                        rile_services::tags::clear();
-                                        ws.update(cx, |_, cx| cx.notify());
-                                    })
-                                    .into_any_element(),
-                            ),
-                        ],
-                        cx,
-                    )
-                })
-                .child(kit::hint(
-                    "Runs entirely on this Mac with Apple's Foundation Models and Vision. AI search uses smart tags and the folders Rile remembers, then browses likely folders itself. Right-click → Describe & Tag with AI describes files on demand.",
-                    cx,
-                ))
-                .into_any_element(),
+            Tab::Ai => self.ai.clone().into_any_element(),
             Tab::About => {
                 let repo = s.update_repo.trim().to_string();
                 let url = format!("https://github.com/{repo}");
@@ -1011,9 +976,9 @@ impl Render for SettingsView {
         h_flex()
             .gap(px(20.))
             .items_start()
-            .min_h(px(420.))
+            .h(px(520.))
             .child(nav)
             .child(div().w(px(1.)).self_stretch().bg(ch.hairline))
-            .child(div().id("settings-body").flex_1().min_w_0().max_h(px(520.)).overflow_y_scroll().child(body))
+            .child(div().id("settings-body").flex_1().min_w_0().h_full().overflow_y_scroll().child(body))
     }
 }

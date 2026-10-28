@@ -79,6 +79,9 @@ pub fn bind_keys(cx: &mut App) {
         let m = if cfg!(target_os = "macos") { "cmd" } else { "ctrl" };
         Box::leak(keys.replace("mod", m).into_boxed_str())
     };
+    // Ctrl+Alt is AltGr on many Windows/Linux layouts (it types characters),
+    // so those shortcuts get Ctrl+Shift equivalents off macOS.
+    let mac_or = |mac: &'static str, other: &'static str| if cfg!(target_os = "macos") { mac } else { other };
 
     cx.bind_keys([
         KeyBinding::new(k("mod-q"), Quit, None),
@@ -102,7 +105,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new(k("mod-shift-backspace"), DeletePermanently, Some(FILE_LIST)),
         KeyBinding::new("f2", Rename, Some(FILE_LIST)),
         KeyBinding::new(k("mod-shift-n"), NewFolder, Some(FILE_LIST)),
-        KeyBinding::new(k("mod-alt-n"), NewFile, Some(FILE_LIST)),
+        KeyBinding::new(mac_or("cmd-alt-n", "ctrl-shift-e"), NewFile, Some(FILE_LIST)),
         KeyBinding::new(k("mod-d"), Duplicate, Some(FILE_LIST)),
         KeyBinding::new(k("mod-a"), SelectAll, Some(FILE_LIST)),
         KeyBinding::new("escape", ClearSelection, Some(FILE_LIST)),
@@ -116,7 +119,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new(k("mod-down"), OpenSelected, Some(FILE_LIST)),
         KeyBinding::new(k("mod-o"), OpenSelected, Some(FILE_LIST)),
         // ⌘T opens a tab (as in Finder); favorites move to ⌃⌘T ("Add to Sidebar").
-        KeyBinding::new(if cfg!(target_os = "macos") { "cmd-ctrl-t" } else { "ctrl-alt-t" }, ToggleFavorite, Some(FILE_LIST)),
+        KeyBinding::new(mac_or("cmd-ctrl-t", "ctrl-shift-b"), ToggleFavorite, Some(FILE_LIST)),
         KeyBinding::new(k("mod-t"), NewTab, Some(WORKSPACE)),
         KeyBinding::new(k("mod-w"), CloseTab, Some(WORKSPACE)),
         KeyBinding::new("ctrl-tab", NextTab, Some(WORKSPACE)),
@@ -128,10 +131,12 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("left", SelectLeft, Some(FILE_LIST)),
         KeyBinding::new("right", SelectRight, Some(FILE_LIST)),
         KeyBinding::new("space", ToggleQuickLook, Some(FILE_LIST)),
-        KeyBinding::new(k("mod-y"), ToggleQuickLook, Some(FILE_LIST)),
+        // ⌘Y is Finder's Quick Look; Ctrl+Y means Redo elsewhere.
+        KeyBinding::new(mac_or("cmd-y", "f3"), ToggleQuickLook, Some(FILE_LIST)),
         KeyBinding::new(k("mod-i"), ShowProperties, Some(FILE_LIST)),
-        KeyBinding::new(k("mod-alt-c"), CopyPath, Some(FILE_LIST)),
-        KeyBinding::new(k("mod-alt-o"), OpenInOtherPane, Some(FILE_LIST)),
+        // Ctrl+Shift+C is Explorer's "Copy as path".
+        KeyBinding::new(mac_or("cmd-alt-c", "ctrl-shift-c"), CopyPath, Some(FILE_LIST)),
+        KeyBinding::new(mac_or("cmd-alt-o", "ctrl-shift-right"), OpenInOtherPane, Some(FILE_LIST)),
         KeyBinding::new("f5", CopyToOtherPane, Some(FILE_LIST)),
         KeyBinding::new("f6", MoveToOtherPane, Some(FILE_LIST)),
         KeyBinding::new("tab", SwitchPane, Some(FILE_LIST)),
@@ -146,6 +151,11 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new(k("mod-shift-p"), TogglePreviewPanel, Some(WORKSPACE)),
         KeyBinding::new(k("mod-k"), AiAsk, Some(WORKSPACE)),
         KeyBinding::new(k("mod-/"), ShowShortcuts, Some(WORKSPACE)),
+        // Explorer's navigation keys.
+        KeyBinding::new(mac_or("cmd-[", "alt-left"), GoBack, Some(WORKSPACE)),
+        KeyBinding::new(mac_or("cmd-]", "alt-right"), GoForward, Some(WORKSPACE)),
+        KeyBinding::new(mac_or("cmd-up", "alt-up"), GoUp, Some(WORKSPACE)),
+        KeyBinding::new(mac_or("cmd-l", "alt-d"), EditPath, Some(WORKSPACE)),
         // Registered last so they win over the plain FileList bindings while previewing.
         KeyBinding::new("escape", ClosePreview, Some("FileList && previewing")),
         KeyBinding::new("space", ClosePreview, Some("FileList && previewing")),

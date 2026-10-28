@@ -311,7 +311,22 @@ fn process_alive(pid: u32) -> bool {
     unsafe { libc::kill(pid as libc::pid_t, 0) == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM) }
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+fn process_alive(pid: u32) -> bool {
+    use windows::Win32::Foundation::{CloseHandle, STILL_ACTIVE};
+    use windows::Win32::System::Threading::{GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
+    // Access denied still means the process exists (another user's).
+    let handle = match unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) } {
+        Ok(h) => h,
+        Err(e) => return e.code() == windows::Win32::Foundation::E_ACCESSDENIED,
+    };
+    let mut code = 0u32;
+    let alive = unsafe { GetExitCodeProcess(handle, &mut code) }.is_ok() && code == STILL_ACTIVE.0 as u32;
+    unsafe { CloseHandle(handle).ok() };
+    alive
+}
+
+#[cfg(not(any(unix, windows)))]
 fn process_alive(_: u32) -> bool {
     true
 }
@@ -362,7 +377,15 @@ fn free_space(dir: &Path) -> Option<u64> {
     Some(st.f_bavail as u64 * st.f_frsize as u64)
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+fn free_space(dir: &Path) -> Option<u64> {
+    let path = crate::win::Wide::path(dir);
+    let mut available = 0u64;
+    unsafe { windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW(path.pcwstr(), Some(&mut available), None, None) }.ok()?;
+    Some(available)
+}
+
+#[cfg(not(any(unix, windows)))]
 fn free_space(_: &Path) -> Option<u64> {
     None
 }
@@ -375,10 +398,14 @@ pub fn test_dir(mount_point: &Path) -> PathBuf {
         let _ = std::fs::remove_file(&probe);
         return mount_point.to_path_buf();
     }
-    if mount_point == Path::new("/") {
-        if let Some(home) = std::env::var_os("HOME") {
-            return PathBuf::from(home);
-        }
+    // The startup disk's root is usually read-only for normal users (`/` on
+    // Unix, `C:\` on Windows); measure inside the home folder on it instead.
+    let is_root = mount_point.parent().is_none();
+    if is_root && let Some(home) = dirs::home_dir().filter(|h| h.starts_with(mount_point)) {
+        return home;
+    }
+    if is_root && cfg!(windows) {
+        return std::env::temp_dir();
     }
     mount_point.to_path_buf()
 }

@@ -32,13 +32,14 @@ pub struct Properties {
     pub size: u64,
     pub file_count: u64,
     pub dir_count: u64,
-    /// Bytes allocated on disk (unix only).
+    /// Bytes allocated on disk (Unix and Windows).
     pub allocated: Option<u64>,
     pub created: Option<SystemTime>,
     pub modified: Option<SystemTime>,
     pub accessed: Option<SystemTime>,
     pub readonly: bool,
-    /// Unix permissions, e.g. `rwxr-xr-x (755)`.
+    /// Unix permissions, e.g. `rwxr-xr-x (755)`; on Windows the file's
+    /// attributes, e.g. `Read-only, Hidden`.
     pub permissions: Option<String>,
     pub owner: Option<String>,
     pub group: Option<String>,
@@ -77,7 +78,7 @@ pub fn basic(path: &Path) -> Result<Properties> {
         None
     };
 
-    #[cfg_attr(not(unix), allow(unused_mut))]
+    #[cfg_attr(not(any(unix, windows)), allow(unused_mut))]
     let mut p = Properties {
         path: path.to_path_buf(),
         kind_label: kind_label(symlink_target.as_deref().unwrap_or(path), is_dir, is_symlink, &meta),
@@ -114,7 +115,89 @@ pub fn basic(path: &Path) -> Result<Properties> {
                 .unwrap_or_else(|| meta.gid().to_string()),
         );
     }
+    #[cfg(windows)]
+    {
+        p.allocated = win::allocated(path);
+        p.permissions = Some(win::attributes(&lmeta));
+        p.owner = win::owner(path);
+        if !is_dir && !is_symlink && let Some(kind) = win::type_name(path) {
+            p.kind_label = kind;
+        }
+    }
     Ok(p)
+}
+
+#[cfg(windows)]
+mod win {
+    use std::fs;
+    use std::path::Path;
+
+    use windows::Win32::Foundation::{HLOCAL, LocalFree};
+    use windows::Win32::Security::Authorization::{GetNamedSecurityInfoW, SE_FILE_OBJECT};
+    use windows::Win32::Security::{LookupAccountSidW, OWNER_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID, SID_NAME_USE};
+    use windows::Win32::Storage::FileSystem::{FILE_FLAGS_AND_ATTRIBUTES, GetCompressedFileSizeW, INVALID_FILE_SIZE};
+    use windows::Win32::UI::Shell::{SHFILEINFOW, SHGFI_TYPENAME, SHGFI_USEFILEATTRIBUTES, SHGetFileInfoW};
+    use windows::core::PWSTR;
+
+    use crate::win::{Wide, from_wide};
+
+    /// Size on disk: smaller for compressed or sparse files, 0 for cloud
+    /// placeholders.
+    pub fn allocated(path: &Path) -> Option<u64> {
+        let wide = Wide::path(path);
+        let mut high = 0u32;
+        let low = unsafe { GetCompressedFileSizeW(wide.pcwstr(), Some(&mut high)) };
+        (low != INVALID_FILE_SIZE || unsafe { windows::Win32::Foundation::GetLastError() }.is_ok()).then(|| ((high as u64) << 32) | low as u64)
+    }
+
+    pub fn attributes(meta: &fs::Metadata) -> String {
+        use std::os::windows::fs::MetadataExt;
+        let a = meta.file_attributes();
+        let names = [
+            (0x1, "Read-only"),
+            (0x2, "Hidden"),
+            (0x4, "System"),
+            (0x20, "Archive"),
+            (0x800, "Compressed"),
+            (0x4000, "Encrypted"),
+            (0x1000, "Offline"),
+            (0x40_0000, "Online-only"),
+        ];
+        let set: Vec<&str> = names.iter().filter(|(bit, _)| a & bit != 0).map(|(_, n)| *n).collect();
+        if set.is_empty() { "Normal".into() } else { set.join(", ") }
+    }
+
+    /// `DOMAIN\user` (or the SID's account name) of the file's owner.
+    pub fn owner(path: &Path) -> Option<String> {
+        let wide = Wide::path(path);
+        let mut sid = PSID::default();
+        let mut sd = PSECURITY_DESCRIPTOR::default();
+        let err = unsafe { GetNamedSecurityInfoW(wide.pcwstr(), SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION, Some(&mut sid), None, None, None, &mut sd) };
+        if err.is_err() {
+            return None;
+        }
+        let mut name = [0u16; 256];
+        let mut domain = [0u16; 256];
+        let (mut name_len, mut domain_len) = (name.len() as u32, domain.len() as u32);
+        let mut kind = SID_NAME_USE::default();
+        let found = unsafe {
+            LookupAccountSidW(None, sid, Some(PWSTR(name.as_mut_ptr())), &mut name_len, Some(PWSTR(domain.as_mut_ptr())), &mut domain_len, &mut kind)
+        };
+        unsafe { LocalFree(Some(HLOCAL(sd.0))) };
+        found.ok()?;
+        let (name, domain) = (from_wide(&name), from_wide(&domain));
+        Some(if domain.is_empty() { name } else { format!("{domain}\\{name}") })
+    }
+
+    /// Explorer's "Type" column text, e.g. "Text Document".
+    pub fn type_name(path: &Path) -> Option<String> {
+        let wide = Wide::path(path);
+        let mut info = SHFILEINFOW::default();
+        let ok = unsafe {
+            SHGetFileInfoW(wide.pcwstr(), FILE_FLAGS_AND_ATTRIBUTES(0x80), Some(&mut info), size_of::<SHFILEINFOW>() as u32, SHGFI_TYPENAME | SHGFI_USEFILEATTRIBUTES)
+        };
+        (ok != 0).then(|| from_wide(&info.szTypeName)).filter(|s| !s.is_empty())
+    }
 }
 
 /// `path` is the entry itself, or the link target for symlinks (only its
@@ -152,6 +235,7 @@ fn is_executable(meta: &fs::Metadata) -> bool {
 
 #[cfg(not(unix))]
 fn is_executable(_meta: &fs::Metadata) -> bool {
+    // Windows decides by extension (see `kind_label`), not by mode bits.
     false
 }
 

@@ -1,12 +1,29 @@
 # Rile explorer preview
 
-One full-window, interactive file explorer in the Native design, inspired by macOS Finder and Spacedrive. There is no presentation gallery or branding-portfolio shell.
+An interactive workspace aligned with the current native app and `docs/screenshots/native-*.png`: Home, Photos, native Space Analyzer, Backups, network connections, Appearance, and the file explorer. Both platform previews share the design-guide control language, legible typography, current sidebar organization, and sample data.
 
 ```sh
 python3 -m http.server 4173 --bind 127.0.0.1 --directory mockups
 ```
 
 Open http://localhost:4173. No packages, build step, external fonts, or image services are required.
+
+### Windows preview
+
+Open http://localhost:4173/?platform=windows for Home, or http://localhost:4173/?platform=windows&preview=files for the explorer. Windows uses Segoe typography, right-aligned caption controls, This PC, NTFS storage, Windows paths, and Ctrl+F hints. Caption controls are illustrative, not native window actions. Use the sidebar footer to switch platforms.
+
+### Current screens
+
+Use the sidebar, or deep-link with `?page=photos`, `?page=space`, `?page=backups`, `?page=network`, or `?page=settings`. Add `&platform=windows` to any page.
+
+- Home has six metrics, recent activity, storage, recent files, and links to workspace tools.
+- Space Analyzer starts with explicit folder selection. Explore calculated sample sizes, drill into folders, switch to largest files, or review archive cleanup with confirmation. `space-analyzer.html` now forwards here; `?legacy=1` retains the historical plugin study.
+- Backups supports editing a sample plan, simulated run history, and a restore confirmation. No real backup is performed.
+- Photos supports filename filtering, illustrative image previews, and revealing an image in its folder.
+- Network offers a preview-only connection form. No network requests or credentials are stored.
+- Appearance previews accent colors, comfortable/compact density, and platform switching for this session.
+
+`design-system.html` remains the control-language reference. `tabs.html`, `storage-indicators.html`, and `app-icons/` are isolated design studies, not the current application shell.
 
 ## Interface
 
@@ -28,5 +45,7 @@ On Home, search matches files across the sample workspace. Storage cards open th
 Select a file to update the inspector. Favorite it, reveal its parent folder, or open an illustrative Quick Look. Favorites and tag locations reflect the sample data. Create folders within a directory using the new-folder button; duplicate and invalid names are rejected.
 
 Keyboard: `⌘F` / `Ctrl+F` or `/` focuses search; arrow keys move between files; Enter opens a selection; Space opens Quick Look; Escape dismisses menus and dialogs. Left/right arrows switch focused tabs.
+
+Run the dependency-free sample-model and renderer regression checks with `node --test mockups/workspace.test.cjs` from the repository root. Layout and interactive states should also be reviewed in the browser.
 
 **This remains a browser prototype, not the Rust/GPUI application.** All file data, storage figures, dates, and previews are illustrative. No real files are accessed or modified. Changes last until reload. Clipboard access is used only when you choose “Copy folder path.”

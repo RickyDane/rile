@@ -1,15 +1,21 @@
+// Release builds are GUI apps on Windows: no console window next to Rile.
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 mod actions;
 mod ai_glow;
 mod app_icon;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 mod backup_menu;
 mod art;
 mod dialogs;
 mod external_open;
 mod icon_sets;
 mod icons;
+#[cfg(windows)]
+mod instance;
 mod jobs;
 mod pane;
+mod platform_text;
 mod progress;
 mod remote;
 mod sidebar;
@@ -102,18 +108,74 @@ pub(crate) fn show_backups(settings: bool, cx: &mut App) {
     cx.activate(true);
 }
 
+/// Where a launch (or, on Windows, a forwarded launch) asks Rile to go:
+/// `rile <folder>` opens it, `rile <file>` reveals it, `rile --backups` and
+/// `rile rile://…` open the Backups page.
+fn launch_target(args: &[String]) -> (Option<Location>, Option<PathBuf>) {
+    let Some(arg) = args.first() else { return (None, None) };
+    if arg == "--backups" || external_open::AppLink::parse(arg) == Some(external_open::AppLink::Backups) {
+        return (Some(Location::Backups), None);
+    }
+    let path = PathBuf::from(arg);
+    if path.is_file() {
+        (path.parent().map(|p| Location::Dir(p.to_path_buf())), Some(path))
+    } else if path.is_dir() {
+        (Some(Location::Dir(path)), None)
+    } else {
+        (None, None)
+    }
+}
+
+/// Arguments of a later launch, handed over by `instance` on Windows.
+#[cfg(windows)]
+fn handle_forwarded(args: Vec<String>, requests: &external_open::Requests, cx: &mut App) {
+    match args.first().map(String::as_str) {
+        None => reopen(cx),
+        Some(link) if link.starts_with("rile://") => {
+            if let Some(link) = external_open::AppLink::parse(link) {
+                requests.dispatch_link(link);
+            } else {
+                reopen(cx);
+            }
+        }
+        Some("--backups") => show_backups(false, cx),
+        Some(_) => {
+            let paths: Vec<PathBuf> = args.iter().map(PathBuf::from).filter(|p| p.exists()).collect();
+            if paths.is_empty() { reopen(cx) } else { requests.dispatch(paths, false) }
+        }
+    }
+}
+
 fn main() {
+    // Windows agents can't set environment variables; they pass the config
+    // folder on the command line instead (see rile_backup::agent).
+    let mut argv = std::env::args().skip_while(|a| a != rile_backup::agent::CONFIG_DIR_FLAG);
+    if let Some(dir) = argv.nth(1) {
+        // SAFETY: still single-threaded; nothing has read the environment yet.
+        unsafe { std::env::set_var("RILE_CONFIG_DIR", dir) };
+    }
     // Started by the backup launch agent: run due backups without any UI.
     if std::env::args().any(|a| a == rile_backup::agent::RUN_FLAG) {
         workspace::backups::run_agent();
         return;
     }
-    // Started at login by its launch agent: the backups menu bar item.
-    #[cfg(target_os = "macos")]
+    // Started at login by its agent: the backups menu bar / tray item.
+    #[cfg(any(target_os = "macos", windows))]
     if std::env::args().any(|a| a == rile_backup::agent::MENU_FLAG) {
         backup_menu::run();
         return;
     }
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    // The uninstaller removes Rile's Explorer integration this way.
+    #[cfg(windows)]
+    if args.first().is_some_and(|a| a == "--unregister") {
+        rile_services::file_manager::unregister_shell_integration().ok();
+        rile_backup::agent::uninstall_all();
+        return;
+    }
+    // A second launch on Windows hands its arguments to the running Rile.
+    #[cfg(windows)]
+    let Some(forwarded) = instance::claim(&args) else { return };
     let application = gpui_kit::application().with_assets(icons::AppAssets);
     application.on_reopen(reopen);
     let requests = external_open::Requests::default();
@@ -147,18 +209,25 @@ fn main() {
                 cx.quit();
             });
 
-            // `rile <folder>` opens it; `rile <file>` reveals it in its folder.
-            let arg = std::env::args_os().nth(1).map(PathBuf::from);
-            let reveal = arg.clone().filter(|p| p.is_file());
-            let start = match (&arg, &reveal) {
-                (Some(flag), _) if flag.as_os_str() == "--backups" => Some(Location::Backups),
-                (_, Some(file)) => file.parent().map(|p| Location::Dir(p.to_path_buf())),
-                (Some(dir), None) if dir.is_dir() => Some(Location::Dir(dir.clone())),
-                _ => None,
+            // Keep `rile://` and "Open in Rile" pointing at this executable
+            // (zip installs move, updates replace it). Per-user only.
+            #[cfg(windows)]
+            if std::env::var_os("RILE_NO_LAUNCH_AGENTS").is_none() {
+                cx.background_executor().spawn(async { rile_services::file_manager::register_shell_integration().ok() }).detach();
             }
-            .unwrap_or(Location::Home);
-            open_workspace(start, reveal, cx).expect("failed to open window");
+            let (start, reveal) = launch_target(&args);
+            open_workspace(start.unwrap_or(Location::Home), reveal, cx).expect("failed to open window");
             requests.ready(cx);
+            if args.first().and_then(|a| external_open::AppLink::parse(a)) == Some(external_open::AppLink::BackupSettings) {
+                show_backups(true, cx);
+            }
+            #[cfg(windows)]
+            cx.spawn(async move |cx| {
+                while let Ok(args) = forwarded.recv().await {
+                    cx.update(|cx| handle_forwarded(args, &requests, cx));
+                }
+            })
+            .detach();
             cx.activate(true);
         });
 }

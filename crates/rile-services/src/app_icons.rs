@@ -1,6 +1,7 @@
 //! Native file icons. On macOS this asks NSWorkspace for the icon Finder
-//! would show (application bundles, documents with custom icons, ...),
-//! rendered to PNG at the requested pixel size.
+//! would show (application bundles, documents with custom icons, ...), on
+//! Windows the Shell for Explorer's icon, rendered to PNG at the requested
+//! pixel size.
 
 use std::path::Path;
 
@@ -31,9 +32,16 @@ pub fn icon_png(path: &Path, size: u32) -> Result<Vec<u8>> {
     })
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Windows: the icon Explorer shows (an .exe's own icon, a shortcut's
+/// target icon, the registered document icon).
+#[cfg(windows)]
+pub fn icon_png(path: &Path, size: u32) -> Result<Vec<u8>> {
+    crate::win::shell_image_png(path, size, windows::Win32::UI::Shell::SIIGBF_ICONONLY)
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn icon_png(_path: &Path, _size: u32) -> Result<Vec<u8>> {
-    anyhow::bail!("native icons are only available on macOS")
+    anyhow::bail!("native icons are only available on macOS and Windows")
 }
 
 /// PNG thumbnail of an image file (any format macOS reads, e.g. HEIC),
@@ -62,9 +70,15 @@ pub fn image_thumbnail_png(path: &Path, edge: u32) -> Result<Vec<u8>> {
     })
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Windows: Explorer's thumbnail (any format with an installed codec).
+#[cfg(windows)]
+pub fn image_thumbnail_png(path: &Path, edge: u32) -> Result<Vec<u8>> {
+    crate::win::shell_image_png(path, edge, windows::Win32::UI::Shell::SIIGBF_THUMBNAILONLY)
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn image_thumbnail_png(_path: &Path, _edge: u32) -> Result<Vec<u8>> {
-    anyhow::bail!("native image decoding is only available on macOS")
+    anyhow::bail!("native image decoding is only available on macOS and Windows")
 }
 
 /// The colors of Apple Intelligence's glow, along a diagonal.

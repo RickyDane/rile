@@ -277,7 +277,7 @@ fn check_overlap(job: &BackupJob) -> Result<()> {
         let mut rest = Vec::new();
         let mut cur = p;
         loop {
-            if let Ok(real) = cur.canonicalize() {
+            if let Ok(real) = dunce::canonicalize(cur) {
                 return rest.iter().rev().fold(real, |acc: PathBuf, part| acc.join(part));
             }
             match (cur.file_name(), cur.parent()) {

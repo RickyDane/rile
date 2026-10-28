@@ -98,7 +98,9 @@ impl Default for BackupJob {
             name: "Backup".into(),
             sources: Vec::new(),
             destination: Destination::default(),
-            excludes: vec![".DS_Store".into(), ".Trash".into(), "node_modules".into()],
+            excludes: [".DS_Store", ".Trash", "node_modules", "Thumbs.db", "desktop.ini", "$RECYCLE.BIN", "System Volume Information"]
+                .map(String::from)
+                .to_vec(),
             schedule: Schedule::Daily,
             watch: false,
             background: false,

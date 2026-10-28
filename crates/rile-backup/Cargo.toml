@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+dunce.workspace = true
 rile-core.workspace = true
 rile-remote.workspace = true
 anyhow.workspace = true
@@ -15,6 +16,10 @@ serde_json = "1"
 globset = { version = "0.4.16", default-features = false }
 log = "0.4"
 trash.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = ["Win32_Foundation", "Win32_System_Threading"] }
+windows-registry.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

@@ -77,9 +77,17 @@ pub fn width_class(window: &Window) -> Width {
     }
 }
 
+/// Width of each Windows caption button (min/max/close), as in Explorer.
+pub const CAPTION_BUTTON_WIDTH: f32 = 46.;
+
 /// Makes `el` move the window when dragged and zoom it on double-click,
 /// like a native title bar (the app owns title bar dragging).
 pub fn window_drag(el: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
+    // Windows hit-tests caption areas itself (HTCAPTION), which also gives
+    // Aero Snap and the system menu; gpui has no start_window_move there.
+    if cfg!(windows) {
+        return el.window_control_area(gpui_kit::WindowControlArea::Drag);
+    }
     el.on_mouse_down(
         MouseButton::Left,
         cx.listener(|this, ev: &MouseDownEvent, window, _| {
@@ -129,6 +137,78 @@ pub fn kbd(text: &'static str, ch: &Chrome) -> Div {
         .child(text)
 }
 
+/// Minimize / maximize / close at the toolbar's right end on Windows, where
+/// the app draws its own title bar. The OS handles the clicks through the
+/// control areas (snap layouts on hover over maximize included).
+pub fn caption_buttons(window: &Window, ch: &Chrome) -> AnyElement {
+    use gpui_kit::WindowControlArea as Area;
+    let button = |id: &'static str, icon: IconName, area: Area, close: bool| {
+        let (hover_bg, hover_fg) = if close { (gpui_kit::rgb(0xc42b1c).into(), gpui_kit::white()) } else { (ch.hover_strong, ch.text) };
+        div()
+            .id(id)
+            .w(px(CAPTION_BUTTON_WIDTH))
+            .h_full()
+            .flex()
+            .flex_none()
+            .items_center()
+            .justify_center()
+            .text_color(ch.text_muted)
+            .hover(move |s| s.bg(hover_bg).text_color(hover_fg))
+            .window_control_area(area)
+            .child(gpui_kit::component::Icon::new(icon).size(px(14.)))
+    };
+    let max_icon = if window.is_maximized() { IconName::WindowRestore } else { IconName::WindowMaximize };
+    h_flex()
+        .flex_none()
+        .h_full()
+        .child(button("caption-min", IconName::WindowMinimize, Area::Min, false))
+        .child(button("caption-max", max_icon, Area::Max, false))
+        .child(button("caption-close", IconName::WindowClose, Area::Close, true))
+        .into_any_element()
+}
+
+/// A shortcut label in the platform's style, from binding-like text:
+/// `shortcut("shift-mod-s")` is "⇧⌘S" on macOS and "Ctrl+Shift+S" elsewhere.
+/// `mod` is ⌘/Ctrl as in `actions::bind_keys`.
+pub fn shortcut(keys: &str) -> String {
+    let mac = cfg!(target_os = "macos");
+    let mut parts: Vec<&str> = keys.split('-').collect();
+    // A trailing "-" (e.g. "mod--") is the minus key.
+    let key = if keys.ends_with("--") { parts.truncate(parts.len().saturating_sub(2)); "-" } else { parts.pop().unwrap_or_default() };
+    let has = |m: &str| parts.contains(&m);
+    let key = match (key, mac) {
+        ("backspace", true) => "⌫".to_string(),
+        ("enter", true) => "↵".to_string(),
+        ("up", true) => "↑".to_string(),
+        ("down", true) => "↓".to_string(),
+        ("left", true) => "←".to_string(),
+        ("right", true) => "→".to_string(),
+        (k, _) if k.len() > 1 => {
+            let mut c = k.chars();
+            c.next().map(|f| f.to_uppercase().chain(c).collect()).unwrap_or_default()
+        }
+        (k, _) => k.to_uppercase(),
+    };
+    if mac {
+        let mut out = String::new();
+        for (m, glyph) in [("ctrl", "⌃"), ("alt", "⌥"), ("shift", "⇧"), ("mod", "⌘"), ("cmd", "⌘")] {
+            if has(m) {
+                out.push_str(glyph);
+            }
+        }
+        out + &key
+    } else {
+        let mut out = Vec::new();
+        for (m, name) in [("mod", "Ctrl"), ("ctrl", "Ctrl"), ("alt", "Alt"), ("shift", "Shift")] {
+            if has(m) && !out.contains(&name) {
+                out.push(name);
+            }
+        }
+        out.push(&key);
+        out.join("+")
+    }
+}
+
 pub fn mod_key() -> &'static str {
     if cfg!(target_os = "macos") { "⌘" } else { "Ctrl+" }
 }
@@ -151,14 +231,14 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
         .flex_none()
         .when(!ws.sidebar_visible || compact, |d| {
             d.child(
-                icon_button("sidebar-toggle", IconName::PanelLeft, format!("Toggle sidebar (⇧{}S)", mod_key()), &ch)
+                icon_button("sidebar-toggle", IconName::PanelLeft, format!("Toggle sidebar ({})", shortcut("shift-mod-s")), &ch)
                     .debug_selector(|| "sidebar-toggle".into())
                     .on_click(cx.listener(|this, _, w, cx| this.toggle_sidebar(&ToggleSidebar, w, cx))),
             )
             .child(divider(&ch).when(compact, |d| d.mx(px(3.))))
         })
         .child(
-            icon_button("back", IconName::ChevronLeft, format!("Back ({}[)", mod_key()), &ch)
+            icon_button("back", IconName::ChevronLeft, format!("Back ({})", shortcut(if cfg!(target_os = "macos") { "mod-[" } else { "alt-left" })), &ch)
                 .pointer_unless(!can_back)
                 .on_click(cx.listener(|this, _, w, cx| {
                     this.pane().update(cx, |p, cx| {
@@ -183,7 +263,7 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
                 .on_click(cx.listener(|this, _, w, cx| this.go_home_folder(&GoHomeFolder, w, cx))),
         )
         .child(
-            icon_button("fwd", IconName::ChevronRight, format!("Forward ({}])", mod_key()), &ch)
+            icon_button("fwd", IconName::ChevronRight, format!("Forward ({})", shortcut(if cfg!(target_os = "macos") { "mod-]" } else { "alt-right" })), &ch)
                 .pointer_unless(!can_fwd)
                 .on_click(cx.listener(|this, _, w, cx| {
                     this.pane().update(cx, |p, cx| {
@@ -232,7 +312,7 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
         }))
         .child(crate::icons::icon(IconName::Search).size(px(14.)).text_color(if focused { accent } else { ch.text_faint }))
         .child(div().flex_1().min_w_0().child(Input::new(&ws.search_input).appearance(false).xsmall().cleanable(true)))
-        .when(!compact, |d| d.child(kbd(if ws.settings.ai_enabled { "⇧ ↵" } else if mac { "⌘ F" } else { "Ctrl F" }, &ch)))
+        .when(!compact, |d| d.child(kbd(if ws.settings.ai_enabled { if mac { "⇧ ↵" } else { "Shift ↵" } } else if mac { "⌘ F" } else { "Ctrl F" }, &ch)))
         .when(ws.settings.ai_enabled, |d| {
             // AI search lives in the search field: describe what you're
             // looking for and the assistant finds it.
@@ -284,7 +364,7 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
         .h(px(TOOLBAR_HEIGHT))
         .flex_none()
         .pl(px(toolbar_inset(if compact { 9. } else { 14. }, sidebar_width, lights)))
-        .pr(px(if compact { 9. } else { 20. }))
+        .pr(px(if cfg!(windows) { 0. } else if compact { 9. } else { 20. }))
         .gap(px(if compact { 5. } else { 14. }))
         .bg(linear_gradient(180., linear_color_stop(ch.toolbar_top, 0.), linear_color_stop(ch.toolbar_bottom, 1.)))
         .border_b_1()
@@ -313,12 +393,14 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
                     .on_click(cx.listener(|this, _, w, cx| this.open_update_dialog(w, cx))),
             )
         })
+        .children(crate::workspace::ask::toolbar_indicator(ws, cx))
         .child(search)
         .child(
-            icon_button("inspector-toggle", IconName::PanelRight, format!("Inspector (⇧{}P)", mod_key()), &ch)
+            icon_button("inspector-toggle", IconName::PanelRight, format!("Inspector ({})", shortcut("shift-mod-p")), &ch)
                 .when(inspector_on, |b| b.text_color(ch.accent))
                 .on_click(cx.listener(|this, _, w, cx| this.toggle_preview_panel(&TogglePreviewPanel, w, cx))),
         )
+        .when(cfg!(windows), |d| d.child(caption_buttons(window, &ch)))
         .into_any_element()
 }
 
@@ -379,7 +461,7 @@ fn render_toolbar_path(ws: &Workspace, location: &Location, width: Width, cx: &m
     let mut all = crumbs(ws, location);
     if matches!(location, Location::Home) {
         // The Overview sits above any folder: "This Mac > Home".
-        let root = ws.volumes.first().map(|v| v.name.clone()).unwrap_or_else(|| "This Mac".into());
+        let root = ws.volumes.first().map(|v| v.name.clone()).unwrap_or_else(|| crate::platform_text::this_computer().into());
         all.insert(0, (root, ws.volumes.first().map(|v| Location::Dir(v.mount_point.clone())), IconName::HardDrive));
     }
     // Root, then the deepest folders: "Macintosh HD › Projects › rile".
@@ -396,7 +478,7 @@ fn render_toolbar_path(ws: &Workspace, location: &Location, width: Width, cx: &m
         .text_size(px(11.))
         .overflow_hidden()
         .cursor_text()
-        .tooltip(|w, cx| gpui_kit::component::tooltip::Tooltip::new(format!("Go to folder ({}L)", mod_key())).build(w, cx))
+        .tooltip(|w, cx| gpui_kit::component::tooltip::Tooltip::new(format!("Go to folder ({})", shortcut("mod-l"))).build(w, cx))
         .on_click(cx.listener(|this, _, w, cx| this.edit_path(&EditPath, w, cx)))
         .children(shown.into_iter().enumerate().filter(|(ix, _)| !(skip_root && *ix == 0)).map(|(ix, (name, target, _))| {
             let current = ix == last;
@@ -501,7 +583,7 @@ pub fn render_tab_strip(ws: &mut Workspace, window: &mut Window, cx: &mut Contex
                     .hover(|s| s.bg(ch.hover_strong))
                     .child(crate::icons::icon(IconName::X).size(px(11.)).text_color(ch.text_muted))
                     .tooltip(move |w, cx| {
-                        gpui_kit::component::tooltip::Tooltip::new(if count > 1 { "Close tab (⌘W)" } else { "Back to Home" }).build(w, cx)
+                        gpui_kit::component::tooltip::Tooltip::new(if count > 1 { format!("Close tab ({})", shortcut("mod-w")) } else { "Back to Home".into() }).build(w, cx)
                     })
                     .on_click(cx.listener(move |this, _, w, cx| {
                         cx.stop_propagation();
@@ -525,7 +607,7 @@ pub fn render_tab_strip(ws: &mut Workspace, window: &mut Window, cx: &mut Contex
                 .ghost()
                 .small()
                 .icon(crate::icons::icon(IconName::Plus).size(px(16.)))
-                .tooltip(format!("New tab ({}T)", mod_key()))
+                .tooltip(format!("New tab ({})", shortcut("mod-t")))
                 .size(px(32.))
                 .rounded(px(8.))
                 .text_color(ch.icon_button)
@@ -696,7 +778,7 @@ pub fn render_browser(ws: &mut Workspace, pane: Entity<Pane>, slot: usize, windo
                 .gap(px(if tight { 2. } else { 10. }))
                 .when(!tight, |d| {
                     d.child(
-                        icon_button(("new-folder", slot), IconName::FolderPlus, format!("New folder (⇧{m}N)"), &ch)
+                        icon_button(("new-folder", slot), IconName::FolderPlus, format!("New folder ({})", shortcut("shift-mod-n")), &ch)
                             .pointer_unless(!can_create)
                             .on_click(cx.listener(move |this, _, w, cx| {
                                 this.set_active_pane(slot, w, cx);
@@ -706,7 +788,7 @@ pub fn render_browser(ws: &mut Workspace, pane: Entity<Pane>, slot: usize, windo
                 })
                 .when(!dual, |d| d.child(switch))
                 .child(
-                    icon_button(("dual-pane-toggle", slot), IconName::Columns2, format!("Dual pane (⇧{m}D)"), &ch)
+                    icon_button(("dual-pane-toggle", slot), IconName::Columns2, format!("Dual pane ({})", shortcut("shift-mod-d")), &ch)
                         .debug_selector(move || format!("dual-pane-toggle-{slot}"))
                         .selected(dual)
                         .on_click(cx.listener(|this, _, w, cx| this.toggle_dual(&ToggleDualPane, w, cx))),

@@ -364,7 +364,7 @@ mod tests {
     #[test]
     fn records_queries_verifies_and_persists() {
         let tmp = tempfile::tempdir().unwrap();
-        let root = tmp.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(tmp.path()).unwrap();
         fs::create_dir_all(root.join("a/b")).unwrap();
         fs::write(root.join("a/report.pdf"), "x").unwrap();
         fs::write(root.join("a/b/report-old.pdf"), "xy").unwrap();

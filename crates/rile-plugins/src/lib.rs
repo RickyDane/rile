@@ -225,16 +225,16 @@ impl HostState {
     }
 
     fn set_context(&mut self, ctx: &Context, page_root: Option<&Path>) {
-        self.page_root = page_root.and_then(|p| fs::canonicalize(p).ok());
+        self.page_root = page_root.and_then(|p| dunce::canonicalize(p).ok());
         self.selection = ctx
             .selection
             .iter()
-            .filter_map(|p| fs::canonicalize(p).ok())
+            .filter_map(|p| dunce::canonicalize(p).ok())
             .collect();
         self.current_dir = ctx
             .current_dir
             .as_ref()
-            .and_then(|p| fs::canonicalize(p).ok());
+            .and_then(|p| dunce::canonicalize(p).ok());
         self.notifications.clear();
     }
 
@@ -296,7 +296,7 @@ impl bindings::rile::plugin::host::Host for HostState {
     }
 
     fn read_text(&mut self, path: String, max_bytes: u32) -> Result<String, String> {
-        let canonical = fs::canonicalize(&path).map_err(|_| format!("access denied: {path}"))?;
+        let canonical = dunce::canonicalize(&path).map_err(|_| format!("access denied: {path}"))?;
         if !self.read_allowed(&canonical) {
             return Err(format!("access denied: {path}"));
         }
@@ -310,7 +310,7 @@ impl bindings::rile::plugin::host::Host for HostState {
     }
 
     fn list_dir(&mut self, path: String) -> Result<Vec<String>, String> {
-        let canonical = fs::canonicalize(&path).map_err(|_| format!("access denied: {path}"))?;
+        let canonical = dunce::canonicalize(&path).map_err(|_| format!("access denied: {path}"))?;
         if !self.list_allowed(&canonical) {
             return Err(format!("access denied: {path}"));
         }
@@ -325,7 +325,7 @@ impl bindings::rile::plugin::host::Host for HostState {
     }
 
     fn read_dir(&mut self, path: String) -> Result<Vec<wit::Entry>, String> {
-        let canonical = fs::canonicalize(&path).map_err(|_| format!("access denied: {path}"))?;
+        let canonical = dunce::canonicalize(&path).map_err(|_| format!("access denied: {path}"))?;
         if !self.list_allowed(&canonical) {
             return Err(format!("access denied: {path}"));
         }
@@ -353,7 +353,7 @@ impl bindings::rile::plugin::host::Host for HostState {
     }
 
     fn dir_size(&mut self, path: String) -> Result<u64, String> {
-        let canonical = fs::canonicalize(&path).map_err(|_| format!("access denied: {path}"))?;
+        let canonical = dunce::canonicalize(&path).map_err(|_| format!("access denied: {path}"))?;
         if !self.in_page_root(&canonical) {
             return Err(format!("access denied: {path}"));
         }

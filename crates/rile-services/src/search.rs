@@ -400,10 +400,10 @@ pub(crate) fn meta_ok(q: &SearchQuery, e: &Entry) -> bool {
     true
 }
 
-/// Queries the macOS Spotlight index via `mdfind`. `query` is passed to
-/// `mdfind` verbatim, so Spotlight syntax (e.g. `kMDItemDisplayName == "*x*"`)
-/// works. This uses the OS-maintained index, not one of ours. Returns an
-/// error on other platforms.
+/// Queries the OS search index: Spotlight via `mdfind` on macOS (`query` is
+/// passed verbatim, so Spotlight syntax like `kMDItemDisplayName == "*x*"`
+/// works), Windows Search on Windows (Advanced Query Syntax). This uses the
+/// OS-maintained index, not one of ours. Returns an error elsewhere.
 pub fn spotlight_search(
     query: &str,
     root: Option<&Path>,
@@ -414,7 +414,20 @@ pub fn spotlight_search(
     {
         spotlight_macos(query, root, max, cancel)
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(windows)]
+    {
+        if query.trim().is_empty() {
+            bail!("Windows Search query is empty");
+        }
+        let max = if max == 0 { usize::MAX } else { max };
+        let mut out = Vec::new();
+        crate::win::windows_search(query, root, cancel, |p| {
+            out.push(p);
+            out.len() < max
+        })?;
+        Ok(out)
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
     {
         let _ = (query, root, max, cancel);
         bail!("Spotlight search is only available on macOS")

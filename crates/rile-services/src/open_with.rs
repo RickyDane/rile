@@ -2,8 +2,11 @@
 //! launching files with a chosen application and listing every installed
 //! application for a "choose other app" picker.
 
-use std::path::{Path, PathBuf};
+#[cfg(not(windows))]
+use std::path::Path;
+use std::path::PathBuf;
 
+#[cfg(not(windows))]
 use anyhow::Result;
 
 /// An installed application.
@@ -11,9 +14,9 @@ use anyhow::Result;
 pub struct AppInfo {
     /// Display name, e.g. "TextEdit" (no `.app` suffix).
     pub name: String,
-    /// Path to the application bundle.
+    /// Path to the application bundle (the program's .exe on Windows).
     pub path: PathBuf,
-    /// `CFBundleIdentifier`, when the bundle has one.
+    /// `CFBundleIdentifier`, when the bundle has one (unused on Windows).
     pub bundle_id: Option<String>,
 }
 
@@ -44,7 +47,10 @@ pub fn apps_for(path: &Path) -> Vec<AppInfo> {
     })
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(windows)]
+pub use win::{all_applications, apps_for, default_app_for, open_with};
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn apps_for(_path: &Path) -> Vec<AppInfo> {
     Vec::new()
 }
@@ -61,7 +67,7 @@ pub fn default_app_for(path: &Path) -> Option<AppInfo> {
     })
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn default_app_for(_path: &Path) -> Option<AppInfo> {
     None
 }
@@ -89,9 +95,9 @@ pub fn open_with(paths: &[PathBuf], app: &Path) -> Result<()> {
     Ok(())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn open_with(_paths: &[PathBuf], _app: &Path) -> Result<()> {
-    anyhow::bail!("Open With is only available on macOS")
+    anyhow::bail!("Open With is only available on macOS and Windows")
 }
 
 /// Every application in `/Applications`, `/System/Applications` and
@@ -130,7 +136,7 @@ pub fn all_applications() -> Vec<AppInfo> {
     apps
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn all_applications() -> Vec<AppInfo> {
     Vec::new()
 }
@@ -140,7 +146,7 @@ fn is_app_bundle(path: &Path) -> bool {
     path.extension().is_some_and(|e| e.eq_ignore_ascii_case("app")) && path.is_dir()
 }
 
-#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+#[cfg_attr(not(any(target_os = "macos", windows)), allow(dead_code))]
 fn sort_by_name(apps: &mut [AppInfo]) {
     apps.sort_by_cached_key(|a| (a.name.to_lowercase(), a.path.clone()));
 }
@@ -202,5 +208,164 @@ mod tests {
         let calc = apps.iter().find(|a| a.bundle_id.as_deref() == Some("com.apple.calculator"));
         assert!(calc.is_some(), "Calculator missing");
         assert!(!calc.unwrap().name.ends_with(".app"));
+    }
+}
+
+/// Windows: the Shell's registered handlers for the file type, and the
+/// programs in the Start menu for "Other…".
+#[cfg(windows)]
+mod win {
+    use std::path::{Path, PathBuf};
+
+    use anyhow::{Context, Result, bail};
+    use windows::Win32::System::Com::{CLSCTX_INPROC_SERVER, CoCreateInstance, CoTaskMemFree, IPersistFile, STGM_READ};
+    use windows::Win32::UI::Shell::{
+        ASSOC_FILTER_RECOMMENDED, ASSOCF_NONE, ASSOCSTR_EXECUTABLE, ASSOCSTR_FRIENDLYAPPNAME, AssocQueryStringW, IAssocHandler,
+        IShellLinkW, SHAssocEnumHandlers, ShellLink,
+    };
+    use windows::core::{HSTRING, Interface, PCWSTR, PWSTR};
+
+    use super::{AppInfo, sort_by_name};
+    use crate::win::{ComScope, from_wide};
+
+    fn ext_of(path: &Path) -> Option<String> {
+        path.extension().map(|e| format!(".{}", e.to_string_lossy()))
+    }
+
+    fn take(p: PWSTR) -> String {
+        let s = unsafe { p.to_string() }.unwrap_or_default();
+        unsafe { CoTaskMemFree(Some(p.0 as *const _)) };
+        s
+    }
+
+    fn handler_info(h: &IAssocHandler) -> Option<AppInfo> {
+        let exe = PathBuf::from(take(unsafe { h.GetName() }.ok()?));
+        // Store apps report a package name, not a program we can start.
+        if !exe.is_file() {
+            return None;
+        }
+        let name = take(unsafe { h.GetUIName() }.ok()?);
+        Some(AppInfo { name, path: exe, bundle_id: None })
+    }
+
+    fn query(flag: windows::Win32::UI::Shell::ASSOCSTR, ext: &str) -> Option<String> {
+        let ext = HSTRING::from(ext);
+        let mut len = 0u32;
+        let _ = unsafe { AssocQueryStringW(ASSOCF_NONE, flag, &ext, PCWSTR::null(), None, &mut len) };
+        if len == 0 {
+            return None;
+        }
+        let mut buf = vec![0u16; len as usize];
+        unsafe { AssocQueryStringW(ASSOCF_NONE, flag, &ext, PCWSTR::null(), Some(PWSTR(buf.as_mut_ptr())), &mut len) }.ok().ok()?;
+        Some(from_wide(&buf)).filter(|s| !s.is_empty())
+    }
+
+    pub fn default_app_for(path: &Path) -> Option<AppInfo> {
+        let _com = ComScope::new();
+        let ext = ext_of(path)?;
+        let exe = PathBuf::from(query(ASSOCSTR_EXECUTABLE, &ext)?);
+        if !exe.is_file() {
+            return None;
+        }
+        let name = query(ASSOCSTR_FRIENDLYAPPNAME, &ext).unwrap_or_else(|| exe.file_stem().unwrap_or_default().to_string_lossy().into_owned());
+        Some(AppInfo { name, path: exe, bundle_id: None })
+    }
+
+    pub fn apps_for(path: &Path) -> Vec<AppInfo> {
+        let _com = ComScope::new();
+        let Some(ext) = ext_of(path) else { return Vec::new() };
+        let default = default_app_for(path);
+        let mut apps = Vec::new();
+        if let Ok(handlers) = unsafe { SHAssocEnumHandlers(&HSTRING::from(&ext), ASSOC_FILTER_RECOMMENDED) } {
+            loop {
+                let mut batch = [None];
+                let mut fetched = 0u32;
+                if unsafe { handlers.Next(&mut batch, Some(&mut fetched)) }.is_err() || fetched == 0 {
+                    break;
+                }
+                if let Some(info) = batch[0].as_ref().and_then(handler_info) {
+                    apps.push(info);
+                }
+            }
+        }
+        let key = |p: &Path| crate::path_key(p);
+        let mut seen = std::collections::HashSet::new();
+        if let Some(d) = &default {
+            seen.insert(key(&d.path));
+        }
+        apps.retain(|a| seen.insert(key(&a.path)));
+        sort_by_name(&mut apps);
+        if let Some(d) = default {
+            apps.insert(0, d);
+        }
+        apps
+    }
+
+    /// Starts `app` with the files as arguments, like Explorer's "Open with".
+    pub fn open_with(paths: &[PathBuf], app: &Path) -> Result<()> {
+        if paths.is_empty() {
+            return Ok(());
+        }
+        if !app.is_file() {
+            bail!("{} isn't a program", app.display());
+        }
+        std::process::Command::new(app)
+            .args(paths)
+            .current_dir(paths[0].parent().unwrap_or(Path::new(".")))
+            .spawn()
+            .with_context(|| format!("starting {}", app.display()))?;
+        Ok(())
+    }
+
+    /// The program a Start menu shortcut starts.
+    fn shortcut_target(link: &IShellLinkW, file: &IPersistFile, lnk: &Path) -> Option<PathBuf> {
+        unsafe { file.Load(&HSTRING::from(lnk.as_os_str()), STGM_READ) }.ok()?;
+        let mut buf = [0u16; 1024];
+        unsafe { link.GetPath(&mut buf, std::ptr::null_mut(), 0) }.ok()?;
+        let target = PathBuf::from(from_wide(&buf));
+        let is_program = target.extension().is_some_and(|e| e.eq_ignore_ascii_case("exe"));
+        (is_program && target.is_file()).then_some(target)
+    }
+
+    /// Programs with a Start menu shortcut (the user's and everyone's),
+    /// without uninstallers and duplicates.
+    pub fn all_applications() -> Vec<AppInfo> {
+        let _com = ComScope::new();
+        let Ok(link) = (unsafe { CoCreateInstance::<_, IShellLinkW>(&ShellLink, None, CLSCTX_INPROC_SERVER) }) else { return Vec::new() };
+        let Ok(file) = link.cast::<IPersistFile>() else { return Vec::new() };
+        let mut roots: Vec<PathBuf> = Vec::new();
+        if let Some(appdata) = dirs::data_dir() {
+            roots.push(appdata.join(r"Microsoft\Windows\Start Menu\Programs"));
+        }
+        if let Some(program_data) = std::env::var_os("ProgramData") {
+            roots.push(PathBuf::from(program_data).join(r"Microsoft\Windows\Start Menu\Programs"));
+        }
+        let mut stack = roots;
+        let mut seen = std::collections::HashSet::new();
+        let mut apps = Vec::new();
+        while let Some(dir) = stack.pop() {
+            let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if entry.file_type().is_ok_and(|t| t.is_dir()) {
+                    stack.push(path);
+                    continue;
+                }
+                if !path.extension().is_some_and(|e| e.eq_ignore_ascii_case("lnk")) {
+                    continue;
+                }
+                let name = path.file_stem().unwrap_or_default().to_string_lossy().into_owned();
+                let lower = name.to_lowercase();
+                if lower.contains("uninstall") || lower.contains("deinstall") {
+                    continue;
+                }
+                let Some(target) = shortcut_target(&link, &file, &path) else { continue };
+                if seen.insert(crate::path_key(&target)) {
+                    apps.push(AppInfo { name, path: target, bundle_id: None });
+                }
+            }
+        }
+        sort_by_name(&mut apps);
+        apps
     }
 }

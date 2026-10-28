@@ -7,6 +7,7 @@ pub mod gallery;
 pub mod home;
 pub mod kit;
 pub mod list;
+pub mod ai_settings;
 pub mod plugin_page;
 pub mod space_analyzer;
 
@@ -163,7 +164,9 @@ fn frame(pane: &mut Pane, body: AnyElement, cx: &mut Context<Pane>) -> AnyElemen
         .on_key_down(cx.listener(|this, ev: &KeyDownEvent, _, cx| {
             let ks = &ev.keystroke;
             let m = &ks.modifiers;
-            if m.control || m.platform || m.alt || m.function {
+            // AltGr arrives as Ctrl+Alt on Windows; it types characters.
+            let alt_gr = cfg!(windows) && m.control && m.alt && ks.key_char.is_some();
+            if (m.control || m.platform || m.alt || m.function) && !alt_gr {
                 return;
             }
             let Some(ch) = ks.key_char.as_deref() else { return };
@@ -342,10 +345,10 @@ fn build_context_menu(
     }
     let danger = cx.theme().danger;
     let mut menu = menu
-        .menu_with_icon("Quick Look", menu_icon(IconName::Eye), Box::new(ToggleQuickLook))
+        .menu_with_icon(crate::platform_text::preview(), menu_icon(IconName::Eye), Box::new(ToggleQuickLook))
         .menu_with_icon("Open in Other Pane", menu_icon(IconName::Columns2), Box::new(OpenInOtherPane))
         .separator()
-        .menu_with_icon("Move to Trash", menu_icon(IconName::Trash).text_color(danger), Box::new(MoveToTrash))
+        .menu_with_icon(if cfg!(target_os = "macos") { "Move to Trash" } else { "Delete" }, menu_icon(IconName::Trash).text_color(danger), Box::new(MoveToTrash))
         .menu_with_icon("Delete Permanently…", menu_icon(IconName::CircleX).text_color(danger), Box::new(DeletePermanently))
         .separator()
         .menu_with_icon("Cut", menu_icon(IconName::Scissors), Box::new(Cut))

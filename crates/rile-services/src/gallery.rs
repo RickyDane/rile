@@ -63,7 +63,20 @@ pub fn find_images(cancel: &AtomicBool, mut on_batch: impl FnMut(Vec<PathBuf>)) 
             }
         }
     }
-    #[cfg(not(target_os = "macos"))]
+    // Windows Search finds pictures anywhere in the profile; the Pictures
+    // folder (which may be redirected to OneDrive) is walked as well, for
+    // when indexing is off.
+    #[cfg(windows)]
+    {
+        let _ = crate::win::windows_search("kind:picture", Some(&home), cancel, |p| {
+            if has_image_extension(&p) && !is_excluded(&p.to_string_lossy()) {
+                sink.push(p);
+            }
+            true
+        });
+        walk(&dirs::picture_dir().unwrap_or_else(|| home.join("Pictures")), cancel, &mut sink);
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
     walk(&home.join("Pictures"), cancel, &mut sink);
 
     if !cancel.load(Ordering::Relaxed) {
@@ -119,7 +132,34 @@ pub fn image_meta(path: &Path) -> Option<ImageMeta> {
     })
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Windows: the Shell's photo properties (the same ones Explorer's Details
+/// pane shows), read through the installed property handlers.
+#[cfg(windows)]
+pub fn image_meta(path: &Path) -> Option<ImageMeta> {
+    use windows::Win32::Storage::EnhancedStorage::{PKEY_Image_HorizontalSize, PKEY_Image_VerticalSize, PKEY_Photo_DateTaken, PKEY_Photo_Orientation};
+    use windows::Win32::UI::Shell::{IShellItem2, SHCreateItemFromParsingName};
+
+    if !has_image_extension(path) || !path.is_file() {
+        return None;
+    }
+    let _com = crate::win::ComScope::new();
+    let wide = crate::win::Wide::path(dunce::simplified(path));
+    let item: IShellItem2 = unsafe { SHCreateItemFromParsingName(wide.pcwstr(), None) }.ok()?;
+    let (mut width, mut height) = unsafe { (item.GetUInt32(&PKEY_Image_HorizontalSize).unwrap_or(0), item.GetUInt32(&PKEY_Image_VerticalSize).unwrap_or(0)) };
+    // EXIF orientations 5–8 are rotated by 90°.
+    if unsafe { item.GetUInt32(&PKEY_Photo_Orientation) }.is_ok_and(|o| (5..=8).contains(&o)) {
+        std::mem::swap(&mut width, &mut height);
+    }
+    let taken = unsafe { item.GetFileTime(&PKEY_Photo_DateTaken) }.ok().and_then(|ft| {
+        // 100 ns ticks since 1601-01-01.
+        let ticks = ((ft.dwHighDateTime as u64) << 32) | ft.dwLowDateTime as u64;
+        let unix = (ticks / 10_000_000).checked_sub(11_644_473_600)?;
+        Some(SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(unix))
+    });
+    Some(ImageMeta { width, height, taken: taken.or_else(|| file_time(path)) })
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn image_meta(path: &Path) -> Option<ImageMeta> {
     // Without a header parser only the date is cheap; dimensions stay 0.
     if !has_image_extension(path) || !path.is_file() {
@@ -183,8 +223,19 @@ impl<F: FnMut(Vec<PathBuf>)> Sink<'_, F> {
     }
 }
 
-#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+#[cfg_attr(not(any(target_os = "macos", windows)), allow(dead_code))]
 fn is_excluded(path: &str) -> bool {
+    // The patterns use `/`; Windows paths use `\`.
+    let normalized;
+    let path = if cfg!(windows) {
+        normalized = path.replace('\\', "/");
+        if normalized.contains("/AppData/") || normalized.contains("/$Recycle.Bin/") {
+            return true;
+        }
+        normalized.as_str()
+    } else {
+        path
+    };
     if path.contains(".photoslibrary/") {
         // Only the originals of a Photos library; skip its derivatives,
         // thumbnails and database.
@@ -211,7 +262,7 @@ fn walk<F: FnMut(Vec<PathBuf>)>(root: &Path, cancel: &AtomicBool, sink: &mut Sin
             let Ok(ft) = entry.file_type() else { continue };
             let path = entry.path();
             if ft.is_dir() {
-                if !entry.file_name().to_string_lossy().starts_with('.') {
+                if !rile_core::fs_entry::is_hidden_entry(&entry) {
                     stack.push(path);
                 }
             } else if ft.is_file() && has_image_extension(&path) {
@@ -278,7 +329,7 @@ fn spotlight<F: FnMut(Vec<PathBuf>)>(home: &Path, cancel: &AtomicBool, sink: &mu
 }
 
 fn home_dir() -> Option<PathBuf> {
-    std::env::var_os("HOME").filter(|h| !h.is_empty()).map(PathBuf::from)
+    dirs::home_dir().filter(|h| !h.as_os_str().is_empty())
 }
 
 #[cfg(test)]

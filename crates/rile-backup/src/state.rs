@@ -275,7 +275,22 @@ pub fn process_alive(pid: u32) -> bool {
     ok || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+pub fn process_alive(pid: u32) -> bool {
+    use windows::Win32::Foundation::{CloseHandle, STILL_ACTIVE};
+    use windows::Win32::System::Threading::{GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
+    // Access denied still means the process exists (another user's).
+    let handle = match unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) } {
+        Ok(h) => h,
+        Err(e) => return e.code() == windows::Win32::Foundation::E_ACCESSDENIED,
+    };
+    let mut code = 0u32;
+    let alive = unsafe { GetExitCodeProcess(handle, &mut code) }.is_ok() && code == STILL_ACTIVE.0 as u32;
+    unsafe { CloseHandle(handle).ok() };
+    alive
+}
+
+#[cfg(not(any(unix, windows)))]
 pub fn process_alive(_pid: u32) -> bool {
     true
 }

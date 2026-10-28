@@ -5,7 +5,7 @@ const tagColors = {Work:'blue',Personal:'violet',Important:'orange'};
 const files = [];
 function folder(id, parent, name, extra = {}) { files.push({id,parent,name,kind:'folder',modified:'2026-10-27T09:42:00',tags:[],...extra}); }
 function file(id, parent, name, kind, bytes, extra = {}) { files.push({id,parent,name,kind,bytes,modified:'2026-10-26T14:32:00',tags:[],...extra}); }
-folder('disk', null, 'Macintosh HD', {placeIcon:'drive'});
+folder('disk', null, window.rileWindows?'Local Disk (C:)':'Macintosh HD', {placeIcon:'drive'});
 folder('users', 'disk', 'Users');
 folder('home', 'users', 'rickyperlick', {placeIcon:'home'});
 folder('desktop', 'home', 'Desktop', {placeIcon:'desktop'});
@@ -57,7 +57,8 @@ folder('backups', 'ssd', 'Backups');
 folder('media', 'ssd', 'Media');
 file('backup-zip', 'backups', 'rile-backup.zip', 'archive', 48200000);
 file('media-lake', 'media', 'Alps.jpg', 'image', 6800000, {dimensions:'5000 × 3333'});
-const virtualLocations = {start:'Home',recents:'Recents',favorites:'Favorites',mac:'MacBook Pro','tag-work':'Work','tag-personal':'Personal','tag-important':'Important'};
+const libraryIcons = {start:'home',photos:'image',space:'pie',backups:'backup',network:'server',settings:'settings'};
+const virtualLocations = {start:'Home',photos:'Photos',space:'Space Analyzer',backups:'Backups',network:'Network',settings:'Appearance',recents:'Recents',favorites:'Favorites',mac:window.rileWindows?'This PC':'MacBook Pro','tag-work':'Work','tag-personal':'Personal','tag-important':'Important'};
 let nextTab = 3;
 const makeTab = (id, location, selected = null) => ({id,history:[location],cursor:0,selected,query:''});
 const state = {tabs:[makeTab(1,'start'),makeTab(2,'rile','alpine')],active:new URLSearchParams(location.search).get('preview')==='files'?2:1,view:'grid',sort:'name',ascending:true,showHidden:false,inspector:!matchMedia('(max-width:720px)').matches};
@@ -85,7 +86,7 @@ function currentFiles() {
   });
 }
 function pathNodes(id = locationId()) {
-  if (id === 'start') return [{id:'start',name:'Home',placeIcon:'home'}];
+  if (id in libraryIcons) return [{id,name:locationName(id),placeIcon:libraryIcons[id]}];
   if (id in virtualLocations) return [find('home'),{id,name:locationName(id),placeIcon:id==='recents'?'clock':id==='favorites'?'heart':'tag'}];
   const nodes = []; let current = find(id);
   while (current) { nodes.unshift(current); current = find(current.parent); }
@@ -93,6 +94,8 @@ function pathNodes(id = locationId()) {
 }
 function pathString(id = locationId()) {
   const nodes = pathNodes(id);
+  if (window.rileWindows && nodes[0]?.id==='disk') return 'C:\\' + nodes.slice(1).map(f=>f.name).join('\\');
+  if (window.rileWindows && nodes[0]?.id==='ssd') return 'D:\\' + nodes.slice(1).map(f=>f.name).join('\\');
   if (nodes[0]?.id==='disk') return '/' + nodes.slice(1).map(f=>f.name).join('/');
   if (nodes[0]?.id==='ssd') return '/Volumes/' + nodes.map(f=>f.name).join('/');
   return '/' + nodes.map(f=>f.name).join('/');
@@ -119,37 +122,40 @@ function columnRow(f, parent = false) { return `<button class="column-row ${pare
 function renderTabs() {
   $('#tabs').innerHTML = state.tabs.map(t => {
     const id = t.history[t.cursor], name = locationName(id);
-    return `<div class="tab ${t.id===state.active?'active':''}" role="presentation"><button role="tab" id="tab-${t.id}" data-tab="${t.id}" aria-selected="${t.id===state.active}" tabindex="${t.id===state.active?0:-1}" aria-controls="file-area">${icon(id==='start'?'home':find(id)?.placeIcon || 'folder')}<span>${escapeHtml(name)}</span></button><button class="tab-close" data-close-tab="${t.id}" aria-label="Close ${escapeHtml(name)} tab" title="Close tab">${icon('close')}</button></div>`;
+    return `<div class="tab ${t.id===state.active?'active':''}" role="presentation"><button role="tab" id="tab-${t.id}" data-tab="${t.id}" aria-selected="${t.id===state.active}" tabindex="${t.id===state.active?0:-1}" aria-controls="file-area">${icon(libraryIcons[id] || find(id)?.placeIcon || 'folder')}<span>${escapeHtml(name)}</span></button><button class="tab-close" data-close-tab="${t.id}" aria-label="Close ${escapeHtml(name)} tab" title="Close tab">${icon('close')}</button></div>`;
   }).join('');
   $('#file-area').setAttribute('aria-labelledby',`tab-${state.active}`);
 }
 function renderChrome() {
   const id = locationId(), nodes = pathNodes();
-  const atStart = id === 'start';
+  const atStart = id in libraryIcons;
   $('.main').classList.toggle('at-start',atStart);
   $('.browser-toolbar').hidden = atStart;
   $('#path-bar').hidden = atStart;
   $('.zoom-control').hidden = atStart;
   $('#inspector-toggle').disabled = atStart;
+  $('#search').disabled = atStart && !['start','photos'].includes(id);
   $('#search').placeholder = atStart ? 'Search sample workspace' : 'Search this folder';
   $('#search').setAttribute('aria-label',atStart ? 'Search sample workspace' : 'Search this folder');
   $('#location-title').textContent = locationName(id);
   $('#location-icon').innerHTML = icon(find(id)?.placeIcon || (id==='recents'?'clock':id==='favorites'?'heart':id.startsWith('tag-')?'tag':'folder'));
-  $('#toolbar-path').innerHTML = `<button data-navigate="mac">MacBook Pro</button>${icon('right')}${nodes.slice(-2).map((f,i,arr) => i===arr.length-1 ? `<strong>${escapeHtml(locationName(f.id))}</strong>` : `<button data-navigate="${f.id}">${escapeHtml(locationName(f.id))}</button>${icon('right')}`).join('')}`;
+  $('#toolbar-path').innerHTML = `<button data-navigate="mac">${locationName('mac')}</button>${icon('right')}${nodes.slice(-2).map((f,i,arr) => i===arr.length-1 ? `<strong>${escapeHtml(locationName(f.id))}</strong>` : `<button data-navigate="${f.id}">${escapeHtml(locationName(f.id))}</button>${icon('right')}`).join('')}`;
   $('#path-bar').innerHTML = nodes.map(f => `<button data-navigate="${f.id}" title="${escapeHtml(pathString(f.id))}">${icon(f.placeIcon || 'folder')} ${escapeHtml(f.name)}</button>`).join(icon('right'));
   $('#back').disabled = tab().cursor===0;
   $('#forward').disabled = tab().cursor===tab().history.length-1;
   $('#search').value = tab().query;
   $('#new-folder').disabled = id in virtualLocations;
   $('#new-folder').title = id in virtualLocations ? 'Open a folder to create a folder' : 'New folder';
+  const hasExactLocation = !!document.querySelector(`[data-location="${id}"]`);
   document.querySelectorAll('[data-location]').forEach(button => {
-    const active = button.dataset.location === id || (button.dataset.location === 'projects' && nodes.some(f => f.id === 'projects'));
+    const active = button.dataset.location === id || (!hasExactLocation && button.dataset.location === 'projects' && nodes.some(f => f.id === 'projects'));
     button.classList.toggle('active',active);
     if (active) button.setAttribute('aria-current','location'); else button.removeAttribute('aria-current');
   });
   renderTabs();
 }
 function renderFiles() {
+  if (locationId() in libraryIcons && locationId()!=='start') { renderWorkspacePage(); renderSelection(); return; }
   if (locationId()==='start') { renderStartPage(); renderSelection(); return; }
   const list = currentFiles();
   if (!list.some(f => f.id===tab().selected)) tab().selected = null;
@@ -177,7 +183,7 @@ function renderSelection() {
   renderInspector(f);
 }
 function renderInspector(f) {
-  const panel = $('#inspector'), visible = state.inspector && locationId()!=='start'; panel.hidden = !visible;
+  const panel = $('#inspector'), visible = state.inspector && !(locationId() in libraryIcons); panel.hidden = !visible;
   $('#inspector-toggle').classList.toggle('active',visible);
   $('#inspector-toggle').setAttribute('aria-pressed',visible);
   const header = `<header class="inspector-header"><span>Inspector</span><button id="close-inspector" class="icon-button" aria-label="Close inspector">${icon('close')}</button></header>`;
@@ -309,7 +315,11 @@ document.addEventListener('keydown',event=>{
   }
 });
 document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
-document.querySelectorAll('[data-location]').forEach(el=>{ el.setAttribute('aria-label',locationName(el.dataset.location)); el.title=locationName(el.dataset.location); });
-// Old concept URLs all resolve to this one explorer; the gallery no longer exists.
+document.querySelectorAll('[data-location]').forEach(el=>{ const label=el.getAttribute('aria-label')||el.textContent.trim()||locationName(el.dataset.location); el.setAttribute('aria-label',label); el.title=label; });
+// Library deep links share the same workspace, tabs, and navigation history.
 if(location.hash) history.replaceState(null,'',location.pathname+location.search);
-render();
+document.addEventListener('DOMContentLoaded', () => {
+  const page = new URLSearchParams(location.search).get('page');
+  if (page in libraryIcons) { tab().history=[page]; tab().cursor=0; }
+  render();
+});

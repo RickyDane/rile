@@ -178,6 +178,6 @@ fn file_info(entry: &Entry, cx: &mut Context<Pane>) -> AnyElement {
         .child(div().text_xs().text_color(theme.muted_foreground).child(entry.kind_label()))
         .child(div().text_xs().text_color(theme.muted_foreground).child(super::list::format_size(entry)))
         .child(div().text_xs().text_color(theme.muted_foreground).child(super::list::format_time(entry.modified, &now)))
-        .child(div().pt_2().text_xs().text_color(theme.muted_foreground).child("Space: Quick Look"))
+        .child(div().pt_2().text_xs().text_color(theme.muted_foreground).child(format!("Space: {}", crate::platform_text::preview())))
         .into_any_element()
 }

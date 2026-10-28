@@ -103,6 +103,13 @@ fn plan_download(
         }
         plan.push((entry.path.clone(), local.to_path_buf(), true, 0));
         for child in b.list(&entry.path)? {
+            // Names come from the server: one that isn't a plain file name
+            // here (`..`, `C:\x`, `a\..\b` or `a:stream` on Windows) could
+            // write outside the download folder.
+            if !rile_core::ops::is_safe_component(&child.name) {
+                log::warn!("skipping {}: its name isn't valid on this computer", child.path);
+                continue;
+            }
             plan_download(b, &child, &local.join(&child.name), cancel, plan)?;
         }
     } else {

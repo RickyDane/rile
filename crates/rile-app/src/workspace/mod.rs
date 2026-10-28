@@ -1,5 +1,8 @@
 mod ai;
 mod ai_agent;
+pub mod ask;
+mod ask_agent;
+mod ask_text;
 pub use ai_agent::tag_file;
 pub mod archive;
 pub mod backups;
@@ -135,6 +138,9 @@ pub struct Workspace {
     pub backups: backups::BackupState,
     pub updates: UpdateState,
     pub search_form: Option<Entity<search::SearchForm>>,
+    /// The ⌘K Ask palette, kept so reopening it continues the conversation.
+    pub ask: Option<Entity<ask::AskPalette>>,
+    _ask_sub: Option<Subscription>,
     /// Sidebar destination currently under a drag (animated feedback).
     pub sidebar_drop_hover: Option<PathBuf>,
     pub sidebar_visible: bool,
@@ -237,6 +243,8 @@ impl Workspace {
             backups: backups::BackupState::load(),
             updates: UpdateState::default(),
             search_form: None,
+            ask: None,
+            _ask_sub: None,
             sidebar_drop_hover: None,
             sidebar_visible: true,
             sidebar_transition: None,
@@ -269,6 +277,7 @@ impl Workspace {
         this._volume_watch_task = Some(Self::watch_volumes(cx));
         this.load_plugins(cx);
         this.start_backups(window, cx);
+        this.sync_local_model();
         // Describe new photos in the background once the app has settled.
         cx.spawn_in(window, async move |this, cx| {
             cx.background_executor().timer(std::time::Duration::from_secs(20)).await;
@@ -564,6 +573,7 @@ impl Workspace {
             pane.update(cx, |p, cx| p.set_show_hidden(hidden, cx));
         }
         self.sync_preview(cx);
+        self.sync_local_model();
         self.save_settings(window, cx);
         cx.notify();
     }
@@ -632,6 +642,7 @@ impl Workspace {
 
     /// Remembers the last folder for the "start where I left off" option.
     pub fn on_quit(&mut self, cx: &mut App) {
+        rile_services::local_model::shutdown();
         rile_services::index::save().ok();
         rile_services::tags::save().ok();
         if let Some(dir) = self.current_dir(cx) {
@@ -1038,8 +1049,9 @@ impl Render for Workspace {
             .on_action(cx.listener(Self::prev_tab))
             .on_action(cx.listener(Self::open_in_new_tab))
             .on_action(cx.listener(Self::toggle_sidebar))
-            // Linux/Windows keep a drawn title bar for the window controls.
-            .when(!cfg!(target_os = "macos"), |d| d.child(TitleBar::new()))
+            // Linux keeps a drawn title bar for the window controls; Windows
+            // puts its caption buttons in the toolbar (chrome::caption_buttons).
+            .when(cfg!(target_os = "linux"), |d| d.child(TitleBar::new()))
             .child(h_flex().flex_1().min_h_0().children(sidebar).child(main))
             .children(transfers)
             .children(jobs_panel)
@@ -1059,15 +1071,14 @@ pub fn item_count(n: usize) -> String {
 }
 
 pub fn dirs_home() -> Option<PathBuf> {
-    std::env::var_os("HOME").map(PathBuf::from).filter(|p| p.is_dir())
+    dirs::home_dir().filter(|p| p.is_dir())
 }
 
 pub fn expand_tilde(raw: &str) -> PathBuf {
     match raw.strip_prefix('~') {
-        Some(rest) => std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("/"))
-            .join(rest.trim_start_matches('/')),
+        Some(rest) => dirs::home_dir()
+            .unwrap_or_else(|| PathBuf::from(std::path::MAIN_SEPARATOR_STR))
+            .join(rest.trim_start_matches(['/', std::path::MAIN_SEPARATOR])),
         None => PathBuf::from(raw),
     }
 }

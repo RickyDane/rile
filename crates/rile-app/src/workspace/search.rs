@@ -150,13 +150,13 @@ impl Workspace {
         });
     }
 
-    /// Searches via the OS Spotlight index (macOS) instead of walking.
+    /// Searches via the OS index (Spotlight, Windows Search) instead of walking.
     pub fn run_spotlight_search(&mut self, text: String, window: &mut Window, cx: &mut Context<Self>) {
         let root = self.current_dir(cx);
         let max = self.settings.search_max_results;
         let cancel = Arc::new(AtomicBool::new(false));
         let worker_cancel = cancel.clone();
-        let label: SharedString = format!("Spotlight: \"{text}\"").into();
+        let label: SharedString = format!("{}: \"{text}\"", crate::platform_text::os_search()).into();
         self.search_input.update(cx, |i, cx| i.set_value("", window, cx));
         self.pane().update(cx, |pane, cx| {
             pane.start_search(label, cancel, cx, move |push, _| {
@@ -372,7 +372,7 @@ impl SearchForm {
         if self.use_spotlight {
             let text = self.name.read(cx).value().trim().to_string();
             if text.is_empty() {
-                self.error = Some("Enter a name or phrase for Spotlight".into());
+                self.error = Some(format!("Enter a name or phrase for {}", crate::platform_text::os_search()).into());
                 cx.notify();
                 return;
             }
@@ -481,7 +481,7 @@ impl Render for SearchForm {
                         .child(check("c-cre", "Content is regex", self.content_regex, |t, v| t.content_regex = v, cx))
                         .child(check("c-hidden", "Include hidden", self.include_hidden, |t, v| t.include_hidden = v, cx))
                         .child(check("c-git", "Respect .gitignore", self.respect_gitignore, |t, v| t.respect_gitignore = v, cx))
-                        .when_macos(|d| d.child(check("c-spot", "Use Spotlight index", self.use_spotlight, |t, v| t.use_spotlight = v, cx))),
+                        .when_os_search(|d| d.child(check("c-spot", if cfg!(windows) { "Use Windows Search index" } else { "Use Spotlight index" }, self.use_spotlight, |t, v| t.use_spotlight = v, cx))),
                 ),
             )
             .children(self.error.clone().map(|e| kit::notice(e, true, cx)))
@@ -498,12 +498,12 @@ impl Render for SearchForm {
     }
 }
 
-trait WhenMacos: Sized {
-    fn when_macos(self, f: impl FnOnce(Self) -> Self) -> Self {
-        if cfg!(target_os = "macos") { f(self) } else { self }
+trait WhenOsSearch: Sized {
+    fn when_os_search(self, f: impl FnOnce(Self) -> Self) -> Self {
+        if crate::platform_text::HAS_OS_SEARCH { f(self) } else { self }
     }
 }
-impl<T: ParentElement + Sized> WhenMacos for T {}
+impl<T: ParentElement + Sized> WhenOsSearch for T {}
 
 /// Folders deeper than this below the search root aren't listed.
 const REMOTE_MAX_DEPTH: usize = 12;

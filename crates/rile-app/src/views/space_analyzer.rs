@@ -143,7 +143,7 @@ fn row_actions(id: usize, group: SharedString, path: &Path, cx: &mut Context<Wor
                 cx.stop_propagation();
                 ws.reveal_in_pane(reveal.clone(), w, cx);
             })))
-        .when(!rile_services::space::is_protected(path), |d| d.child(Button::new(("space-trash", id)).cursor_pointer().xsmall().ghost().icon(IconName::Trash).tooltip("Move to Trash…")
+        .when(!rile_services::space::is_protected(path), |d| d.child(Button::new(("space-trash", id)).cursor_pointer().xsmall().ghost().icon(IconName::Trash).tooltip(format!("Move to {}…", crate::platform_text::trash()))
             .on_click(cx.listener(move |ws, _, w, cx| {
                 cx.stop_propagation();
                 ws.trash_space_item(trash.clone(), w, cx);
@@ -196,7 +196,7 @@ pub fn render(ws: &mut Workspace, slot: usize, focus: Option<PathBuf>, window: &
 fn footnote(ch: &Chrome) -> AnyElement {
     h_flex().gap_2().text_color(ch.text_faint)
         .child(icon(IconName::Info).size(px(12.)))
-        .child(text("Analysis runs on this Mac. Nothing is removed without asking — cleaned up items go to the Trash.", 11., ch.text_faint))
+        .child(text(format!("Analysis runs on {}. Nothing is removed without asking — cleaned up items go to the {}.", crate::platform_text::this_computer_lower(), crate::platform_text::trash()), 11., ch.text_faint))
         .into_any_element()
 }
 
@@ -360,7 +360,7 @@ fn action_bar(n: usize, bytes: u64, busy: bool, ch: &Chrome, cx: &mut Context<Wo
             ws.space.selected.clear();
             cx.notify();
         })))
-        .child(Button::new("space-trash-selected").cursor_pointer().small().danger().icon(IconName::Trash).label(if busy { "Moving…" } else { "Move to Trash…" })
+        .child(Button::new("space-trash-selected").cursor_pointer().small().danger().icon(IconName::Trash).label(if busy { "Moving…".to_string() } else { format!("Move to {}…", crate::platform_text::trash()) })
             .pointer_unless(busy).on_click(cx.listener(|ws, _, w, cx| ws.trash_space_selection(w, cx))))
         .into_any_element()
 }
@@ -431,7 +431,7 @@ fn header(ws: &Workspace, scan: &Scan, focus: &Path, rescanning: bool, ch: &Chro
     }
     if scan.unreadable > 0 {
         facts = facts.child(div().id("space-unreadable")
-            .tooltip(tip(format!("{} couldn’t be read and aren’t counted. On macOS, grant Rile Full Disk Access to include them.", plural(scan.unreadable, "folder", "folders"))))
+            .tooltip(tip(format!("{} couldn’t be read and aren’t counted. {}", plural(scan.unreadable, "folder", "folders"), if cfg!(target_os = "macos") { "On macOS, grant Rile Full Disk Access to include them." } else { "They are protected or belong to another user." })))
             .child(icon(IconName::TriangleAlert).size(px(13.)).text_color(color(Category::Images, ch))));
     }
     h_flex().id("space-header").debug_selector(|| "space-header".into()).gap(px(12.)).h(px(34.))
@@ -753,7 +753,7 @@ fn cleanup_tab(ws: &Workspace, scan: &Scan, focus: &Path, reclaim: u64, ch: &Chr
                 .child(h_flex().items_baseline().gap(px(8.))
                     .child(text(size(reclaim), 24., ch.text_strong).font_weight(FontWeight::SEMIBOLD))
                     .child(text(format!("could be freed in {}", file_name(focus)), 12., ch.text_muted)))
-                .child(text("Suggestions come from names and locations. Review them, select what you don’t need, and move it to the Trash — you can still restore it from there.", 11., ch.text_faint)))
+                .child(text(format!("Suggestions come from names and locations. Review them, select what you don’t need, and move it to the {} — you can still restore it from there.", crate::platform_text::trash()), 11., ch.text_faint)))
             .when(!safe.is_empty(), |d| d.child(Button::new("space-select-safe").cursor_pointer().outline().icon(IconName::Check)
                 .label(format!("Select regenerable · {}", size(safe_bytes)))
                 .tooltip("Select caches, build output and logs — things apps and builds recreate")

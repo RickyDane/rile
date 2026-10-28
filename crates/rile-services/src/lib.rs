@@ -6,6 +6,9 @@
 //! expected to run them on a background thread.
 
 pub mod app_icons;
+pub mod local_model;
+pub mod model_runtime;
+pub mod mlx_runtime;
 pub mod archive;
 pub mod file_manager;
 pub mod gallery;
@@ -24,3 +27,28 @@ pub mod tags;
 pub mod updater;
 pub mod vision;
 pub mod volumes;
+#[cfg(windows)]
+pub mod win;
+
+/// A comparable form of `path` for maps and prefix checks: on Windows letter
+/// case and a `\\?\` prefix don't make two paths different.
+pub fn path_key(path: &std::path::Path) -> std::path::PathBuf {
+    if cfg!(windows) {
+        let s = path.to_string_lossy();
+        std::path::PathBuf::from(s.strip_prefix(r"\\?\").unwrap_or(&s).to_lowercase())
+    } else {
+        path.to_path_buf()
+    }
+}
+
+/// Keeps a console program from flashing a console window on Windows (Rile
+/// itself has none to share). No effect elsewhere.
+pub fn no_window(command: &mut std::process::Command) -> &mut std::process::Command {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    command
+}
