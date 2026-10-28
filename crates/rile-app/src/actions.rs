@@ -95,10 +95,11 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new(k("mod-c"), Copy, Some(FILE_LIST)),
         KeyBinding::new(k("mod-x"), Cut, Some(FILE_LIST)),
         KeyBinding::new(k("mod-v"), Paste, Some(FILE_LIST)),
-        KeyBinding::new(k("mod-backspace"), MoveToTrash, Some(FILE_LIST)),
+        // Forward-delete first: menus show the last binding, so they list ⌘⌫ / ⌘⇧⌫.
         KeyBinding::new("delete", MoveToTrash, Some(FILE_LIST)),
-        KeyBinding::new(k("mod-shift-backspace"), DeletePermanently, Some(FILE_LIST)),
         KeyBinding::new("shift-delete", DeletePermanently, Some(FILE_LIST)),
+        KeyBinding::new(k("mod-backspace"), MoveToTrash, Some(FILE_LIST)),
+        KeyBinding::new(k("mod-shift-backspace"), DeletePermanently, Some(FILE_LIST)),
         KeyBinding::new("f2", Rename, Some(FILE_LIST)),
         KeyBinding::new(k("mod-shift-n"), NewFolder, Some(FILE_LIST)),
         KeyBinding::new(k("mod-alt-n"), NewFile, Some(FILE_LIST)),

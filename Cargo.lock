@@ -5830,8 +5830,11 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "583300ad934cba24ff5292aee751ecc070f7ca6b39a574cc21b7b5e588e06a0b"
 dependencies = [
+ "dispatch2",
  "libc",
+ "objc2 0.6.5",
  "objc2-core-foundation",
+ "objc2-security",
 ]
 
 [[package]]
@@ -5889,6 +5892,7 @@ dependencies = [
  "libc",
  "objc2 0.6.5",
  "objc2-core-foundation",
+ "objc2-core-services",
 ]
 
 [[package]]
@@ -5978,6 +5982,8 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "709fe137109bd1e8b5a99390f77a7d8b2961dafc1a1c5db8f2e60329ad6d895a"
 dependencies = [
+ "bitflags 2.13.2",
+ "objc2 0.6.5",
  "objc2-core-foundation",
 ]
 
@@ -7617,9 +7623,11 @@ dependencies = [
  "imagesize 0.13.0",
  "libc",
  "libunftp",
+ "notify",
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
+ "rile-backup",
  "rile-core",
  "rile-plugins",
  "rile-remote",
@@ -7634,6 +7642,29 @@ dependencies = [
  "unftp-core",
  "unftp-sbe-fs",
  "url",
+]
+
+[[package]]
+name = "rile-backup"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "globset",
+ "libc",
+ "libunftp",
+ "log",
+ "rile-core",
+ "rile-remote",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml 0.8.23",
+ "trash",
+ "unftp-core",
+ "unftp-sbe-fs",
 ]
 
 [[package]]
@@ -7703,6 +7734,7 @@ name = "rile-services"
 version = "0.5.0"
 dependencies = [
  "anyhow",
+ "block2 0.6.2",
  "brotli",
  "flate2",
  "globset",
@@ -7720,6 +7752,7 @@ dependencies = [
  "objc2-foundation 0.3.2",
  "objc2-image-io",
  "objc2-vision",
+ "rayon",
  "regex",
  "rile-core",
  "self-replace",

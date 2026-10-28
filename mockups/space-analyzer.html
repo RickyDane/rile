@@ -27,6 +27,20 @@
   .types-panel .file-type-chart li { cursor:pointer; }
   .sa-toast { position:fixed; bottom:44px; left:50%; transform:translateX(-50%); background:#2a2e38; border:1px solid #ffffff14; color:#dce6f5; padding:8px 14px; border-radius:8px; opacity:0; transition:opacity .2s; font-size:10px; z-index:20; pointer-events:none; }
   .sa-toast.on { opacity:1; }
+  .sa-map { margin-bottom:24px; }
+  .sa-map-tools { display:flex; align-items:center; gap:6px; }
+  .sa-map-tools button { cursor:pointer; }
+  .sa-map-tools button:disabled { opacity:.35; cursor:default; }
+  .sa-map-stage { overflow:hidden; margin:12px 16px 0; border-radius:8px; }
+  .sa-map-stage>svg { display:block; width:100%; height:auto; max-height:430px; stroke:none; }
+  .sa-bubble { cursor:pointer; outline:none; }
+  .sa-bubble>circle { fill:url(#sa-bubble-fill); stroke:#7abaff38; stroke-width:1; transition:stroke .15s,fill .15s; }
+  .sa-bubble:hover>circle,.sa-bubble:focus-visible>circle { fill:#5daaff30; stroke:#9acfff; stroke-width:2; }
+  .sa-bubble text { text-anchor:middle; fill:#dce6f5; font-size:13px; font-weight:500; pointer-events:none; }
+  .sa-bubble .sa-bubble-size { fill:#8ba6c6; font-size:10px; font-weight:400; }
+  .sa-bubble .sa-bubble-icon { width:26px; height:26px; color:#68b4ff; fill:#5daaff30; stroke:currentColor; stroke-width:1.4; pointer-events:none; }
+  .sa-map-caption { display:flex; justify-content:space-between; gap:12px; padding:10px 21px 17px; margin:0; font-size:9px; color:#91949d; }
+  @media(max-width:520px) { .sa-map>header { align-items:flex-start; flex-wrap:wrap; }.sa-map-caption { flex-direction:column; gap:5px; } }
 </style>
 </head>
 <body data-design="native">
@@ -95,6 +109,7 @@ function walk(n, path, out) {
 }
 
 let stack = [tree], view = "overview";
+let mapZoom = 1;
 const checked = new Set();
 const cur = () => stack[stack.length - 1];
 const pathStr = () => ["~", ...stack.slice(1).map(n => n.name)].join("/");
@@ -111,6 +126,42 @@ const row = ({ ico, name, sub, size, share, color, flag, attrs, check }) => `
     <span class="recent-file-name"><strong>${name}${flag ? `<span class="sa-flag">${flag}</span>` : ""}</strong><small>${sub}</small>${share !== undefined ? `<div class="sa-share" style="--share-color:${color}"><i style="width:${Math.max(1, share*100)}%"></i></div>` : ""}</span>
     <span class="recent-file-size">${fmt(size)}</span>${icon("right")}
   </button>`;
+
+// Pack in descending size, then fit the whole cluster with one scale so area stays proportional.
+function packBubbles(items) {
+  const packed = [], max = Math.max(...items.map(it => it.size), 1), gap = 4;
+  for (const item of items) {
+    const r = Math.sqrt(item.size / max) * 130;
+    const candidates = packed.length ? [] : [{ x:0, y:0 }];
+    for (const a of packed) {
+      for (let step = 0; step < 120; step++) {
+        const angle = step * Math.PI / 60;
+        candidates.push({ x:a.x + Math.cos(angle)*(a.r+r+gap), y:a.y + Math.sin(angle)*(a.r+r+gap) });
+      }
+    }
+    const best = candidates.filter(p => packed.every(a => Math.hypot(p.x-a.x, p.y-a.y) >= a.r+r+gap-.01))
+      .sort((a,b) => (a.x*a.x + a.y*a.y*1.8) - (b.x*b.x + b.y*b.y*1.8))[0];
+    packed.push({ ...item, ...best, r });
+  }
+  if (!packed.length) return [];
+  const left = Math.min(...packed.map(p => p.x-p.r)), right = Math.max(...packed.map(p => p.x+p.r));
+  const top = Math.min(...packed.map(p => p.y-p.r)), bottom = Math.max(...packed.map(p => p.y+p.r));
+  const scale = Math.min(840/(right-left), 350/(bottom-top));
+  return packed.map(p => ({ ...p, x:450+(p.x-(left+right)/2)*scale, y:190+(p.y-(top+bottom)/2)*scale, r:p.r*scale }));
+}
+
+function spaceMap(items) {
+  const bubbles = packBubbles(items);
+  const controls = `<div class="sa-map-tools"><button class="chart-period" data-zoom="out" aria-label="Zoom out" ${mapZoom<=1 ? "disabled" : ""}>−</button><button class="chart-period" data-zoom="reset" aria-label="Reset zoom">${Math.round(mapZoom*100)}%</button><button class="chart-period" data-zoom="in" aria-label="Zoom in" ${mapZoom>=3 ? "disabled" : ""}>+</button></div>`;
+  return panel("Space map", "Bigger bubbles take up more space · open a folder to explore", controls,
+    `<div class="sa-map-stage"><svg viewBox="${450-450/mapZoom} ${190-190/mapZoom} ${900/mapZoom} ${380/mapZoom}" role="group" aria-label="Folder sizes as proportional bubbles">
+      <defs><radialGradient id="sa-bubble-fill" cx="35%" cy="25%" r="85%"><stop stop-color="#76baff" stop-opacity=".22"/><stop offset="1" stop-color="#438fe0" stop-opacity=".07"/></radialGradient></defs>
+      ${bubbles.map(b => `<g class="sa-bubble" transform="translate(${b.x} ${b.y})" role="button" tabindex="0" aria-label="${b.name}, ${fmt(b.size)}" ${b.dir ? `data-open="${b.name}"` : `data-reveal="${pathStr()}/${b.name}"`}>
+        <title>${b.name} · ${fmt(b.size)}</title><circle r="${b.r}"/>
+        ${b.r>=38 ? `<g class="sa-bubble-icon" transform="translate(-13 -33) scale(1.0833)">${icons[b.dir ? "folder" : fileIcon(b.name)]}</g><text y="12">${b.name.length>Math.floor(b.r/4) ? b.name.slice(0,Math.floor(b.r/4)-1)+"…" : b.name}</text><text class="sa-bubble-size" y="30">${fmt(b.size)}</text>` : ""}
+      </g>`).join("")}
+    </svg></div><p class="sa-map-caption"><span>Bubble area represents size on disk</span><span>${items.length} items · ${fmt(items.reduce((sum,it)=>sum+it.size,0))}</span></p>`, "sa-map");
+}
 
 function render() {
   const node = cur(), total = size(node), scan = walk(node, pathStr(), { files:[], junk:[], folders:0 });
@@ -139,7 +190,7 @@ function render() {
     const top = items.slice(0, 5), restSize = items.slice(5).reduce((s, i) => s + i.size, 0);
     const groups = [...top.map((i, n) => ({ name:i.name, count:i.size/GB, size:i.size, color:i.junk ? "#d9a46d" : PALETTE[n], dir:i.dir })), ...(restSize ? [{ name:"Everything else", count:restSize/GB, size:restSize, color:PALETTE[5] }] : [])];
     const donut = overviewDonut(groups, total/GB).replace(/<strong>[^<]*<\/strong><span>files<\/span>/, `<strong>${num(total)}</strong><span>${unit(total)}</span>`);
-    html += `<div class="start-charts">
+    html += spaceMap(items) + `<div class="start-charts">
       ${panel("Biggest items", "Sorted by size · open a folder to look inside", `<span class="chart-period">${items.length} items</span>`,
         `<div class="recent-files">${items.map((it, n) => row({ ico: it.dir ? "folder" : fileIcon(it.name), name: it.name, sub: `${it.dir ? "Folder" : "File"} · ${(it.size/total*100).toFixed(1)}% of this folder`, size: it.size, share: it.size/items[0].size, color: it.junk ? "#d9a46d" : "#5daaff", flag: it.junk ? JUNK[it.name] : "", attrs: it.dir ? `data-open="${it.name}"` : `data-reveal="${pathStr()}/${it.name}"` })).join("")}</div>`, "start-recent")}
       ${panel("A closer look", "Where the space goes", icon("grid"),
@@ -184,8 +235,15 @@ function render() {
 }
 
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-check],[data-view],[data-open],[data-reveal],[data-depth],#up,#select-all,#copy-paths,#trash");
+  const t = e.target.closest("[data-check],[data-view],[data-open],[data-reveal],[data-depth],[data-zoom],#up,#select-all,#copy-paths,#trash");
   if (!t) return;
+  if (t.dataset.zoom) {
+    mapZoom = t.dataset.zoom === "reset" ? 1 : Math.max(1, Math.min(3, mapZoom + (t.dataset.zoom === "in" ? .25 : -.25)));
+    render();
+    document.querySelector(`[data-zoom="${t.dataset.zoom}"]`)?.focus();
+    return;
+  }
+  if (t.dataset.open || t.dataset.depth || t.id === "up") mapZoom = 1;
   if (t.dataset.check !== undefined) { e.stopPropagation(); checked[t.checked ? "add" : "delete"](t.dataset.check); return render(); }
   if (t.dataset.view && t.id !== "file-area") view = t.dataset.view;
   else if (t.dataset.open) { const c = cur().children.find(c => c.name === t.dataset.open); if (c?.children) { stack.push(c); view = "overview"; } }
@@ -197,6 +255,9 @@ document.addEventListener("click", e => {
   else if (t.id === "trash") { if (!confirm(`Move ${checked.size} items to the Trash?`)) return; toast(`Moved ${checked.size} items to the Trash (preview)`); checked.clear(); }
   else return;
   render();
+});
+document.addEventListener("keydown", e => {
+  if (e.target.matches(".sa-bubble") && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); e.target.dispatchEvent(new MouseEvent("click", { bubbles:true })); }
 });
 document.querySelectorAll("[data-icon]").forEach(el => el.innerHTML = icon(el.dataset.icon));
 render();

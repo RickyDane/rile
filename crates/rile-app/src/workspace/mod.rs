@@ -2,10 +2,12 @@ mod ai;
 mod ai_agent;
 pub use ai_agent::tag_file;
 pub mod archive;
+pub mod backups;
 mod file_ops;
 mod inspector;
 pub mod open_with;
 mod plugins;
+pub mod space;
 pub mod preview;
 mod remote_ops;
 mod rewards;
@@ -129,6 +131,8 @@ pub struct Workspace {
     pub search_focus: (bool, usize),
     pub preview: PreviewState,
     pub plugins: plugins::PluginState,
+    pub space: space::SpaceState,
+    pub backups: backups::BackupState,
     pub updates: UpdateState,
     pub search_form: Option<Entity<search::SearchForm>>,
     /// Sidebar destination currently under a drag (animated feedback).
@@ -229,6 +233,8 @@ impl Workspace {
             search_focus: (false, 0),
             preview: PreviewState::default(),
             plugins: plugins::PluginState::default(),
+            space: space::SpaceState::default(),
+            backups: backups::BackupState::load(),
             updates: UpdateState::default(),
             search_form: None,
             sidebar_drop_hover: None,
@@ -262,6 +268,7 @@ impl Workspace {
         this.refresh_volumes(cx);
         this._volume_watch_task = Some(Self::watch_volumes(cx));
         this.load_plugins(cx);
+        this.start_backups(window, cx);
         // Describe new photos in the background once the app has settled.
         cx.spawn_in(window, async move |this, cx| {
             cx.background_executor().timer(std::time::Duration::from_secs(20)).await;
@@ -742,6 +749,10 @@ impl Workspace {
             views::home::render(self, ix, window, cx).into_any_element()
         } else if location == Location::Gallery {
             views::gallery::render(self, ix, window, cx)
+        } else if location == Location::Backups {
+            views::backups::render(self, ix, window, cx)
+        } else if let Location::SpaceAnalyzer(focus) = &location {
+            views::space_analyzer::render(self, ix, focus.clone(), window, cx)
         } else if let Location::PluginPage { plugin, page, .. } = &location {
             views::plugin_page::render(self, ix, plugin, page, window, cx)
         } else {
@@ -757,7 +768,7 @@ impl Workspace {
             .h_full()
             .bg(crate::theme::chrome(cx).browser)
             .when(self.dual && ix == 1, |d| d.border_l_1().border_color(hairline))
-            .when(self.dual && matches!(location, Location::Home | Location::Gallery | Location::PluginPage { .. }), |d| {
+            .when(self.dual && matches!(location, Location::Home | Location::Gallery | Location::SpaceAnalyzer(_) | Location::Backups | Location::PluginPage { .. }), |d| {
                 d.child(h_flex().px(px(12.)).py(px(4.))
                     .when(ix == 1, |d| d.justify_end())
                     .child(self.render_drive_selector(ix, cx)))
@@ -873,8 +884,8 @@ impl Render for Workspace {
         let width = views::chrome::width_class(window);
         let slots: Vec<_> =
             (0..if self.dual { 2 } else { 1 }).map(|i| self.render_pane_slot(i, window, cx).into_any_element()).collect();
-        // The photo library has its own viewer with details.
-        let in_gallery = self.pane().read(cx).location == Location::Gallery;
+        // The photo library and the Space Analyzer show their own details.
+        let in_gallery = matches!(self.pane().read(cx).location, Location::Gallery | Location::SpaceAnalyzer(_) | Location::Backups);
         let inspector = (self.inspector_visible(window) && !in_gallery).then(|| self.render_inspector(window, cx));
         let (inline_inspector, overlay_inspector) =
             if width <= views::chrome::Width::Phone { (None, inspector) } else { (inspector, None) };
@@ -906,6 +917,7 @@ impl Render for Workspace {
         });
         let toolbar = views::chrome::render_toolbar(self, window, cx);
         let tabs = views::chrome::render_tab_strip(self, window, cx);
+        let root_picker = views::plugin_page::root_picker_bar(self, cx);
         let status = statusbar::render(self, window, cx);
 
         let main = v_flex()
@@ -915,6 +927,7 @@ impl Render for Workspace {
             .relative()
             .child(toolbar)
             .child(tabs)
+            .children(root_picker)
             .child(
                 h_flex()
                     .flex_1()

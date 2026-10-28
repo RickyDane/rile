@@ -16,7 +16,7 @@ pub enum ThemeMode {
 }
 
 /// Accent color presets of the design system.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Accent {
     #[default]
@@ -171,6 +171,47 @@ impl IconSet {
     }
 }
 
+/// Artwork of the Dock icon (tinted by the accent).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AppIcon {
+    #[default]
+    FolioBolt,
+    DrawerBolt,
+    FolioFlame,
+    FolioEmber,
+    FolioHotRod,
+    DrawerFlame,
+    DrawerEmber,
+    DrawerHotRod,
+}
+
+impl AppIcon {
+    pub const ALL: [AppIcon; 8] = [
+        AppIcon::FolioBolt,
+        AppIcon::DrawerBolt,
+        AppIcon::FolioFlame,
+        AppIcon::FolioEmber,
+        AppIcon::FolioHotRod,
+        AppIcon::DrawerFlame,
+        AppIcon::DrawerEmber,
+        AppIcon::DrawerHotRod,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            AppIcon::FolioBolt => "Folio Bolt",
+            AppIcon::DrawerBolt => "Drawer Bolt",
+            AppIcon::FolioFlame => "Folio Flame",
+            AppIcon::FolioEmber => "Folio Ember",
+            AppIcon::FolioHotRod => "Folio Hot Rod",
+            AppIcon::DrawerFlame => "Drawer Flame",
+            AppIcon::DrawerEmber => "Drawer Ember",
+            AppIcon::DrawerHotRod => "Drawer Hot Rod",
+        }
+    }
+}
+
 /// File types a default program can be chosen for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -258,6 +299,8 @@ pub struct Settings {
     pub last_location: Option<PathBuf>,
     /// Icon style of the whole UI.
     pub icon_set: IconSet,
+    /// Dock icon artwork.
+    pub app_icon: AppIcon,
     /// Translucent, blurred sidebar and header (popups remain opaque).
     pub glass: bool,
     /// Glass tint hue in degrees; zero uses the theme's neutral frost.
@@ -312,6 +355,7 @@ impl Default for Settings {
             start_dir: None,
             last_location: None,
             icon_set: IconSet::Outline,
+            app_icon: AppIcon::FolioBolt,
             glass: false,
             glass_hue: 0,
             glass_translucency: 50,
@@ -467,5 +511,14 @@ mod tests {
         assert_eq!(partial.theme, ThemeMode::Dark);
         assert_eq!(partial.glass_hue, 0);
         assert_eq!(partial.glass_translucency, 50);
+        assert_eq!(partial.app_icon, AppIcon::FolioBolt);
+    }
+
+    #[test]
+    fn app_icon_uses_kebab_case() {
+        let parsed: Settings = toml::from_str("app_icon = \"drawer-hot-rod\"").unwrap();
+        assert_eq!(parsed.app_icon, AppIcon::DrawerHotRod);
+        let s = Settings { app_icon: AppIcon::FolioEmber, ..Default::default() };
+        assert!(toml::to_string(&s).unwrap().contains("app_icon = \"folio-ember\""));
     }
 }

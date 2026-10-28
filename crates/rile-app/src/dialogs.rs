@@ -12,12 +12,12 @@ use gpui_kit::{
     Render, SharedString, StatefulInteractiveElement, Styled, Subscription, Window, div,
     prelude::FluentBuilder, px,
 };
-use rile_core::settings::{Accent, Density, FileCategory, IconSet, Settings, StartLocation, ThemeMode, ViewKind};
+use rile_core::settings::{Accent, AppIcon, Density, FileCategory, IconSet, Settings, StartLocation, ThemeMode, ViewKind};
 
+use crate::views::kit::PointerUnless;
 use crate::theme::accent_color;
 use crate::views::kit;
 use gpui_kit::assets::IconName;
-use gpui_kit::component::Disableable;
 use crate::workspace::Workspace;
 
 /// Dialog with a single text input and Cancel/confirm buttons;
@@ -76,7 +76,7 @@ pub fn confirm(
                     .gap_2()
                     .child(Button::new("cancel").debug_selector(|| "confirm-cancel".into()).cursor_pointer().label("Cancel").on_click(|_, window, cx| window.close_dialog(cx)))
                     .child(
-                        Button::new("ok")
+                        Button::new("ok").cursor_pointer()
                             .debug_selector(|| "confirm-ok".into())
                             .cursor_pointer()
                             .label(ok_label)
@@ -95,10 +95,68 @@ pub fn confirm(
     });
 }
 
+type ChoiceAction = std::rc::Rc<dyn Fn(&mut Window, &mut App)>;
+
+/// One button of a [`choose`] dialog.
+pub struct Choice {
+    pub label: &'static str,
+    pub variant: ButtonVariant,
+    pub action: ChoiceAction,
+}
+
+impl Choice {
+    pub fn new(label: &'static str, variant: ButtonVariant, action: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        Self { label, variant, action: std::rc::Rc::new(action) }
+    }
+}
+
+/// A confirmation with an explanation and several ways to proceed (plus
+/// Cancel); the dialog closes after any choice.
+pub fn choose(title: String, detail: String, destructive: bool, choices: Vec<Choice>, window: &mut Window, cx: &mut App) {
+    let choices: Vec<(SharedString, ButtonVariant, ChoiceAction)> =
+        choices.into_iter().map(|c| (SharedString::from(c.label), c.variant, c.action)).collect();
+    window.open_dialog(cx, move |dialog, _, cx| {
+        let icon = if destructive { IconName::TriangleAlert } else { IconName::Info };
+        kit::dialog(dialog, icon, title.clone(), None, 480., cx).child(
+            v_flex()
+                .gap(px(16.))
+                .child(div().text_size(px(13.)).line_height(px(19.)).text_color(crate::theme::chrome(cx).text).child(detail.clone()))
+                .child(
+                    kit::footer()
+                        .flex_wrap()
+                        .child(Button::new("choose-cancel").debug_selector(|| "choose-cancel".into()).cursor_pointer().ghost().label("Cancel")
+                            .on_click(|_, window, cx| window.close_dialog(cx)))
+                        .children(choices.iter().enumerate().map(|(i, (label, variant, action))| {
+                            let action = action.clone();
+                            Button::new(("choose", i)).debug_selector(move || format!("choose-{i}")).cursor_pointer()
+                                .label(label.clone()).with_variant(*variant)
+                                .on_click(move |_, window, cx| {
+                                    window.close_dialog(cx);
+                                    action(window, cx);
+                                })
+                        })),
+                ),
+        )
+    });
+}
+
 /// Called from inside a workspace update, so the current settings are
 /// passed in rather than read from `ws` (which would panic).
 pub fn open_settings(ws: Entity<Workspace>, settings: Settings, window: &mut Window, cx: &mut App) {
-    let view = cx.new(|cx| SettingsView::new(ws, settings, window, cx));
+    open_settings_at(ws, settings, Tab::General, None, window, cx);
+}
+
+/// Opens Settings → Backups with the job `job` (or the first one) shown.
+pub fn open_backup_settings(ws: Entity<Workspace>, settings: Settings, job: Option<String>, window: &mut Window, cx: &mut App) {
+    open_settings_at(ws, settings, Tab::Backups, job, window, cx);
+}
+
+fn open_settings_at(ws: Entity<Workspace>, settings: Settings, tab: Tab, job: Option<String>, window: &mut Window, cx: &mut App) {
+    let view = cx.new(|cx| {
+        let mut view = SettingsView::new(ws, settings, job, window, cx);
+        view.tab = tab;
+        view
+    });
     window.open_dialog(cx, move |dialog, _, cx| {
         kit::dialog(dialog, IconName::Settings, "Settings", Some(format!("Rile {}", env!("CARGO_PKG_VERSION")).into()), 760., cx)
             .child(view.clone())
@@ -195,6 +253,7 @@ enum Tab {
     Search,
     Programs,
     Plugins,
+    Backups,
     Ai,
     About,
 }
@@ -207,11 +266,16 @@ pub struct SettingsView {
     max_results_input: Entity<InputState>,
     glass_hue: Entity<SliderState>,
     glass_translucency: Entity<SliderState>,
+    file_manager: rile_services::file_manager::Status,
+    file_manager_busy: bool,
+    file_manager_message: Option<String>,
+    backups: Entity<crate::views::backup_settings::BackupSettingsView>,
     _subs: Vec<Subscription>,
 }
 
 impl SettingsView {
-    fn new(ws: Entity<Workspace>, s: Settings, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    fn new(ws: Entity<Workspace>, s: Settings, backup_job: Option<String>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let backups = cx.new(|cx| crate::views::backup_settings::BackupSettingsView::new(ws.clone(), backup_job, window, cx));
         let repo_input = cx.new(|cx| InputState::new(window, cx).default_value(s.update_repo.clone()).placeholder("owner/repo"));
         let max_results_input = cx.new(|cx| InputState::new(window, cx).default_value(s.search_max_results.to_string()));
         let glass_hue = cx.new(|_| SliderState::new().min(0.).max(360.).step(1.).default_value(s.glass_hue.min(360) as f32));
@@ -253,7 +317,54 @@ impl SettingsView {
                 });
             }));
         }
-        Self { ws, tab: Tab::General, repo_input, max_results_input, glass_hue, glass_translucency, _subs: subs }
+        Self {
+            ws, tab: Tab::General, repo_input, max_results_input, glass_hue, glass_translucency, _subs: subs,
+            file_manager: rile_services::file_manager::status(), file_manager_busy: false, file_manager_message: None, backups,
+        }
+    }
+
+    fn set_file_manager(&mut self, rile: bool, window: &mut Window, cx: &mut Context<Self>) {
+        if self.file_manager_busy { return; }
+        self.file_manager_busy = true;
+        self.file_manager_message = Some("Waiting for macOS approval…".into());
+        cx.notify();
+        let (tx, rx) = smol::channel::bounded(1);
+        rile_services::file_manager::set_default(rile, move |result| { tx.try_send(result).ok(); });
+        cx.spawn_in(window, async move |this, cx| {
+            let result = rx.recv().await;
+            this.update_in(cx, |this, _, cx| {
+                this.file_manager_busy = false;
+                this.file_manager = rile_services::file_manager::status();
+                this.file_manager_message = Some(match result {
+                    Ok(Ok(())) => "Updated. Restart other apps or log out if they still use the previous viewer.".into(),
+                    Ok(Err(error)) => format!("{error:#}"),
+                    Err(_) => "macOS didn't complete the change. Please try again.".into(),
+                });
+                cx.notify();
+            }).ok();
+        }).detach();
+    }
+
+    fn file_manager_controls(&self, cx: &mut Context<Self>) -> AnyElement {
+        let message = self.file_manager_message.clone().unwrap_or_else(|| {
+            if !self.file_manager.can_set_rile {
+                "Launch the installed Rile.app to make it the default.".into()
+            } else if self.file_manager.is_default {
+                "Rile is the default file manager.".into()
+            } else {
+                "Finder's desktop and system Open/Save dialogs stay unchanged.".into()
+            }
+        });
+        v_flex().gap(px(8.))
+            .child(h_flex().gap(px(8.))
+                .child(Button::new("s-default-manager").cursor_pointer().small().outline().label("Make Rile Default")
+                    .pointer_unless(self.file_manager_busy || !self.file_manager.can_set_rile || self.file_manager.is_default)
+                    .on_click(cx.listener(|this, _, window, cx| this.set_file_manager(true, window, cx))))
+                .child(Button::new("s-restore-finder").cursor_pointer().small().outline().label("Restore Finder")
+                    .pointer_unless(self.file_manager_busy)
+                    .on_click(cx.listener(|this, _, window, cx| this.set_file_manager(false, window, cx)))))
+            .child(div().max_w(px(340.)).text_size(px(11.)).text_color(cx.theme().muted_foreground).child(message))
+            .into_any_element()
     }
 
     /// Mutates settings, then re-applies appearance and saves.
@@ -320,6 +431,7 @@ impl Render for SettingsView {
             (Tab::Search, "Search", IconName::Search),
             (Tab::Programs, "Programs", IconName::AppWindow),
             (Tab::Plugins, "Plugins", IconName::Puzzle),
+            (Tab::Backups, "Backups", IconName::DatabaseBackup),
             (Tab::Ai, "AI", IconName::Sparkles),
             (Tab::About, "About", IconName::Info),
         ];
@@ -469,6 +581,11 @@ impl Render for SettingsView {
                     ],
                     cx,
                 ))
+                .when(cfg!(target_os = "macos"), |body| body.child(section(
+                    "MACOS INTEGRATION",
+                    vec![r("Default file manager", "Open folders and handle compatible Reveal in Finder actions", self.file_manager_controls(cx))],
+                    cx,
+                )))
                 .child(section(
                     "UPDATES",
                     vec![
@@ -539,6 +656,45 @@ impl Render for SettingsView {
                             })
                     }))
                     .into_any_element();
+                let app_icons = h_flex()
+                    .flex_wrap()
+                    .w(px(332.))
+                    .gap(px(4.))
+                    .children(AppIcon::ALL.into_iter().map(|style| {
+                        let ws = self.ws.clone();
+                        let selected = s.app_icon == style;
+                        v_flex()
+                            .id(style.label())
+                            .w(px(80.))
+                            .items_center()
+                            .gap(px(3.))
+                            .py(px(6.))
+                            .rounded(px(8.))
+                            .cursor_pointer()
+                            .border_1()
+                            .border_color(if selected { ch.accent.opacity(0.6) } else { gpui_kit::transparent_black() })
+                            .when(selected, |d| d.bg(ch.accent_soft))
+                            .hover(|d| d.bg(ch.hover_strong))
+                            .when_some(crate::app_icon::png(style, s.accent), |d, image| {
+                                use gpui_kit::StyledImage;
+                                d.child(gpui_kit::img(image).size(px(44.)).object_fit(gpui_kit::ObjectFit::Contain))
+                            })
+                            .child(
+                                div()
+                                    .w_full()
+                                    .text_size(px(10.))
+                                    .text_center()
+                                    .text_color(if selected { ch.text_strong } else { ch.text_muted })
+                                    .child(if style == AppIcon::DrawerHotRod { "Drawer\nHot Rod" } else { style.label() }),
+                            )
+                            .on_click(move |_, window, cx| {
+                                ws.update(cx, |ws, cx| {
+                                    ws.settings.app_icon = style;
+                                    ws.settings_changed(window, cx);
+                                })
+                            })
+                    }))
+                    .into_any_element();
                 v_flex()
                     .gap(px(16.))
                     .child(section(
@@ -574,11 +730,13 @@ impl Render for SettingsView {
                         ],
                         cx,
                     ))
-                    .child(section(
-                        "ICONS",
-                        vec![r("Icon style", "Used across the sidebar, toolbar, menus and files", icon_sets)],
-                        cx,
-                    ))
+                    .child(
+                        v_flex().gap(px(8.)).child(kit::caption("ICONS", cx)).child(
+                            kit::card(cx)
+                                .child(kit::row("Icon style", "Used across the sidebar, toolbar, menus and files", icon_sets, true, &ch))
+                                .child(kit::row("App icon", "Shown in the Dock while Rile runs; follows the accent color", app_icons, false, &ch).items_start()),
+                        ),
+                    )
                     .child(section(
                         "LAYOUT",
                         vec![
@@ -627,7 +785,7 @@ impl Render for SettingsView {
                                     .small()
                                     .outline()
                                     .label("Clear")
-                                    .disabled(items == 0)
+                                    .pointer_unless(items == 0)
                                     .on_click(move |_, _, cx| {
                                         rile_services::index::clear();
                                         ws.update(cx, |_, cx| cx.notify());
@@ -748,6 +906,7 @@ impl Render for SettingsView {
                     .child(kit::hint("Build plugins with `cargo build --target wasm32-wasip2` and drop the .wasm into the plugin folder. See plugins/README.md.", cx))
                     .into_any_element()
             }
+            Tab::Backups => self.backups.clone().into_any_element(),
             Tab::Ai => v_flex()
                 .gap(px(16.))
                 .child(section(
@@ -777,7 +936,7 @@ impl Render for SettingsView {
                                         .small()
                                         .outline()
                                         .label(if running { "Running…" } else { "Start" })
-                                        .disabled(running || !cfg!(target_os = "macos"))
+                                        .pointer_unless(running || !cfg!(target_os = "macos"))
                                         .on_click(move |_, window, cx| {
                                             ws.update(cx, |ws, cx| ws.start_photo_job(true, window, cx));
                                         })
@@ -792,7 +951,7 @@ impl Render for SettingsView {
                                     .small()
                                     .outline()
                                     .label("Clear")
-                                    .disabled(tagged == 0)
+                                    .pointer_unless(tagged == 0)
                                     .on_click(move |_, _, cx| {
                                         rile_services::tags::clear();
                                         ws.update(cx, |_, cx| cx.notify());
@@ -818,7 +977,7 @@ impl Render for SettingsView {
                             .items_center()
                             .gap(px(6.))
                             .py(px(16.))
-                            .child(match crate::app_icon::png(s.accent) {
+                            .child(match crate::app_icon::png(s.app_icon, s.accent) {
                                 Some(image) => { use gpui_kit::StyledImage; gpui_kit::img(image).size(px(96.)).object_fit(gpui_kit::ObjectFit::Contain).into_any_element() }
                                 None => crate::icons::icon(IconName::Folder).size(px(56.)).text_color(ch.accent).into_any_element(),
                             })
@@ -838,7 +997,7 @@ impl Render for SettingsView {
                                     .small()
                                     .outline()
                                     .label("Open on GitHub")
-                                    .disabled(repo.is_empty())
+                                    .pointer_unless(repo.is_empty())
                                     .on_click(move |_, _, cx| cx.open_url(&url))
                                     .into_any_element(),
                             ),

@@ -167,6 +167,12 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
         item("side-photos".into(), IconName::Images, "Photos".into(), at_gallery, None)
             .on_click(cx.listener(|this, _, w, cx| this.open_location(Location::Gallery, w, cx)))
             .into_any_element(),
+        item("side-space".into(), IconName::ChartPie, "Space Analyzer".into(), matches!(location, Location::SpaceAnalyzer(_)), None)
+            .on_click(cx.listener(|this, _, w, cx| this.open_space_analyzer(w, cx)))
+            .into_any_element(),
+        item("side-backups".into(), IconName::DatabaseBackup, "Backups".into(), matches!(location, Location::Backups), None)
+            .on_click(cx.listener(|this, _, w, cx| this.open_location(Location::Backups, w, cx)))
+            .into_any_element(),
     ];
     // Plugin pages sit with the built-in library pages.
     for (ix, (plugin, page)) in ws.plugins.pages.clone().into_iter().enumerate() {
@@ -243,7 +249,7 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
                             .child(humansize::format_size(vol.available, humansize::DECIMAL)),
                     )
                 })
-                .tooltip(move |w, cx| gpui_kit::component::tooltip::Tooltip::new(usage_tip.clone()).build(w, cx))
+                .when(!rail, |d| d.tooltip(move |w, cx| gpui_kit::component::tooltip::Tooltip::new(usage_tip.clone()).build(w, cx)))
                 .on_click(cx.listener(move |this, _, w, cx| this.open_path(path.clone(), w, cx)))
                 .when(ejectable && !rail, |d| {
                     d.child(

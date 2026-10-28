@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/rile-core", "crates/rile-services", "crates/rile-plugins", "crates/rile-remote", "crates/rile-app"]
+members = ["crates/rile-core", "crates/rile-services", "crates/rile-plugins", "crates/rile-remote", "crates/rile-backup", "crates/rile-app"]
 exclude = ["plugins", "vendor/smb"]
 
 [workspace.package]
@@ -13,6 +13,7 @@ rile-core = { path = "crates/rile-core" }
 rile-services = { path = "crates/rile-services" }
 rile-plugins = { path = "crates/rile-plugins" }
 rile-remote = { path = "crates/rile-remote" }
+rile-backup = { path = "crates/rile-backup" }
 gpui-kit = { version = "0.8.1", features = ["syntect"] }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }

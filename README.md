@@ -22,6 +22,7 @@ An interactive design prototype is also available in [`mockups/`](mockups/README
 - **Search on demand:** search recursively by name, glob, regex, content, size, date, and type, with `.gitignore` support and an optional Spotlight backend. A discovery index remembers visited folders for faster subsequent searches; it can be disabled or cleared in Settings.
 - **Connect to servers:** browse FTP, FTPS, SFTP, and SMB2/3 locations, transfer files, and manage remote entries. Choose nearby servers advertised over Bonjour/mDNS in the connection dialog, or enter a server manually. SMB connections show available disk shares; enter `smb://server/share` or set the start folder to `/share/folder` to connect directly. Credentials are stored in the Keychain.
 - **Explore storage and photos:** the Overview shows live disk usage and recent file activity; Photos groups images from your home folder and Photos library by month.
+- **Free up space:** the Space Analyzer measures a folder once, then lets you explore it as a bubble map, list its largest files, and review cleanup suggestions (caches, build output, installers, stale downloads) before moving them to the Trash.
 - **Use on-device AI:** on supported Apple systems, search by meaning, summarize files and folders, and describe or tag images and documents. Press **Shift+Enter** in search for AI search; **Enter** runs regular search.
 - **Make it yours:** choose themes, accents, density, icon styles, and a startup folder. Extend context menus and previews with sandboxed [WebAssembly plugins](plugins/README.md).
 - **Handle archives:** compress and extract ZIP, 7z, tar and supported compressed formats, with selectable compression levels.
@@ -55,6 +56,12 @@ sh crates/rile-app/scripts/bundle_macos.sh
 ```
 
 The bundle is written to `target/release/Rile.app`. Add `--debug` for `target/debug/Rile.app`. The release packaging script, [`scripts/bundle-macos.sh`](scripts/bundle-macos.sh), also supports signing, notarization, and DMG creation. Normal builds do not require the icon-generation tools; see [`gen_app_icon.sh`](crates/rile-app/scripts/gen_app_icon.sh) if you change the icon artwork.
+
+### Use Rile as the default file manager
+
+On macOS 12 or later, move `Rile.app` to Applications and launch that copy. In **Settings → General → macOS Integration**, choose **Make Rile Default** and approve macOS's confirmation if prompted. This changes folder opening and compatible **Reveal/Show in Finder** actions. Choose **Restore Finder** in the same section to revert; do this before uninstalling Rile.
+
+Other applications may cache the previous viewer: restart them, or log out and back in, if necessary. Finder still manages the desktop, system Open/Save dialogs are unchanged, and applications that explicitly target Finder may continue to use it. Running the bare binary with `cargo run` does not provide the app-bundle registration required to become the default.
 
 ## Keyboard shortcuts
 

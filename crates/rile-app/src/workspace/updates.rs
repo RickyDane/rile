@@ -172,7 +172,6 @@ trait DisabledIf {
 
 impl DisabledIf for Button {
     fn disabled_if(self, disabled: bool) -> Self {
-        use gpui_kit::component::Disableable;
-        self.disabled(disabled)
+        crate::views::kit::PointerUnless::pointer_unless(self, disabled)
     }
 }

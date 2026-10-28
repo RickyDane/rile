@@ -185,7 +185,35 @@ pub fn overview_layout(width: f32) -> OverviewLayout {
     }
 }
 
-fn card(ch: &Chrome) -> gpui_kit::Div {
+pub(super) const PAGE_MAX_WIDTH: f32 = 1390.;
+
+/// Space between a page title and the content below it.
+pub(super) const PAGE_TITLE_GAP: f32 = 16.;
+
+/// Top padding above a page title.
+pub(super) fn page_title_top(width: Width) -> f32 {
+    page_padding(width).1.min(24.)
+}
+
+pub(super) fn page_padding(width: Width) -> (f32, f32) {
+    match width {
+        Width::Phone => (16., 25.),
+        Width::Narrow | Width::Compact => (25., 27.),
+        Width::Regular => (38., 34.),
+        Width::Wide => (38., 42.),
+    }
+}
+
+pub(super) fn page_title(title: impl Into<gpui_kit::SharedString>, width: Width, ch: &Chrome) -> gpui_kit::Div {
+    h_flex()
+        .text_size(px(if width <= Width::Phone { 22. } else { 24. }))
+        .font_weight(FontWeight::SEMIBOLD)
+        .text_color(ch.text_strong)
+        .child(title.into())
+        .child(div().text_color(ch.accent).child("."))
+}
+
+pub(super) fn card(ch: &Chrome) -> gpui_kit::Div {
     div()
         .rounded(px(12.))
         .border_1()
@@ -241,12 +269,7 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
     let searching = !query.is_empty();
     let stacked = layout.stacked;
 
-    let (pad_x, pad_y) = match width {
-        Width::Phone => (16., 25.),
-        Width::Narrow | Width::Compact => (25., 27.),
-        Width::Regular => (38., 34.),
-        Width::Wide => (38., 42.),
-    };
+    let (pad_x, _) = page_padding(width);
 
     // The slot's pane is not drawn here, so the page holds its focus: window
     // shortcuts (⌘F, ⌘T, ⌘L…) keep working while file shortcuts don't apply.
@@ -265,19 +288,13 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
         .child(
             v_flex()
                 .w_full()
-                .max_w(px(1390.))
+                .max_w(px(PAGE_MAX_WIDTH))
                 .mx_auto()
                 .px(px(pad_x))
-                .pt(px(pad_y))
+                .pt(px(page_title_top(width)))
                 .pb(px(22.))
                 .child(
-                    h_flex()
-                        .mb(px(29.))
-                        .text_size(px(if width <= Width::Phone { 26. } else { 29. }))
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(ch.text_strong)
-                        .child("Home")
-                        .child(div().text_color(ch.accent).child(".")),
+                    page_title("Home", width, &ch).mb(px(PAGE_TITLE_GAP)),
                 )
                 .when(!searching, |d| {
                     d.child(metrics(ws, stats.as_deref(), width, layout.metric_cols, cx))
@@ -297,12 +314,12 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
                             "Live from this device. Counts cover the top level of your places; \"Discovered\" counts what Rile remembers from folders you opened. Rile never crawls your disk.",
                         ),
                 )
-                .when(!searching, |d| d.child(trophies(ws.rewards.progress.or_else(|| stats.as_ref().map(|s| s.rewards)), layout.storage_cols, &ch))),
+                .when(!searching, |d| d.child(trophies(ws.rewards.progress.or_else(|| stats.as_ref().map(|s| s.rewards)), layout.storage_cols, Some(crate::icons::apple_intelligence(20., ch.accent, cx)), &ch))),
         );
     page.into_any_element()
 }
 
-fn metric(label: &'static str, value: String, unit: Option<String>, detail: String, art_kind: Art, width: Width, ch: &Chrome) -> AnyElement {
+pub(super) fn metric(label: impl Into<gpui_kit::SharedString>, value: String, unit: Option<String>, detail: String, art_kind: Art, width: Width, ch: &Chrome) -> AnyElement {
     let icon = match width {
         Width::Phone => 32.,
         Width::Compact | Width::Narrow => 42.,
@@ -320,7 +337,7 @@ fn metric(label: &'static str, value: String, unit: Option<String>, detail: Stri
         .child(
             v_flex()
                 .min_w_0()
-                .child(div().text_size(px(12.)).text_color(ch.text_muted).mb(px(8.)).child(label))
+                .child(div().text_size(px(12.)).text_color(ch.text_muted).mb(px(8.)).child(label.into()))
                 .child(
                     h_flex()
                         .items_baseline()
@@ -351,7 +368,8 @@ fn split_size(bytes: u64) -> (String, Option<String>) {
     }
 }
 
-fn trophies(progress: Option<rile_services::rewards::Progress>, cols: usize, ch: &Chrome) -> AnyElement {
+/// `ai_glyph` stands in for the AI track's icon (the Apple Intelligence symbol).
+fn trophies(progress: Option<rile_services::rewards::Progress>, cols: usize, mut ai_glyph: Option<AnyElement>, ch: &Chrome) -> AnyElement {
     let tracks = progress.unwrap_or_default().tracks();
     let earned: usize = tracks.iter().map(|t| t.earned()).sum();
     let total: usize = tracks.iter().filter(|t| t.unavailable.is_none()).map(|t| t.targets.len()).sum();
@@ -367,6 +385,7 @@ fn trophies(progress: Option<rile_services::rewards::Progress>, cols: usize, ch:
             "ai-found" => IconName::Sparkles,
             "servers" | "dual-transfers" => IconName::Globe,
             "archives" => IconName::Archive,
+            "space" | "space-scans" => IconName::ChartPie,
             _ => IconName::Star,
         };
         card(ch)
@@ -375,7 +394,10 @@ fn trophies(progress: Option<rile_services::rewards::Progress>, cols: usize, ch:
             .child(
                 h_flex().gap(px(10.))
                     .child(div().rounded(px(9.)).p(px(9.)).bg(color.opacity(0.1))
-                        .child(crate::icons::icon(symbol).size(px(20.)).text_color(color)))
+                        .child(match if track.id == "ai-found" { ai_glyph.take() } else { None } {
+                            Some(glyph) => div().size(px(20.)).when(track.earned() == 0, |d| d.opacity(0.5)).child(glyph).into_any_element(),
+                            None => crate::icons::icon(symbol).size(px(20.)).text_color(color).into_any_element(),
+                        }))
                     .child(v_flex().gap(px(4.))
                         .child(div().text_size(px(12.)).font_weight(FontWeight::SEMIBOLD).text_color(ch.text).child(track.name))
                         .child(div().text_size(px(11.)).text_color(ch.text_faint).child(track.action)))

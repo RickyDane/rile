@@ -23,6 +23,10 @@ pub struct Progress {
     pub photo_percent: usize,
     pub dual_transfers: usize,
     pub personalized: usize,
+    /// Megabytes moved to the Trash from Space Analyzer cleanup.
+    pub space_freed_mb: usize,
+    /// Folders analyzed with the Space Analyzer.
+    pub space_scans: usize,
 }
 
 impl Progress {
@@ -39,6 +43,8 @@ impl Progress {
         self.photo_percent = self.photo_percent.max(current.photo_percent);
         self.dual_transfers = self.dual_transfers.max(current.dual_transfers);
         self.personalized = self.personalized.max(current.personalized);
+        self.space_freed_mb = self.space_freed_mb.max(current.space_freed_mb);
+        self.space_scans = self.space_scans.max(current.space_scans);
     }
 
     #[cfg(test)]
@@ -57,7 +63,7 @@ impl Progress {
         Ok(())
     }
 
-    pub fn tracks(self) -> [Track; 14] {
+    pub fn tracks(self) -> [Track; 15] {
         [
             Track::new("files", "File explorer", "files discovered", self.files, &[100, 1_000, 10_000, 100_000, 400_000]),
             Track::new("folders", "Trailblazer", "folders explored", self.folders, &[1, 25, 100, 500, 1_000]),
@@ -66,7 +72,8 @@ impl Progress {
             Track::new("searches", "Search detective", "searches completed", self.searches, &[10, 100, 1_000]),
             Track::new("ai-found", "Needle in a haystack", "successful AI searches", self.ai_found, &[1]),
             Track::new("servers", "Around the world", "distinct servers connected", self.servers, &[1, 5, 10]),
-            Track { unavailable: Some("Coming soon · duplicate detection and cleanup aren't available yet."), unit: " GB", ..Track::new("space", "Space saver", "freed by duplicate cleanup", 0, &[1, 10, 100]) },
+            Track { unit: " GB", scale: 1_000, ..Track::new("space", "Space saver", "freed with Space Analyzer cleanup", self.space_freed_mb, &[1_000, 10_000, 100_000]) },
+            Track::new("space-scans", "Cartographer", "folders mapped with Space Analyzer", self.space_scans, &[1, 10, 50]),
             Track { unavailable: Some("Coming soon · verified backups aren't available yet."), ..Track::new("backup", "Safety first", "verified backups completed", 0, &[1]) },
             Track::new("organized", "Everything in its place", "files moved into folders", self.organized, &[100, 1_000, 10_000]),
             Track::new("archives", "Archive architect", "archives created or extracted", self.archives, &[10, 100]),
@@ -85,11 +92,14 @@ pub struct Track {
     pub targets: &'static [usize],
     pub unavailable: Option<&'static str>,
     pub unit: &'static str,
+    /// `count` and targets are stored in units this many times smaller than
+    /// the displayed `unit` (e.g. MB shown as GB).
+    pub scale: usize,
 }
 
 impl Track {
     fn new(id: &'static str, name: &'static str, action: &'static str, count: usize, targets: &'static [usize]) -> Self {
-        Self { id, name, action, count, targets, unavailable: None, unit: "" }
+        Self { id, name, action, count, targets, unavailable: None, unit: "", scale: 1 }
     }
 
     pub fn earned(&self) -> usize {
@@ -107,6 +117,11 @@ impl Track {
     }
 
     pub fn label(&self, value: usize) -> String {
+        if self.scale > 1 {
+            let scaled = value as f64 / self.scale as f64;
+            let number = if value.is_multiple_of(self.scale) { format!("{}", value / self.scale) } else { format!("{scaled:.1}") };
+            return format!("{number}{}", self.unit);
+        }
         let number = if value >= 1_000 && value % 1_000 == 0 { format!("{}k", value / 1_000) } else { value.to_string() };
         format!("{number}{}", self.unit)
     }
@@ -128,6 +143,9 @@ pub enum Event {
     Archive,
     DualTransfer,
     Personalized,
+    /// Bytes moved to the Trash from Space Analyzer cleanup.
+    SpaceFreed(u64),
+    SpaceAnalyzed,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -161,6 +179,8 @@ impl Store {
             Event::Archive => p.archives = p.archives.saturating_add(1),
             Event::DualTransfer => p.dual_transfers = p.dual_transfers.saturating_add(1),
             Event::Personalized => p.personalized = 1,
+            Event::SpaceFreed(bytes) => p.space_freed_mb = p.space_freed_mb.saturating_add((bytes / 1_000_000) as usize),
+            Event::SpaceAnalyzed => p.space_scans = p.space_scans.saturating_add(1),
         }
     }
 
@@ -334,6 +354,19 @@ mod tests {
         assert!(store.take_unlocks().is_empty());
         store.progress.images = 200_000;
         assert_eq!(store.take_unlocks()[0].id, "images:200000");
+    }
+
+    #[test]
+    fn space_saver_counts_megabytes_and_shows_gigabytes() {
+        let mut store = Store::default();
+        store.event(Event::SpaceFreed(1_500_000_000));
+        store.event(Event::SpaceAnalyzed);
+        let tracks = store.progress.tracks();
+        let space = tracks.iter().find(|t| t.id == "space").unwrap();
+        assert_eq!((space.earned(), space.label(space.count), space.label(1_000)), (1, "1.5 GB".into(), "1 GB".into()));
+        assert_eq!(tracks.iter().find(|t| t.id == "space-scans").unwrap().earned(), 1);
+        let ids: Vec<String> = store.take_unlocks().into_iter().map(|u| u.id).collect();
+        assert!(ids.contains(&"space:1000".to_string()) && ids.contains(&"space-scans:1".to_string()));
     }
 
     #[test]

@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
 use gpui_kit::component::{
-    ActiveTheme, Disableable, Sizable, h_flex,
+    ActiveTheme, Sizable, h_flex,
     button::{Button, ButtonVariants},
     spinner::Spinner,
     v_flex,
@@ -21,6 +21,7 @@ use rile_services::preview::{self, Preview};
 use rile_services::properties::{self, Properties};
 
 use super::{Workspace, item_count};
+use crate::views::kit::PointerUnless;
 use crate::actions::*;
 use crate::icons::icon_for_path;
 
@@ -600,9 +601,9 @@ impl Workspace {
                             .justify_center()
                             .gap_2()
                             .p_2()
-                            .child(Button::new("pdf-zoom-out").ghost().small().label("−").tooltip("Zoom out")
+                            .child(Button::new("pdf-zoom-out").cursor_pointer().ghost().small().label("−").tooltip("Zoom out")
                                 .when(zoom > 50., |button| button.cursor_pointer())
-                                .disabled(zoom <= 50.)
+                                .pointer_unless(zoom <= 50.)
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.preview.pdf_zoom.adjust(-1);
                                     cx.notify();
@@ -613,9 +614,9 @@ impl Workspace {
                                     this.preview.pdf_zoom = PdfZoom::default();
                                     cx.notify();
                                 })))
-                            .child(Button::new("pdf-zoom-in").ghost().small().label("+").tooltip("Zoom in")
+                            .child(Button::new("pdf-zoom-in").cursor_pointer().ghost().small().label("+").tooltip("Zoom in")
                                 .when(zoom < 300., |button| button.cursor_pointer())
-                                .disabled(zoom >= 300.)
+                                .pointer_unless(zoom >= 300.)
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.preview.pdf_zoom.adjust(1);
                                     cx.notify();

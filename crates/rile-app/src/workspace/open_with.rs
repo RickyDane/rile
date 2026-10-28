@@ -63,7 +63,7 @@ pub fn open_with_submenu(menu: PopupMenu, paths: Vec<PathBuf>, window: &mut Wind
     let Some(first) = paths.first() else { return menu };
     let apps = open_with::apps_for(first);
     let paths = Arc::new(paths);
-    menu.submenu_with_icon(Some(crate::icons::icon(IconName::AppWindow)), "Open With", window, cx, move |mut menu, _, _| {
+    menu.submenu_with_icon(Some(crate::icons::menu_icon(IconName::AppWindow)), "Open With", window, cx, move |mut menu, _, _| {
         for (ix, app) in apps.iter().enumerate() {
             let label = if ix == 0 { format!("{} (default)", app.name) } else { app.name.clone() };
             let (paths, app_path) = (paths.clone(), app.path.clone());

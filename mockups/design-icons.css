@@ -1,0 +1,7 @@
+.design-icon { width:16px; height:16px; flex:none; vertical-align:middle; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round }
+.btn .design-icon, .tab .design-icon { margin-right:6px }
+.btn.icon .design-icon { margin:0 }
+.nav .design-icon { margin-right:10px; color:#a2bcd9 }
+.icon-gallery { display:flex; flex-wrap:wrap; gap:12px; margin-top:20px }
+.icon-sample { display:flex; align-items:center; gap:8px; padding:9px 11px; border:1px solid #ffffff12; border-radius:7px; color:#b9bec7; font-size:11px; background:#202125 }
+.icon-sample .design-icon { color:#a2bcd9 }

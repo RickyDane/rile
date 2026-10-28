@@ -7,6 +7,7 @@
 
 pub mod app_icons;
 pub mod archive;
+pub mod file_manager;
 pub mod gallery;
 pub mod highlight;
 pub mod index;
@@ -16,6 +17,8 @@ pub mod preview;
 pub mod properties;
 pub mod rewards;
 pub mod search;
+pub mod semantic_search;
+pub mod space;
 pub mod speedtest;
 pub mod tags;
 pub mod updater;

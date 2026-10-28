@@ -69,8 +69,8 @@ interface types {
     /// The input for every page call.
     record page-request {
         page-id: string,
-        /// Root directory the page works on (initially the explorer's current
-        /// directory). The plugin may list/size anything below it.
+        /// Root directory the page works on (initially unset, chosen by the
+        /// user). The plugin may list/size anything below it.
         root: option<string>,
         /// Opaque state returned by the previous call (empty initially).
         /// Persisted by the host, so pages survive plugin re-instantiation.

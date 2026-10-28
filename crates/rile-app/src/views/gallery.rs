@@ -297,13 +297,18 @@ impl GalleryView {
         cx.notify();
     }
 
+    /// Side padding, matching the other full-page views.
+    fn pad_x(&self) -> f32 {
+        super::home::page_padding(super::chrome::content_class(self.width)).0
+    }
+
     /// Adapts the grid to the slot's width.
     pub fn set_width(&mut self, width: f32, cx: &mut Context<Self>) {
         if (self.width - width).abs() < 1. {
             return;
         }
         self.width = width;
-        let inner = (width - 48.).max(MIN_TILE);
+        let inner = (width - self.pad_x() * 2.).max(MIN_TILE);
         let cols = ((inner + GAP) / (MIN_TILE + GAP)).floor().max(1.) as usize;
         self.tile = ((inner - GAP * (cols as f32 - 1.)) / cols as f32).floor();
         if cols != self.cols {
@@ -337,7 +342,7 @@ impl GalleryView {
         match rows.get(row_ix) {
             Some(Row::Header(label, count)) => h_flex()
                 .h(px(HEADER_HEIGHT))
-                .px(px(24.))
+                .px(px(self.pad_x()))
                 .pt(px(14.))
                 .items_baseline()
                 .gap(px(10.))
@@ -370,7 +375,7 @@ impl GalleryView {
                             .into()
                     })
                     .collect();
-                h_flex().px(px(24.)).pb(px(GAP)).gap(px(GAP)).children(tiles).into_any_element()
+                h_flex().px(px(self.pad_x())).pb(px(GAP)).gap(px(GAP)).children(tiles).into_any_element()
             }
             None => div().into_any_element(),
         }
@@ -458,14 +463,16 @@ impl GalleryView {
             })
             .child(div().flex_1())
             .child(
-                h_flex()
-                    .flex_wrap()
-                    .gap(px(6.))
-                    .child(Button::new("ph-open").cursor_pointer().small().primary().label("Open").on_click({
+                v_flex()
+                    .gap(px(8.))
+                    .pt(px(14.))
+                    .border_t_1()
+                    .border_color(ch.hairline)
+                    .child(Button::new("ph-open").cursor_pointer().w_full().primary().icon(IconName::ExternalLink).label("Open").on_click({
                         let path = path.clone();
                         move |_, _, cx| crate::workspace::open_with::open_file(&path, cx)
                     }))
-                    .child(Button::new("ph-reveal").cursor_pointer().small().outline().label("Show in Folder").on_click(cx.listener({
+                    .child(Button::new("ph-reveal").cursor_pointer().w_full().outline().icon(IconName::FolderOpen).label("Show in Folder").on_click(cx.listener({
                         let path = path.clone();
                         move |this, _, window, cx| {
                             let Some(ws) = this.ws.upgrade() else { return };
@@ -479,7 +486,7 @@ impl GalleryView {
                         }
                     })))
                     .when(record.is_none() && cfg!(target_os = "macos"), |d| {
-                        d.child(Button::new("ph-tag").cursor_pointer().small().ghost().label("Describe").on_click(cx.listener({
+                        d.child(Button::new("ph-tag").cursor_pointer().w_full().ghost().child(ai_label("Describe Photo", ch.accent, cx)).tooltip("Describe this photo on device so search finds it by what's in it").on_click(cx.listener({
                             let path = path.clone();
                             move |_, _, _, cx| {
                                 let path = path.clone();
@@ -615,12 +622,12 @@ impl GalleryView {
     /// Placeholder grid shown until the first photos arrive: two month
     /// headers with rows of shimmering tiles, sized like the real grid.
     fn skeleton(&self, base: gpui_kit::Hsla) -> AnyElement {
-        let (cols, tile) = (self.cols.max(1), self.tile);
+        let (cols, tile, pad_x) = (self.cols.max(1), self.tile, self.pad_x());
         let mut n = 0;
         let mut section = |rows: usize, label_w: f32| {
             let header = h_flex()
                 .h(px(HEADER_HEIGHT))
-                .px(px(24.))
+                .px(px(self.pad_x()))
                 .pt(px(14.))
                 .gap(px(10.))
                 .items_center()
@@ -629,7 +636,7 @@ impl GalleryView {
             let rows: Vec<AnyElement> = (0..rows)
                 .map(|_| {
                     h_flex()
-                        .px(px(24.))
+                        .px(px(pad_x))
                         .pb(px(GAP))
                         .gap(px(GAP))
                         .children((0..cols).map(|_| {
@@ -760,9 +767,9 @@ impl Render for GalleryView {
                     d.child(
                         Button::new("gallery-describe")
                             .cursor_pointer()
-                            .xsmall()
+                            .small()
                             .outline()
-                            .label("Describe all")
+                            .child(ai_label("Describe All", ch.accent, cx))
                             .tooltip("Describe every photo on device so search finds them by what's in them")
                             .on_click(cx.listener(|this, _, window, cx| {
                                 if let Some(ws) = this.ws.upgrade() {
@@ -773,23 +780,16 @@ impl Render for GalleryView {
                 })
                 .into_any_element(),
         };
+        let class = super::chrome::content_class(self.width);
         let header = v_flex()
-            .px(px(24.))
-            .pt(px(20.))
+            .px(px(self.pad_x()))
+            .pt(px(super::home::page_title_top(class)))
             .pb(px(8.))
-            .gap(px(12.))
+            .gap(px(super::home::PAGE_TITLE_GAP))
             .child(
                 h_flex()
                     .gap(px(12.))
-                    .child(
-                        h_flex()
-                            .flex_1()
-                            .text_size(px(24.))
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(ch.text_strong)
-                            .child("Photos")
-                            .child(div().text_color(ch.accent).child(".")),
-                    )
+                    .child(super::home::page_title("Photos", class, &ch).flex_1())
                     .child(status)
                     .when(!describing && !self.scanning, |d| {
                         d.child(
@@ -1032,4 +1032,9 @@ mod tests {
             }
         }
     }
+}
+
+/// An AI action's button content: the Apple Intelligence symbol and a label.
+fn ai_label<V: 'static>(label: &'static str, color: gpui_kit::Hsla, cx: &mut Context<V>) -> impl IntoElement {
+    h_flex().gap(px(6.)).child(crate::icons::apple_intelligence(16., color, cx)).child(label)
 }

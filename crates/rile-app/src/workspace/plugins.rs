@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use gpui_kit::component::{WindowExt, notification::Notification};
-use gpui_kit::{AppContext, ClipboardItem, Context, SharedString, Task, Window};
+use gpui_kit::{App, AppContext, ClipboardItem, Context, EntityId, SharedString, Task, Window};
 use rile_core::history::Location;
 use rile_plugins::{Action, Context as PluginContext, Page, PageRequest, PageView, PluginHost, PluginInfo};
 
@@ -21,19 +21,39 @@ pub struct PluginState {
     pub pages: Vec<(String, Page)>,
     /// Live page sessions keyed by (plugin id, page id); shared by all panes.
     pub sessions: HashMap<(String, String), PageSession>,
+    root_picker: Option<RootPicker>,
     _task: Option<Task<()>>,
+}
+
+struct RootPicker {
+    /// The plugin page asking, or `None` for the Space Analyzer.
+    key: Option<(String, String)>,
+    pane: EntityId,
+    previous: Location,
 }
 
 /// The host-side state of an open plugin page.
 #[derive(Default)]
 pub struct PageSession {
     pub root: Option<PathBuf>,
+    /// Last local explorer directory, suggested for browsing, never auto-scanned.
+    pub browse_from: Option<PathBuf>,
     /// Opaque plugin state, handed back on every call.
     pub state: String,
     pub view: Option<PageView>,
     pub error: Option<SharedString>,
     /// A call is in flight; further events are dropped until it returns.
     pub busy: bool,
+    /// Host-only chart zoom, in quarter steps above 100%; never invokes WASM.
+    pub bubble_zoom: u8,
+}
+
+/// The Space Analyzer used to ship as a WASM plugin; it is built in now, so an
+/// old copy left in the plugin folder must not add a second sidebar entry.
+const RETIRED_PLUGINS: &[&str] = &["rile.space-analyzer"];
+
+fn visible_pages(host: &mut PluginHost) -> Vec<(String, Page)> {
+    host.pages().into_iter().filter(|(id, _)| !RETIRED_PLUGINS.contains(&id.as_str())).collect()
 }
 
 impl Workspace {
@@ -58,7 +78,7 @@ impl Workspace {
             for id in &disabled {
                 host.set_enabled(id, false);
             }
-            let pages = host.pages();
+            let pages = visible_pages(&mut host);
             anyhow::Ok((host, errors, pages))
         });
         self.plugins._task = Some(cx.spawn(async move |this, cx| {
@@ -90,7 +110,7 @@ impl Workspace {
         {
             h.set_enabled(id, enabled);
             self.plugins.infos = h.plugins();
-            self.plugins.pages = h.pages();
+            self.plugins.pages = visible_pages(&mut h);
         }
         self.plugins.sessions.retain(|(pid, _), _| pid != id);
         self.save_settings(window, cx);
@@ -131,15 +151,15 @@ impl Workspace {
         .detach();
     }
 
-    /// Opens a plugin page in the active pane. A new session starts at the
-    /// explorer's current directory.
+    /// Opens a plugin page without implicitly granting it a scan root. Pages
+    /// ask the user to choose a directory before doing filesystem work.
     pub fn open_plugin_page(&mut self, plugin: &str, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         let Some((_, info)) = self.plugins.pages.iter().find(|(p, pg)| p == plugin && pg.id == page) else { return };
         let location = Location::PluginPage { plugin: plugin.to_string(), page: page.to_string(), title: info.title.clone() };
         let key = (plugin.to_string(), page.to_string());
         if !self.plugins.sessions.contains_key(&key) {
-            let root = self.pane().read(cx).dir_path().filter(|p| p.is_dir());
-            self.plugins.sessions.insert(key.clone(), PageSession { root, ..Default::default() });
+            let browse_from = self.pane().read(cx).dir_path();
+            self.plugins.sessions.insert(key.clone(), PageSession { browse_from, ..Default::default() });
             self.call_plugin_page(key, None, window, cx);
         }
         self.open_location(location, window, cx);
@@ -179,7 +199,11 @@ impl Workspace {
                 session.busy = false;
                 match result {
                     Ok(update) => {
-                        session.view = Some(update.view);
+                        // A picker-only update need not regenerate the current
+                        // view. Keep it visible if the user cancels the picker.
+                        if !update.view.nodes.is_empty() || !update.actions.iter().any(|a| matches!(a, Action::ChooseRoot)) {
+                            session.view = Some(update.view);
+                        }
                         session.state = update.state;
                         session.error = None;
                         this.apply_page_actions(&key, update.actions, window, cx);
@@ -199,27 +223,61 @@ impl Workspace {
         for action in actions {
             match action {
                 Action::SetRoot(dir) => self.set_page_root(key.clone(), dir, window, cx),
-                Action::ChooseRoot => {
-                    let rx = cx.prompt_for_paths(gpui_kit::PathPromptOptions {
-                        files: false,
-                        directories: true,
-                        multiple: false,
-                        prompt: Some("Choose".into()),
-                    });
-                    let key = key.clone();
-                    cx.spawn_in(window, async move |this, cx| {
-                        if let Ok(Ok(Some(paths))) = rx.await
-                            && let Some(dir) = paths.into_iter().next()
-                        {
-                            this.update_in(cx, |this, window, cx| this.set_page_root(key, dir, window, cx)).ok();
-                        }
-                    })
-                    .detach();
-                }
+                Action::ChooseRoot => self.choose_plugin_root(&key.0, &key.1, window, cx),
                 other => rest.push(other),
             }
         }
         self.apply_plugin_actions(rest, window, cx);
+    }
+
+    /// Reuse Rile's explorer rather than opening a separate platform picker.
+    pub fn choose_plugin_root(&mut self, plugin: &str, page: &str, window: &mut Window, cx: &mut Context<Self>) {
+        let key = (plugin.to_string(), page.to_string());
+        let start = self.plugins.sessions.get(&key).and_then(|s| s.root.clone().or_else(|| s.browse_from.clone()));
+        self.start_root_picker(Some(key), start, window, cx);
+    }
+
+    /// Lets the user browse to the folder the Space Analyzer should analyze.
+    pub fn choose_space_root(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let start = self.space.last_focus.clone();
+        self.start_root_picker(None, start, window, cx);
+    }
+
+    fn start_root_picker(&mut self, key: Option<(String, String)>, start: Option<PathBuf>, window: &mut Window, cx: &mut Context<Self>) {
+        let previous = self.pane().read(cx).location.clone();
+        let start = start.or_else(|| self.pane().read(cx).dir_path()).or_else(dirs::home_dir).filter(|p| p.is_dir());
+        self.plugins.root_picker = Some(RootPicker { key, pane: self.pane().entity_id(), previous });
+        self.open_location(start.map(Location::Dir).unwrap_or(Location::Home), window, cx);
+    }
+
+    pub fn plugin_root_picker_active(&self) -> bool {
+        self.plugins.root_picker.as_ref().is_some_and(|p| p.pane == self.pane().entity_id())
+    }
+
+    /// A single selected directory wins; otherwise use the folder being viewed.
+    /// Remote and virtual locations are not valid WASM filesystem scan roots.
+    pub fn plugin_root_picker_path(&self, cx: &App) -> Option<PathBuf> {
+        if !self.plugin_root_picker_active() { return None; }
+        let pane = self.pane().read(cx);
+        let Location::Dir(dir) = &pane.location else { return None };
+        let entries = pane.selected_entries();
+        Some(if let [entry] = entries.as_slice() && entry.is_dir { entry.path.clone() } else { dir.clone() })
+    }
+
+    pub fn confirm_plugin_root(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(dir) = self.plugin_root_picker_path(cx).filter(|p| p.is_dir()) else { return };
+        let Some(picker) = self.plugins.root_picker.take() else { return };
+        let Some(key) = picker.key else {
+            self.analyze_folder(dir, window, cx);
+            return;
+        };
+        self.set_page_root(key.clone(), dir, window, cx);
+        self.open_plugin_page(&key.0, &key.1, window, cx);
+    }
+
+    pub fn cancel_plugin_root(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.plugin_root_picker_active() { return; }
+        if let Some(picker) = self.plugins.root_picker.take() { self.open_location(picker.previous, window, cx); }
     }
 
     fn set_page_root(&mut self, key: (String, String), dir: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
@@ -227,7 +285,10 @@ impl Workspace {
             window.push_notification(Notification::error(format!("Not a folder: {}", dir.display())), cx);
             return;
         }
-        self.plugins.sessions.entry(key.clone()).or_default().root = Some(dir);
+        let session = self.plugins.sessions.entry(key.clone()).or_default();
+        session.browse_from = Some(dir.clone());
+        session.root = Some(dir);
+        session.bubble_zoom = 0;
         self.call_plugin_page(key, None, window, cx);
     }
 

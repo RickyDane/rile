@@ -17,6 +17,11 @@ pub enum Location {
     Gallery,
     Dir(PathBuf),
     Remote { conn: String, path: String },
+    /// The Space Analyzer, showing the analyzed folder at this path (or its
+    /// start page). Drilling down is navigation, so back/forward work.
+    SpaceAnalyzer(Option<PathBuf>),
+    /// Incremental backup jobs and their status.
+    Backups,
     /// A custom page contributed by a plugin.
     PluginPage { plugin: String, page: String, title: String },
 }

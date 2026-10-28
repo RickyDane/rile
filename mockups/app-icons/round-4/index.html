@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rile Icons — Round 4</title>
+<style>
+  :root {
+    --bg: #f3f3f5; --card: #ffffff; --text: #1c1c1f; --muted: #6b6b73; --line: #e3e3e8;
+    --wall: linear-gradient(135deg, #b9c9e6, #e8d6e8 55%, #f2dcc4);
+  }
+  :root[data-theme="dark"] {
+    --bg: #161618; --card: #202023; --text: #ececf0; --muted: #9a9aa3; --line: #2e2e33;
+    --wall: linear-gradient(135deg, #1d2740, #2c1f3a 55%, #3a2a22);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 16px;
+    align-items: center; justify-content: space-between; padding: 14px 28px;
+    background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--line); }
+  h1 { font-size: 17px; margin: 0; letter-spacing: -.01em; }
+  h1 span { color: var(--muted); font-weight: 400; }
+  .controls { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .swatches { display: flex; gap: 6px; }
+  .sw { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
+    outline: 1px solid rgba(0,0,0,.12); outline-offset: -1px; }
+  .sw[aria-pressed="true"] { border-color: var(--text); }
+  button.toggle { font: inherit; padding: 5px 12px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); cursor: pointer; }
+  main { max-width: 1240px; margin: 0 auto; padding: 28px; }
+  .dock-wrap { border-radius: 18px; background: var(--wall); padding: 56px 20px 22px; margin-bottom: 28px;
+    display: flex; justify-content: center; }
+  .dock { display: flex; gap: 10px; align-items: flex-end; padding: 10px 14px; border-radius: 24px;
+    background: rgba(255,255,255,.28); border: 1px solid rgba(255,255,255,.35); backdrop-filter: blur(20px); }
+  :root[data-theme="dark"] .dock { background: rgba(40,40,46,.45); border-color: rgba(255,255,255,.12); }
+  .dock .slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .dock .slot svg { width: 72px; height: 72px; transition: transform .15s; }
+  .dock .slot:hover svg { transform: translateY(-8px) scale(1.12); }
+  .dock .slot small { font-size: 11px; color: rgba(0,0,0,.6); }
+  :root[data-theme="dark"] .dock .slot small { color: rgba(255,255,255,.65); }
+  .dock .sep { width: 1px; align-self: stretch; background: rgba(0,0,0,.15); margin: 6px 4px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+  .card.current { opacity: .85; }
+  .hero { display: flex; gap: 18px; align-items: center; }
+  .hero svg.big { width: 168px; height: 168px; flex: none; }
+  .num { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+  .card h2 { margin: 2px 0 6px; font-size: 19px; letter-spacing: -.01em; }
+  .card p { margin: 0; color: var(--muted); font-size: 13px; }
+  .sizes { display: flex; align-items: flex-end; gap: 14px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .sizes figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .sizes figcaption { font-size: 10px; color: var(--muted); }
+  .accents { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 14px; }
+  .accents svg { width: 100%; height: auto; }
+  @media (max-width: 520px) {
+    header, main { padding-left: 16px; padding-right: 16px; }
+    .grid { grid-template-columns: 1fr; }
+    .hero svg.big { width: 120px; height: 120px; }
+    .dock .slot svg { width: 44px; height: 44px; }
+    .dock { gap: 4px; padding: 8px; overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Rile app icon <span>— round 4 · file-explorer concepts</span></h1>
+  <div class="controls">
+    <div class="swatches" id="swatches"></div>
+    <button class="toggle" id="theme">Dark</button>
+  </div>
+</header>
+<main>
+  <div class="dock-wrap"><div class="dock" id="dock"></div></div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<script>
+const ACCENTS = [
+  ["blue", 212, 92], ["purple", 268, 75], ["pink", 330, 80], ["red", 0, 80],
+  ["orange", 28, 95], ["green", 142, 65], ["teal", 178, 70], ["graphite", 220, 8],
+];
+let current = ACCENTS[0];
+let uidN = 0;
+
+// Shared macOS-style squircle tile: shadow, body fill, top gloss, hairline rim.
+function tile(u, fill) {
+  return `
+    <filter id="${u}sh" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="18" stdDeviation="18" flood-color="#070d18" flood-opacity=".22"/></filter>
+    <linearGradient id="${u}gl" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".22"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="${fill}" filter="url(#${u}sh)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#${u}gl)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="3"/>`;
+}
+const A = (l, sMul = 1, a = 1) => `hsl(var(--h) calc(var(--s) * ${sMul}) ${l}% / ${a})`;
+const stop = (o, c) => `<stop offset="${o}" style="stop-color:${c}"/>`;
+const lift = u => `<filter id="${u}lf" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="14" stdDeviation="14" flood-color="#081321" flood-opacity=".28"/></filter>`;
+
+const ICONS = [
+  {
+    name: "Folio",
+    blurb: "An open folder with documents peeking out. Bright neutral tile, the accent lives in the folder. Reads as “files” instantly, even at 16px.",
+    draw: u => `<defs>
+      <linearGradient id="${u}t" x2=".2" y2="1"><stop stop-color="#fdfdfe"/><stop offset="1" stop-color="#e4e7ee"/></linearGradient>
+      <linearGradient id="${u}b" x2="0" y2="1">${stop(0, A(42))}${stop(1, A(34))}</linearGradient>
+      <linearGradient id="${u}f" x2=".15" y2="1">${stop(0, A(66))}${stop(1, A(50))}</linearGradient>
+      ${lift(u)}
+      ${tile(u, `url(#${u}t)`)}
+      <path d="M262 300h150q22 0 36 17l26 31h290q34 0 34 34v356H228V334q0-34 34-34z" fill="url(#${u}b)"/>
+      <g filter="url(#${u}lf)">
+        <rect x="300" y="352" width="400" height="300" rx="18" fill="#fff" transform="rotate(-6 500 500)"/>
+        <rect x="330" y="372" width="400" height="300" rx="18" fill="#f4f6fa" transform="rotate(4 530 520)"/>
+      </g>
+      <g fill="${A(55, 0.5, .35)}" transform="rotate(4 530 520)"><rect x="370" y="410" width="220" height="22" rx="11"/><rect x="370" y="452" width="300" height="22" rx="11"/></g>
+      <path d="M232 488q-4-36 32-36h496q36 0 32 36l-28 254q-3 30-34 30H294q-31 0-34-30z" fill="url(#${u}f)" filter="url(#${u}lf)"/>
+      <path d="M262 468h500" stroke="#fff" stroke-opacity=".45" stroke-width="6" stroke-linecap="round"/>`,
+  },
+  {
+    name: "Dual Pane",
+    blurb: "A window split into two panes with a transfer arrow between them — Rile’s signature dual-pane workflow. Dark tile, light window, accent selection rows.",
+    draw: u => `<defs>
+      <linearGradient id="${u}t" x2=".25" y2="1">${stop(0, A(24, .35))}${stop(1, A(12, .4))}</linearGradient>
+      <linearGradient id="${u}w" x2="0" y2="1"><stop stop-color="#fbfcfe"/><stop offset="1" stop-color="#e9edf3"/></linearGradient>
+      ${lift(u)}
+      ${tile(u, `url(#${u}t)`)}
+      <g filter="url(#${u}lf)"><rect x="196" y="262" width="632" height="500" rx="58" fill="url(#${u}w)"/></g>
+      <path d="M254 262h516q58 0 58 58v24H196v-24q0-58 58-58z" fill="#dde2ea"/>
+      <g fill="#c4cad4"><circle cx="262" cy="304" r="15"/><circle cx="310" cy="304" r="15"/><circle cx="358" cy="304" r="15"/></g>
+      <path d="M512 344v418" stroke="#d3d8e0" stroke-width="6"/>
+      <g fill="#cfd5de">
+        <rect x="236" y="392" width="236" height="44" rx="14"/><rect x="236" y="560" width="236" height="44" rx="14"/><rect x="236" y="644" width="180" height="44" rx="14"/>
+        <rect x="552" y="392" width="236" height="44" rx="14"/><rect x="552" y="476" width="200" height="44" rx="14"/><rect x="552" y="644" width="236" height="44" rx="14"/>
+      </g>
+      <rect x="236" y="476" width="236" height="44" rx="14" fill="${A(56)}"/>
+      <rect x="552" y="560" width="236" height="44" rx="14" fill="${A(56, 1, .35)}" stroke="${A(56)}" stroke-width="5" stroke-dasharray="14 10"/>
+      <circle cx="512" cy="540" r="62" fill="${A(52)}" stroke="#fbfcfe" stroke-width="12"/>
+      <path d="M484 540h52m-20-22 22 22-22 22" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>`,
+  },
+  {
+    name: "Folder R",
+    blurb: "A monogram: a soft white folder on an accent tile, with an R drawn into its face. Brand-forward while still unmistakably a file manager.",
+    draw: u => `<defs>
+      <linearGradient id="${u}t" x2=".25" y2="1">${stop(0, A(62))}${stop(1, A(40))}</linearGradient>
+      <linearGradient id="${u}f" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#e6eaf1"/></linearGradient>
+      ${lift(u)}
+      ${tile(u, `url(#${u}t)`)}
+      <g filter="url(#${u}lf)">
+        <path d="M256 296h148q24 0 38 18l24 30h302q38 0 38 38v330q0 38-38 38H256q-38 0-38-38V334q0-38 38-38z" fill="url(#${u}f)"/>
+      </g>
+      <path d="M218 414h588" stroke="${A(40, 1, .14)}" stroke-width="6"/>
+      <path d="M432 694V484h104q70 0 70 66t-70 66H432m112 0 72 78" fill="none" stroke="${A(46)}" stroke-width="60" stroke-linecap="round" stroke-linejoin="round"/>`,
+  },
+  {
+    name: "Tree",
+    blurb: "The sidebar file tree, abstracted: a root folder with indented branches ending in folder and file nodes, one selected in the accent. Calm, technical, precise.",
+    draw: u => `<defs>
+      <linearGradient id="${u}t" x2=".25" y2="1"><stop stop-color="#2c2f36"/><stop offset="1" stop-color="#15171b"/></linearGradient>
+      ${tile(u, `url(#${u}t)`)}
+      <path d="M318 360v330M318 470h96M318 580h96M318 690h96M470 580v0" fill="none" stroke="#5b616d" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M318 400v290q0 0 0 0" stroke="none"/>
+      <path d="M234 268h62q12 0 20 9l12 13h86q22 0 22 22v66q0 22-22 22H234q-22 0-22-22v-88q0-22 22-22z" fill="${A(62)}"/>
+      <path d="M440 432h40q10 0 16 7l9 10h68q18 0 18 18v40q0 18-18 18H440q-18 0-18-18v-57q0-18 18-18z" fill="#c9ced8"/>
+      <rect x="610" y="452" width="180" height="36" rx="18" fill="#4a505b"/>
+      <rect x="414" y="536" width="392" height="88" rx="30" fill="${A(56, 1, .22)}"/>
+      <path d="M454 552h40q10 0 16 7l9 10h68q18 0 18 18v12q0 18-18 18H454q-18 0-18-18v-29q0-18 18-18z" fill="${A(66)}"/>
+      <rect x="624" y="562" width="150" height="36" rx="18" fill="${A(72)}"/>
+      <path d="M440 650h70l40 40v54q0 18-18 18h-92q-18 0-18-18v-76q0-18 18-18z" fill="#c9ced8"/>
+      <rect x="610" y="672" width="140" height="36" rx="18" fill="#4a505b"/>`,
+  },
+  {
+    name: "Drawer",
+    blurb: "An open file drawer with hanging folders rising out of it, tabs staggered. A tactile, friendly metaphor for organising — distinctive in the Dock.",
+    draw: u => `<defs>
+      <linearGradient id="${u}t" x2=".25" y2="1">${stop(0, A(30, .5))}${stop(1, A(16, .55))}</linearGradient>
+      <linearGradient id="${u}d" x2="0" y2="1">${stop(0, A(64))}${stop(1, A(48))}</linearGradient>
+      ${lift(u)}
+      ${tile(u, `url(#${u}t)`)}
+      <path d="M262 380h110q14 0 14 14v20h220V560H262z" fill="#dfe4ec"/>
+      <path d="M300 330h110q14 0 14 14v20h292V560H300z" fill="${A(80, .7)}"/>
+      <path d="M286 300v0" />
+      <path d="M560 288h124q14 0 14 14v26h44V560H330V328h216q14 0 14-14z" fill="#fbfcfe"/>
+      <g fill="${A(55, .5, .3)}"><rect x="378" y="380" width="200" height="20" rx="10"/><rect x="378" y="420" width="300" height="20" rx="10"/></g>
+      <g filter="url(#${u}lf)">
+        <rect x="214" y="500" width="596" height="290" rx="54" fill="url(#${u}d)"/>
+      </g>
+      <path d="M268 506h488" stroke="#fff" stroke-opacity=".45" stroke-width="6" stroke-linecap="round"/>
+      <rect x="402" y="612" width="220" height="56" rx="28" fill="${A(26, .6, .55)}"/>
+      <rect x="418" y="622" width="188" height="16" rx="8" fill="#fff" fill-opacity=".25"/>`,
+  },
+  {
+    name: "Explore",
+    blurb: "A folder under a lens that reveals the files inside as a tidy grid. Literal “explorer”: browse, search and preview in one mark.",
+    draw: u => `<defs>
+      <linearGradient id="${u}t" x2=".2" y2="1"><stop stop-color="#f7f8fb"/><stop offset="1" stop-color="#dfe3ea"/></linearGradient>
+      <linearGradient id="${u}f" x2=".15" y2="1">${stop(0, A(62))}${stop(1, A(46))}</linearGradient>
+      <clipPath id="${u}c"><circle cx="590" cy="560" r="150"/></clipPath>
+      ${lift(u)}
+      ${tile(u, `url(#${u}t)`)}
+      <path d="M248 288h132q22 0 36 17l22 27h234q34 0 34 34v300q0 34-34 34H248q-34 0-34-34V322q0-34 34-34z" fill="url(#${u}f)"/>
+      <path d="M214 404h492" stroke="#fff" stroke-opacity=".4" stroke-width="6"/>
+      <g filter="url(#${u}lf)"><circle cx="590" cy="560" r="150" fill="#fff"/></g>
+      <g clip-path="url(#${u}c)">
+        <g fill="${A(80, .6)}">
+          <rect x="474" y="444" width="96" height="110" rx="16"/><rect x="610" y="444" width="96" height="110" rx="16"/>
+          <rect x="474" y="574" width="96" height="110" rx="16"/>
+        </g>
+        <rect x="610" y="574" width="96" height="110" rx="16" fill="${A(56)}"/>
+      </g>
+      <circle cx="590" cy="560" r="150" fill="none" stroke="${A(24, .5)}" stroke-width="36"/>
+      <path d="M700 672l96 96" stroke="${A(24, .5)}" stroke-width="64" stroke-linecap="round"/>`,
+  },
+];
+
+function svg(icon, accent = current, cls = "") {
+  const u = `i${uidN++}`;
+  return `<svg class="${cls}" viewBox="0 0 1024 1024" style="--h:${accent[1]};--s:${accent[2]}%" role="img" aria-label="${icon.name}">${icon.draw(u)}</svg>`;
+}
+
+const currentIcon = {
+  name: "Pathline (current)",
+  blurb: "Current icon for comparison: an abstract route. Pleasant, but doesn’t say “files”.",
+  draw: u => `<defs><linearGradient id="${u}t" x2=".25" y2="1"><stop stop-color="#283b43"/><stop offset="1" stop-color="#12242c"/></linearGradient>
+    <linearGradient id="${u}k" x2=".2" y2="1"><stop stop-color="#d0edba"/><stop offset="1" stop-color="#82c4a9"/></linearGradient>
+    ${tile(u, `url(#${u}t)`)}
+    <path d="M298 700V410Q298 328 380 328H598Q680 328 680 410V448Q680 530 598 530H454Q408 530 408 576V700" fill="none" stroke="url(#${u}k)" stroke-width="70" stroke-linecap="round" stroke-linejoin="round"/><circle cx="680" cy="700" r="57" fill="#f1c97a"/>`,
+};
+
+function render() {
+  uidN = 0;
+  document.getElementById("dock").innerHTML =
+    ICONS.map(i => `<div class="slot">${svg(i)}<small>${i.name}</small></div>`).join("") +
+    `<div class="sep"></div><div class="slot">${svg(currentIcon)}<small>Current</small></div>`;
+  document.getElementById("grid").innerHTML = [...ICONS, currentIcon].map((icon, n) => `
+    <article class="card${icon === currentIcon ? " current" : ""}">
+      <div class="hero">${svg(icon, current, "big")}
+        <div><div class="num">${icon === currentIcon ? "Reference" : "Concept " + (n + 1)}</div>
+        <h2>${icon.name}</h2><p>${icon.blurb}</p></div>
+      </div>
+      <div class="sizes">${[128, 64, 32, 16].map(s => `<figure><div style="width:${s}px;height:${s}px">${svg(icon)}</div><figcaption>${s}px</figcaption></figure>`).join("")}</div>
+      ${icon === currentIcon ? "" : `<div class="accents">${ACCENTS.map(a => svg(icon, a)).join("")}</div>`}
+    </article>`).join("");
+}
+
+document.getElementById("swatches").innerHTML = ACCENTS.map((a, i) =>
+  `<button class="sw" title="${a[0]}" aria-pressed="${i === 0}" data-i="${i}" style="background:hsl(${a[1]} ${a[2]}% 55%)"></button>`).join("");
+document.getElementById("swatches").addEventListener("click", e => {
+  const i = e.target.dataset.i; if (i == null) return;
+  current = ACCENTS[i];
+  document.querySelectorAll(".sw").forEach(b => b.setAttribute("aria-pressed", b.dataset.i === i));
+  render();
+});
+document.getElementById("theme").addEventListener("click", e => {
+  const dark = document.documentElement.dataset.theme !== "dark";
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  e.target.textContent = dark ? "Light" : "Dark";
+});
+render();
+</script>
+</body>
+</html>

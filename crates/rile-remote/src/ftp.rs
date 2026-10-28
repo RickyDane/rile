@@ -26,6 +26,10 @@ pub(crate) struct FtpBackend {
     ftp: RustlsFtpStream,
     mlsd: bool,
     mlst: bool,
+    /// Whether `LIST -a` lists hidden (dot) entries here; None until probed.
+    /// Servers like vsftpd hide them from a bare `LIST`, which made
+    /// existing dot folders look missing.
+    list_all: Option<bool>,
     login_dir: String,
     alive: bool,
 }
@@ -151,6 +155,7 @@ impl FtpBackend {
             ftp,
             mlsd,
             mlst,
+            list_all: None,
             login_dir,
             alive: true,
         })
@@ -198,7 +203,32 @@ impl FtpBackend {
     fn list_fallback(&mut self, path: &str) -> Result<Vec<RemoteEntry>> {
         // CWD + bare LIST is more portable than `LIST <path>` (spaces, globbing).
         self.cmd(|f| f.cwd(path))?;
-        let lines = self.cmd(|f| f.list(None))?;
+        let lines = match self.list_all {
+            Some(true) => self.cmd(|f| f.list(Some("-a")))?,
+            Some(false) => self.cmd(|f| f.list(None))?,
+            None => {
+                // Probe: `-a` must give at least everything a bare LIST does
+                // (some servers would take it for a file name). Only a
+                // non-empty folder can tell; empty ones probe again later.
+                let plain = self.cmd(|f| f.list(None))?;
+                let names = |ls: &[String]| -> Vec<String> { ls.iter().filter_map(|l| parse_list_line(l)).map(|(f, _)| f.name().to_string()).collect() };
+                let plain_names = names(&plain);
+                if plain_names.is_empty() {
+                    plain
+                } else {
+                    let all = self.ftp.list(Some("-a")).ok();
+                    let ok = all.as_ref().is_some_and(|all| {
+                        let all_names = names(all);
+                        plain_names.iter().all(|n| all_names.contains(n))
+                    });
+                    self.list_all = Some(ok);
+                    match all {
+                        Some(all) if ok => all,
+                        _ => plain,
+                    }
+                }
+            }
+        };
         let _ = self.cmd(|f| f.cwd("/"));
         Ok(lines
             .iter()
@@ -684,6 +714,25 @@ mod tests {
             auth: Auth::Anonymous,
             initial_path: None,
         }
+    }
+
+    /// Servers like vsftpd hide dot entries from a bare LIST; the fallback
+    /// asks for them with `LIST -a` once that's known to be understood.
+    #[test]
+    fn list_fallback_includes_dot_entries() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join(".git")).unwrap();
+        std::fs::write(root.path().join("x.txt"), b"x").unwrap();
+        let port = server(root.path().to_path_buf());
+        let mut b = FtpBackend::connect(&anon(port), None).unwrap();
+        b.force_list_fallback();
+        for _ in 0..2 {
+            let mut names: Vec<String> = b.list("/").unwrap().into_iter().map(|e| e.name).collect();
+            names.sort();
+            assert_eq!(names, [".git", "x.txt"]);
+        }
+        assert!(b.list_all.is_some(), "probed on the first non-empty folder");
+        assert!(b.stat("/.git").unwrap().is_dir);
     }
 
     #[test]

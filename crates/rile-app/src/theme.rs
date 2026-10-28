@@ -14,7 +14,7 @@ pub fn apply(settings: &Settings, window: &mut Window, cx: &mut App) {
         ThemeMode::Dark => Theme::change(UiThemeMode::Dark, Some(window), cx),
     }
     apply_accent(settings.accent, cx);
-    crate::app_icon::install(settings.accent);
+    crate::app_icon::install(settings.app_icon, settings.accent);
     crate::icons::set_icon_set(settings.icon_set);
     let chrome = Chrome::new(settings, cx);
     cx.set_global(chrome);

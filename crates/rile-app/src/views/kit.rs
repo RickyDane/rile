@@ -31,6 +31,12 @@ pub fn surface<D: Styled>(dialog: D, cx: &App) -> D {
 
 /// A Native dialog of `width` with an icon header, centered in the window.
 pub fn dialog(dialog: Dialog, icon: IconName, title: impl Into<SharedString>, subtitle: Option<SharedString>, width: f32, cx: &App) -> Dialog {
+    let glyph = crate::icons::icon(icon).size(px(17.)).text_color(chrome(cx).accent).into_any_element();
+    dialog_with_glyph(dialog, glyph, title, subtitle, width, cx)
+}
+
+/// [`dialog`] with any glyph in the icon tile, such as the Apple Intelligence symbol.
+pub fn dialog_with_glyph(dialog: Dialog, glyph: AnyElement, title: impl Into<SharedString>, subtitle: Option<SharedString>, width: f32, cx: &App) -> Dialog {
     let ch = chrome(cx);
     surface(dialog, cx)
         .centered()
@@ -43,7 +49,7 @@ pub fn dialog(dialog: Dialog, icon: IconName, title: impl Into<SharedString>, su
             h_flex()
                 .justify_between()
                 .gap(px(12.))
-                .child(header(icon, title.into(), subtitle, cx))
+                .child(header_with_glyph(glyph, title.into(), subtitle, cx))
                 .child(gpui_kit::base::DialogClose::new().trigger(|button| close_button(button, ch))),
         )
 }
@@ -65,6 +71,12 @@ fn close_button(button: gpui_kit::base::Button, ch: Chrome) -> gpui_kit::base::B
 
 /// Icon tile, title and an optional one-line subtitle.
 pub fn header(icon: IconName, title: SharedString, subtitle: Option<SharedString>, cx: &App) -> AnyElement {
+    let glyph = crate::icons::icon(icon).size(px(17.)).text_color(chrome(cx).accent).into_any_element();
+    header_with_glyph(glyph, title, subtitle, cx)
+}
+
+/// [`header`] with any glyph in the icon tile.
+pub fn header_with_glyph(glyph: AnyElement, title: SharedString, subtitle: Option<SharedString>, cx: &App) -> AnyElement {
     let ch = chrome(cx);
     h_flex()
         .gap(px(12.))
@@ -80,7 +92,7 @@ pub fn header(icon: IconName, title: SharedString, subtitle: Option<SharedString
                 .bg(ch.accent_soft)
                 .border_1()
                 .border_color(ch.accent.opacity(0.18))
-                .child(crate::icons::icon(icon).size(px(17.)).text_color(ch.accent)),
+                .child(glyph),
         )
         .child(
             v_flex()
@@ -252,7 +264,7 @@ mod tests {
     fn shared_close_button_has_pointer_cursor(cx: &mut TestAppContext) {
         cx.update(|cx| {
             gpui_kit::init(cx);
-            let mut button = close_button(gpui_kit::base::Button::new("close"), chrome(cx));
+            let mut button = close_button(gpui_kit::base::Button::new("close").cursor_pointer(), chrome(cx));
             assert_eq!(button.style().mouse_cursor, Some(CursorStyle::PointingHand));
         });
     }
@@ -316,3 +328,15 @@ mod tests {
         }
     }
 }
+
+/// The component library only gives link buttons the pointing hand, so every
+/// control adds `.cursor_pointer()` when created; this keeps disabled controls
+/// on the arrow.
+pub trait PointerUnless: gpui_kit::component::Disableable + Styled + Sized {
+    fn pointer_unless(self, disabled: bool) -> Self {
+        let this = self.disabled(disabled);
+        if disabled { this.cursor_default() } else { this.cursor_pointer() }
+    }
+}
+
+impl<T: gpui_kit::component::Disableable + Styled> PointerUnless for T {}

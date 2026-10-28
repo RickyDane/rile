@@ -96,6 +96,23 @@ pub fn session(id: &str) -> Result<Session> {
     Ok(session)
 }
 
+/// A connection of its own rather than the shared session, for long-running
+/// work such as backups that must not block browsing. Returns it with the
+/// connection's label. Call from background threads only.
+pub fn connect_dedicated(id: &str) -> Result<(Box<dyn RemoteFs>, String)> {
+    let (info, secret) = {
+        let r = registry().lock().unwrap();
+        let info = r.infos.get(id).cloned().context("The server connection of this backup no longer exists")?;
+        (info, r.secrets.get(id).cloned())
+    };
+    let secret = match secret {
+        Some(s) => Some(s),
+        None => rile_remote::credentials::load(id).ok().flatten(),
+    };
+    let fs = rile_remote::connect(&info, secret.as_deref())?;
+    Ok((fs, label(id)))
+}
+
 pub fn is_connected(id: &str) -> bool {
     Pool::global().is_connected(id)
 }

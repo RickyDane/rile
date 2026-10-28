@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{
-    Disableable, Selectable, Sizable, h_flex,
+    Selectable, Sizable, h_flex,
     button::{Button, ButtonVariants},
     input::Input,
     menu::{DropdownMenu, PopupMenuItem},
@@ -22,6 +22,7 @@ use rile_core::history::Location;
 use rile_core::settings::ViewKind;
 use rile_core::{SortKey, SortOrder};
 
+use crate::views::kit::PointerUnless;
 use crate::actions::*;
 use crate::pane::Pane;
 use crate::theme::{Chrome, chrome};
@@ -158,7 +159,7 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
         })
         .child(
             icon_button("back", IconName::ChevronLeft, format!("Back ({}[)", mod_key()), &ch)
-                .disabled(!can_back)
+                .pointer_unless(!can_back)
                 .on_click(cx.listener(|this, _, w, cx| {
                     this.pane().update(cx, |p, cx| {
                         p.go_back(cx);
@@ -183,7 +184,7 @@ pub fn render_toolbar(ws: &mut Workspace, window: &mut Window, cx: &mut Context<
         )
         .child(
             icon_button("fwd", IconName::ChevronRight, format!("Forward ({}])", mod_key()), &ch)
-                .disabled(!can_fwd)
+                .pointer_unless(!can_fwd)
                 .on_click(cx.listener(|this, _, w, cx| {
                     this.pane().update(cx, |p, cx| {
                         p.go_forward(cx);
@@ -321,6 +322,8 @@ pub fn crumbs(ws: &Workspace, location: &Location) -> Vec<(String, Option<Locati
     match location {
         Location::Home => vec![("Home".into(), Some(Location::Home), IconName::House)],
         Location::Gallery => vec![("Photos".into(), Some(Location::Gallery), IconName::Images)],
+        Location::Backups => vec![("Backups".into(), Some(Location::Backups), IconName::DatabaseBackup)],
+        Location::SpaceAnalyzer(_) => vec![("Space Analyzer".into(), Some(Location::SpaceAnalyzer(None)), IconName::ChartPie)],
         Location::PluginPage { title, .. } => vec![(title.clone(), Some(location.clone()), IconName::Puzzle)],
         Location::Remote { conn, path } => {
             let dir = PathBuf::from(path);
@@ -426,6 +429,8 @@ pub fn render_tab_strip(ws: &mut Workspace, window: &mut Window, cx: &mut Contex
         let icon = match &location {
             Location::Home => IconName::House,
             Location::Gallery => IconName::Images,
+            Location::Backups => IconName::DatabaseBackup,
+            Location::SpaceAnalyzer(_) => IconName::ChartPie,
             Location::PluginPage { .. } => IconName::Puzzle,
             Location::Remote { .. } => IconName::Globe,
             Location::Dir(_) => IconName::Folder,
@@ -681,7 +686,7 @@ pub fn render_browser(ws: &mut Workspace, pane: Entity<Pane>, slot: usize, windo
                 .when(!tight, |d| {
                     d.child(
                         icon_button(("new-folder", slot), IconName::FolderPlus, format!("New folder (⇧{m}N)"), &ch)
-                            .disabled(!can_create)
+                            .pointer_unless(!can_create)
                             .on_click(cx.listener(move |this, _, w, cx| {
                                 this.set_active_pane(slot, w, cx);
                                 this.new_folder(&NewFolder, w, cx)

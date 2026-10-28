@@ -540,7 +540,7 @@ impl Render for ConnectView {
             .child(kit::field("Nearby servers", v_flex().id("discovered-servers").gap(px(2.)).max_h(px(100.)).overflow_y_scroll().children(
                 self.servers.iter().enumerate().map(|(index, server)| {
                     let server = server.clone();
-                    Button::new(("discovered-server", index)).ghost().cursor_pointer()
+                    Button::new(("discovered-server", index)).cursor_pointer().ghost().cursor_pointer()
                         .label(format!("{} · {} · {}:{}", server.name, server.protocol.label(), server.host, server.port))
                         .on_click(cx.listener(move |this, _, window, cx| this.choose_server(&server, window, cx)))
                 })

@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+rayon.workspace = true
 rile-core.workspace = true
 anyhow.workspace = true
 # search
@@ -40,6 +41,7 @@ uzers = { version = "0.12", default-features = false, features = ["cache"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"
+block2 = "0.6"
 
 [dev-dependencies]
 tempfile.workspace = true
@@ -50,12 +52,12 @@ version = "0.6"
 [target.'cfg(target_os = "macos")'.dependencies.objc2-foundation]
 version = "0.3"
 default-features = false
-features = ["std", "NSString", "NSData", "NSDictionary", "NSGeometry", "NSArray", "NSURL", "NSFileManager", "NSBundle", "NSError", "NSObject", "NSValue", "NSEnumerator"]
+features = ["std", "NSString", "NSData", "NSDictionary", "NSGeometry", "NSArray", "NSURL", "NSFileManager", "NSBundle", "NSError", "NSObject", "NSValue", "NSEnumerator", "NSUserDefaults"]
 
 [target.'cfg(target_os = "macos")'.dependencies.objc2-app-kit]
 version = "0.3"
 default-features = false
-features = ["std", "NSWorkspace", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphicsContext", "objc2-core-graphics"]
+features = ["std", "NSWorkspace", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphicsContext", "objc2-core-graphics", "block2"]
 
 [target.'cfg(target_os = "macos")'.dependencies.objc2-core-graphics]
 version = "0.3"

@@ -120,11 +120,17 @@ impl Workspace {
         self.search_input.update(cx, |i, cx| i.set_value("", window, cx));
         self.pane().update(cx, |pane, cx| {
             pane.start_search(label, cancel, cx, move |push, scanned| {
-                let found = super::ai_agent::smart_search(&request, &root, &worker_cancel, &|_| {})?;
+                let found_files_flag = std::sync::atomic::AtomicBool::new(false);
+                let found = super::ai_agent::smart_search(&request, &root, &base, &worker_cancel, &|_| {}, &|batch| {
+                    if batch.iter().any(|entry| !entry.is_dir) {
+                        found_files_flag.store(true, Ordering::Relaxed);
+                    }
+                    push(batch);
+                })?;
                 if worker_cancel.load(Ordering::Relaxed) {
                     return Ok(());
                 }
-                if found.is_empty() {
+                if found == 0 {
                     let reply = super::ai_agent::complete(&format!("Request: {request}"), SEARCH_INSTRUCTIONS)?;
                     if worker_cancel.load(Ordering::Relaxed) {
                         return Ok(());
@@ -146,10 +152,9 @@ impl Workspace {
                     }
                     scanned(stats.scanned as u64);
                 } else {
-                    if found.iter().any(|entry| !entry.is_dir) {
+                    if found_files_flag.load(Ordering::Relaxed) {
                         rile_services::rewards::record_event(rile_services::rewards::Event::AiFound);
                     }
-                    push(found);
                 }
                 if !worker_cancel.load(Ordering::Relaxed) {
                     rile_services::rewards::record_event(rile_services::rewards::Event::Search);
@@ -243,9 +248,10 @@ impl Workspace {
         let view = cx.new(|cx| AiView::new(selection, cx));
         view.update(cx, |v, cx| v.start(cx));
         window.open_dialog(cx, move |dialog, _window, cx| {
-            crate::views::kit::dialog(
+            let glyph = crate::icons::intelligence_glyph(17., crate::theme::chrome(cx).accent, view.entity_id(), cx);
+            crate::views::kit::dialog_with_glyph(
                 dialog,
-                gpui_kit::assets::IconName::Sparkles,
+                glyph,
                 "AI Summary",
                 Some("On this Mac with Apple's Foundation Models".into()),
                 600.,

@@ -24,6 +24,7 @@ gpui_kit::assets::icon_assets!(
         Activity, ArrowDownUp, Check,
         Archive, PackageOpen, AppWindow, ExternalLink, Images, Files, Link, FilePlus, WandSparkles,
         LayoutDashboard, TextSearch, Brain, GripVertical, AppWindowMac, Gauge, Play,
+        DatabaseBackup, ArchiveRestore, Clock, FolderSync, CircleCheck, Pause, Square,
     ]
 );
 
@@ -62,8 +63,14 @@ impl gpui_kit::Global for IntelligenceGlyph {}
 /// The Apple Intelligence glyph `size` px tall for the current view; falls
 /// back to a sparkle tinted `color` where the symbol isn't available.
 pub fn apple_intelligence<V: 'static>(size: f32, color: gpui_kit::Hsla, cx: &mut gpui_kit::Context<V>) -> gpui_kit::AnyElement {
-    use gpui_kit::{AppContext, IntoElement, Styled, StyledImage};
     let view = cx.entity_id();
+    intelligence_glyph(size, color, view, cx)
+}
+
+/// [`apple_intelligence`] outside a view's context; `view` is re-rendered
+/// once the symbol has loaded.
+pub fn intelligence_glyph(size: f32, color: gpui_kit::Hsla, view: gpui_kit::EntityId, cx: &mut gpui_kit::App) -> gpui_kit::AnyElement {
+    use gpui_kit::{AppContext, IntoElement, Styled, StyledImage};
     let glyph = cx.default_global::<IntelligenceGlyph>();
     match &glyph.0 {
         Some(Some(image)) => {
@@ -77,7 +84,7 @@ pub fn apple_intelligence<V: 'static>(size: f32, color: gpui_kit::Hsla, cx: &mut
                     .ok()
                     .map(|png| std::sync::Arc::new(gpui_kit::Image::from_bytes(gpui_kit::ImageFormat::Png, png)))
             });
-            cx.spawn(async move |_, cx| {
+            cx.spawn(async move |cx| {
                 let image = task.await;
                 cx.update(|cx| {
                     if image.is_some() {
@@ -92,10 +99,59 @@ pub fn apple_intelligence<V: 'static>(size: f32, color: gpui_kit::Hsla, cx: &mut
     icon(IconName::Sparkles).size(gpui_kit::px(size)).text_color(color).into_any_element()
 }
 
-/// Glyph for AI commands in menus (SVG icons only; the toolbar button
-/// uses the system's Apple Intelligence symbol, see [`apple_intelligence`]).
+/// Asset path of the Apple Intelligence symbol as an SVG, see [`intelligence_svg`].
+const INTELLIGENCE_SVG: &str = "icons/apple-intelligence.svg";
+
+/// Glyph for AI commands in menus, which only take SVG icons: the Apple
+/// Intelligence symbol as a single-color mask (the full-color version is
+/// [`apple_intelligence`]).
 pub fn ai_icon() -> Icon {
-    icon(IconName::Sparkles)
+    menu_style(Icon::new(IconName::Sparkles).path(INTELLIGENCE_SVG))
+}
+
+/// An icon for a context-menu item. The menu draws icons at a fixed 12 px
+/// with a 4 px gap, so scale the glyph up to 14 px and widen the gap to
+/// leave about 8 px before the label.
+pub fn menu_icon(name: IconName) -> Icon {
+    menu_style(icon(name))
+}
+
+fn menu_style(icon: Icon) -> Icon {
+    use gpui_kit::Styled;
+    icon.transform(gpui_kit::Transformation::scale(gpui_kit::size(14. / 12., 14. / 12.))).mr(gpui_kit::px(5.))
+}
+
+/// The Apple Intelligence symbol wrapped in an SVG (the rendered symbol as
+/// an embedded image), so SVG-only places can show it; the sparkle where
+/// the symbol isn't available.
+fn intelligence_svg() -> Result<Option<Cow<'static, [u8]>>> {
+    static SVG: std::sync::OnceLock<Option<Vec<u8>>> = std::sync::OnceLock::new();
+    let svg = SVG.get_or_init(|| {
+        let png = rile_services::app_icons::symbol_png("apple.intelligence", 96, rile_services::app_icons::INTELLIGENCE_GRADIENT).ok()?;
+        Some(
+            format!(
+                r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><image x="1" y="1" width="22" height="22" href="data:image/png;base64,{}"/></svg>"#,
+                base64(&png)
+            )
+            .into_bytes(),
+        )
+    });
+    match svg {
+        Some(bytes) => Ok(Some(Cow::Borrowed(bytes.as_slice()))),
+        None => AppIcons.load(gpui_kit::assets::IconNamed::path(IconName::Sparkles).as_ref()),
+    }
+}
+
+fn base64(bytes: &[u8]) -> String {
+    const ABC: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let n = chunk.iter().enumerate().fold(0u32, |n, (i, b)| n | (*b as u32) << (16 - 8 * i));
+        for i in 0..4 {
+            out.push(if i <= chunk.len() { ABC[(n >> (18 - 6 * i) & 63) as usize] as char } else { '=' });
+        }
+    }
+    out
 }
 
 fn set_icon(path: &str) -> Option<&'static [u8]> {
@@ -106,6 +162,9 @@ pub struct AppAssets;
 
 impl AssetSource for AppAssets {
     fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
+        if path == INTELLIGENCE_SVG {
+            return intelligence_svg();
+        }
         if let Some(bytes) = AppIcons.load(path)? {
             return Ok(Some(bytes));
         }

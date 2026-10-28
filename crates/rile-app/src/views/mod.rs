@@ -1,3 +1,5 @@
+pub mod backup_settings;
+pub mod backups;
 pub mod chrome;
 pub mod columns;
 pub mod grid;
@@ -6,6 +8,7 @@ pub mod home;
 pub mod kit;
 pub mod list;
 pub mod plugin_page;
+pub mod space_analyzer;
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -310,7 +313,7 @@ fn build_context_menu(
     window: &mut Window,
     cx: &mut Context<PopupMenu>,
 ) -> PopupMenu {
-    use crate::icons::icon;
+    use crate::icons::menu_icon;
     let Some(pane) = pane.upgrade() else { return menu };
     let selection = pane.read(cx).selected_paths();
     let remote = pane.read(cx).conn().is_some();
@@ -319,47 +322,51 @@ fn build_context_menu(
     let menu = menu.action_context(focus.clone());
     if selection.is_empty() {
         return menu
-            .menu_with_icon("New Folder", icon(IconName::FolderPlus), Box::new(NewFolder))
-            .menu_with_icon("New File", icon(IconName::FilePlus), Box::new(NewFile))
-            .menu_with_icon("Paste", icon(IconName::ClipboardPaste), Box::new(Paste))
+            .menu_with_icon("New Folder", menu_icon(IconName::FolderPlus), Box::new(NewFolder))
+            .menu_with_icon("New File", menu_icon(IconName::FilePlus), Box::new(NewFile))
+            .menu_with_icon("Paste", menu_icon(IconName::ClipboardPaste), Box::new(Paste))
             .separator()
-            .menu_with_icon("Refresh", icon(IconName::RotateCw), Box::new(Refresh))
-            .menu_with_icon("Show / Hide Hidden Files", icon(IconName::Eye), Box::new(ToggleHidden))
-            .menu_with_icon("Search in Folder…", icon(IconName::Search), Box::new(AdvancedSearch))
+            .menu_with_icon("Refresh", menu_icon(IconName::RotateCw), Box::new(Refresh))
+            .menu_with_icon("Show / Hide Hidden Files", menu_icon(IconName::Eye), Box::new(ToggleHidden))
+            .menu_with_icon("Search in Folder…", menu_icon(IconName::Search), Box::new(AdvancedSearch))
             .when(ai && !remote, |m| m.menu_with_icon("Summarize Folder with AI", crate::icons::ai_icon(), Box::new(AiSummarize)))
-            .menu_with_icon("Folder Properties", icon(IconName::Info), Box::new(ShowProperties));
+            .menu_with_icon("Folder Properties", menu_icon(IconName::Info), Box::new(ShowProperties));
     }
     let any_dir = selection.iter().any(|p| p.is_dir());
     let all_files = !remote && selection.iter().all(|p| p.is_file());
     let archives = !remote && selection.iter().any(|p| crate::workspace::archive::is_archive(p));
     let mut menu = menu
-        .menu_with_icon("Open", icon(IconName::ExternalLink), Box::new(OpenSelected));
+        .menu_with_icon("Open", menu_icon(IconName::ExternalLink), Box::new(OpenSelected));
     if all_files {
         menu = crate::workspace::open_with::open_with_submenu(menu, selection.clone(), window, cx);
     }
+    let danger = cx.theme().danger;
     let mut menu = menu
-        .menu_with_icon("Quick Look", icon(IconName::Eye), Box::new(ToggleQuickLook))
-        .menu_with_icon("Open in Other Pane", icon(IconName::Columns2), Box::new(OpenInOtherPane))
+        .menu_with_icon("Quick Look", menu_icon(IconName::Eye), Box::new(ToggleQuickLook))
+        .menu_with_icon("Open in Other Pane", menu_icon(IconName::Columns2), Box::new(OpenInOtherPane))
         .separator()
-        .menu_with_icon("Cut", icon(IconName::Scissors), Box::new(Cut))
-        .menu_with_icon("Copy", icon(IconName::Copy), Box::new(Copy))
-        .menu_with_icon("Paste", icon(IconName::ClipboardPaste), Box::new(Paste))
-        .menu_with_icon("Duplicate", icon(IconName::Files), Box::new(Duplicate))
-        .menu_with_icon("Copy Path", icon(IconName::Link), Box::new(CopyPath))
+        .menu_with_icon("Move to Trash", menu_icon(IconName::Trash).text_color(danger), Box::new(MoveToTrash))
+        .menu_with_icon("Delete Permanently…", menu_icon(IconName::CircleX).text_color(danger), Box::new(DeletePermanently))
         .separator()
-        .menu_with_icon("Rename…", icon(IconName::Pencil), Box::new(Rename))
-        .menu_with_icon("Add to / Remove from Favorites", icon(IconName::Star), Box::new(ToggleFavorite));
+        .menu_with_icon("Cut", menu_icon(IconName::Scissors), Box::new(Cut))
+        .menu_with_icon("Copy", menu_icon(IconName::Copy), Box::new(Copy))
+        .menu_with_icon("Paste", menu_icon(IconName::ClipboardPaste), Box::new(Paste))
+        .menu_with_icon("Duplicate", menu_icon(IconName::Files), Box::new(Duplicate))
+        .menu_with_icon("Copy Path", menu_icon(IconName::Link), Box::new(CopyPath))
+        .separator()
+        .menu_with_icon("Rename…", menu_icon(IconName::Pencil), Box::new(Rename))
+        .menu_with_icon("Add to / Remove from Favorites", menu_icon(IconName::Star), Box::new(ToggleFavorite));
     if !remote {
-        menu = menu.separator().menu_with_icon("Compress…", icon(IconName::Archive), Box::new(Compress));
+        menu = menu.separator().menu_with_icon("Compress…", menu_icon(IconName::Archive), Box::new(Compress));
         if archives {
-            menu = menu.menu_with_icon("Extract Here", icon(IconName::PackageOpen), Box::new(Extract));
+            menu = menu.menu_with_icon("Extract Here", menu_icon(IconName::PackageOpen), Box::new(Extract));
         }
     }
     if ai && !remote {
         menu = menu
             .separator()
             .menu_with_icon(if any_dir { "Summarize Contents with AI" } else { "Summarize with AI" }, crate::icons::ai_icon(), Box::new(AiSummarize))
-            .menu_with_icon("Describe & Tag with AI", icon(IconName::Tag), Box::new(SmartTag));
+            .menu_with_icon("Describe & Tag with AI", crate::icons::ai_icon(), Box::new(SmartTag));
     }
 
     // Plugin-contributed commands.
@@ -371,7 +378,7 @@ fn build_context_menu(
             for (plugin_id, cmd_id, label) in commands {
                 let ws = ws.downgrade();
                 let (dir, selection) = (dir.clone(), selection.clone());
-                menu = menu.item(PopupMenuItem::new(label).icon(icon(IconName::Puzzle)).on_click(move |_, window, cx| {
+                menu = menu.item(PopupMenuItem::new(label).icon(menu_icon(IconName::Puzzle)).on_click(move |_, window, cx| {
                     ws.update(cx, |ws, cx| {
                         ws.run_plugin_command(&plugin_id, &cmd_id, dir.clone(), selection.clone(), window, cx)
                     })
@@ -382,10 +389,7 @@ fn build_context_menu(
     }
 
     menu.separator()
-        .menu_with_icon("Properties", icon(IconName::Info), Box::new(ShowProperties))
-        .separator()
-        .menu_with_icon("Move to Trash", icon(IconName::Trash), Box::new(MoveToTrash))
-        .menu_with_icon("Delete Permanently…", icon(IconName::CircleX), Box::new(DeletePermanently))
+        .menu_with_icon("Properties", menu_icon(IconName::Info), Box::new(ShowProperties))
 }
 
 /// Shared mouse, drag and drop behaviour for an entry element (row/tile).
@@ -401,7 +405,6 @@ pub fn entry_interactions(
         source: cx.entity().downgrade(),
         conn: pane_conn,
         path: entry.path.clone(),
-        label: entry.name.to_string().into(),
     };
     let name = entry.name.clone();
     let entry_icon = crate::icons::icon_for_entry(entry);

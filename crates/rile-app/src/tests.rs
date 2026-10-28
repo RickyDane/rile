@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 use std::time::Duration;
 
-use gpui_kit::{AnyWindowHandle, AppContext, Entity, TestAppContext, WindowOptions};
+use gpui_kit::{AnyWindowHandle, AppContext, Entity, TestAppContext};
 use rile_core::history::Location;
 
 use crate::actions;
@@ -45,10 +45,7 @@ fn setup_with(
     cx.update(|cx| {
         gpui_kit::init(cx);
         actions::bind_keys(cx);
-        gpui_kit::open_window(WindowOptions::default(), cx, |window, cx| {
-            cx.new(|cx| Workspace::new(Location::Dir(dir), window, cx))
-        })
-        .unwrap()
+        crate::open_workspace(Location::Dir(dir), None, cx).unwrap()
     })
 }
 
@@ -93,6 +90,111 @@ fn press(cx: &mut TestAppContext, window: AnyWindowHandle, keys: &[&str]) {
         cx.simulate_keystrokes(window, k);
         cx.run_until_parked();
     }
+}
+
+#[gpui_kit::test]
+async fn dock_reopen_after_window_close(cx: &mut TestAppContext) {
+    let dir = tempfile::tempdir().unwrap();
+    let (window, ws) = setup_with(
+        dir.path(),
+        "update_check_on_start = false\nplugins_enabled = false\nfavorites = []\nstart_location = \"lastvisited\"\n",
+        None,
+        cx,
+    );
+    let _guard = config_lock();
+    wait_for_names(cx, window, &ws, &[]).await;
+
+    // Reopening a live window must not create a duplicate.
+    cx.update(crate::reopen);
+    assert_eq!(cx.windows(), vec![window]);
+    let mut visual = gpui_kit::VisualTestContext::from_window(window, cx);
+    assert!(visual.simulate_close());
+    assert_eq!(rile_core::settings::Settings::load().last_location.as_deref(), Some(dir.path()));
+    // simulate_close invokes the native close callback; emulate the platform's
+    // subsequent removal of the window as well.
+    cx.update_window(window, |_, window, _| window.remove_window()).unwrap();
+    drop(ws);
+    cx.run_until_parked();
+    assert!(cx.windows().is_empty());
+
+    cx.update(crate::reopen);
+    let reopened = cx.windows();
+    assert_eq!(reopened.len(), 1);
+    assert_ne!(reopened[0], window);
+    let ws = cx.update(|cx| cx.global::<crate::views::WorkspaceHandle>().0.upgrade().unwrap());
+    assert_eq!(cx.update(|cx| ws.read(cx).current_dir(cx)), Some(dir.path().to_path_buf()));
+    cx.update(crate::reopen);
+    assert_eq!(cx.windows(), reopened);
+}
+
+#[gpui_kit::test]
+async fn external_open_queues_reveal_before_launch(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    fs::create_dir(root.join("sub")).unwrap();
+    let requests = crate::external_open::Requests::default();
+    requests.dispatch(vec![root.join("sub")], true);
+    let (window, ws) = setup(&root, cx);
+    let _guard = config_lock();
+    cx.update(|cx| requests.ready(cx));
+    wait_until(cx, "queued cold-launch reveal", |cx| {
+        ws.read(cx).pane().read(cx).selected_paths() == vec![root.join("sub")]
+    });
+    assert_eq!(cx.update(|cx| ws.read(cx).current_dir(cx)), Some(root));
+    assert_eq!(cx.windows(), vec![window]);
+}
+
+#[gpui_kit::test]
+async fn external_open_reuses_window_and_reveals_in_current_folder(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    fs::create_dir(root.join("sub")).unwrap();
+    let a = root.join("a.txt");
+    let b = root.join("b.txt");
+    fs::write(&a, "a").unwrap();
+    fs::write(&b, "b").unwrap();
+    let (window, ws) = setup(&root, cx);
+    let _guard = config_lock();
+    wait_for_names(cx, window, &ws, &["sub", "a.txt", "b.txt"]).await;
+
+    // Already-loaded directory: a reload is necessary to apply pending_select.
+    cx.update(|cx| crate::external_open::open(vec![a.clone(), b.clone()], true, cx));
+    wait_until(cx, "external multi-file reveal", |cx| {
+        let selected = ws.read(cx).pane().read(cx).selected_paths();
+        selected.len() == 2 && selected.contains(&a) && selected.contains(&b)
+    });
+    assert_eq!(cx.windows(), vec![window]);
+
+    cx.update(|cx| crate::external_open::open(vec![root.join("sub")], false, cx));
+    wait_for_names(cx, window, &ws, &[]).await;
+    assert_eq!(cx.update(|cx| ws.read(cx).current_dir(cx)), Some(root.join("sub")));
+    assert_eq!(cx.windows(), vec![window]);
+
+    // A revealed folder is selected in its parent, rather than entered.
+    cx.update(|cx| crate::external_open::open(vec![root.join("sub")], true, cx));
+    wait_until(cx, "external folder reveal", |cx| {
+        ws.read(cx).pane().read(cx).selected_paths() == vec![root.join("sub")]
+    });
+    assert_eq!(cx.update(|cx| ws.read(cx).current_dir(cx)), Some(root));
+}
+
+#[gpui_kit::test]
+async fn external_open_recovers_after_close_and_opens_multiple_folders(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    fs::create_dir(root.join("one")).unwrap();
+    fs::create_dir(root.join("two")).unwrap();
+    let (window, ws) = setup(&root, cx);
+    let _guard = config_lock();
+    cx.update_window(window, |_, window, _| window.remove_window()).unwrap();
+    drop(ws);
+    cx.run_until_parked();
+    assert!(cx.windows().is_empty());
+
+    cx.update(|cx| crate::external_open::open(vec![root.join("one"), root.join("two")], false, cx));
+    assert_eq!(cx.windows().len(), 2);
+    let ws = cx.update(|cx| cx.global::<crate::MainWindow>().1.upgrade().unwrap());
+    assert_eq!(cx.update(|cx| ws.read(cx).current_dir(cx)), Some(root.join("two")));
 }
 
 #[gpui_kit::test]
@@ -833,7 +935,6 @@ async fn external_drag_payload_includes_selected_files_and_folders(cx: &mut Test
             source: ws.read(cx).pane().downgrade(),
             conn: None,
             path: root.join("a.txt"),
-            label: "a.txt".into(),
         };
         assert_eq!(drag.external_payload(cx), Some(ExternalDragPayload::Files(FileDragPaths::new([
             (root.join("sub"), true), (root.join("a.txt"), false),
@@ -855,7 +956,7 @@ async fn external_drag_payload_only_exports_local_dragged_entries(cx: &mut TestA
     press(cx, window, &["home"]);
     cx.update(|cx| {
         let source = ws.read(cx).pane().downgrade();
-        let mut drag = DraggedFiles { source, conn: None, path: root.join("b.txt"), label: "b.txt".into() };
+        let mut drag = DraggedFiles { source, conn: None, path: root.join("b.txt") };
         let expected = Some(ExternalDragPayload::Files(FileDragPaths::new([(root.join("b.txt"), false)])));
         assert_eq!(drag.external_payload(cx), expected, "unselected row must not export another selection");
         drag.path = root.join("a.txt");
@@ -1693,4 +1794,366 @@ async fn enter_on_file_does_not_crash(cx: &mut TestAppContext) {
     wait_for_names(cx, window, &ws, &["Fake.app", "a.txt"]).await;
     press(cx, window, &["down", "down", "enter"]);
     wait_for_names(cx, window, &ws, &["Fake.app", "a.txt"]).await;
+}
+
+/// Plugin pages require a deliberate root selection, not an implicit home scan.
+#[gpui_kit::test]
+async fn plugin_page_waits_for_root_and_shows_scan_progress(cx: &mut TestAppContext) {
+    use gpui_kit::VisualTestContext;
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    let (window, ws) = setup(&root, cx);
+    let key = ("test.pages".to_string(), "page".to_string());
+    cx.update_window(window, |_, window, cx| {
+        ws.update(cx, |ws, cx| {
+            ws.plugins.pages.push((key.0.clone(), rile_plugins::Page {
+                id: key.1.clone(), title: "Test Page".into(), icon: Some("disk".into()),
+            }));
+            ws.open_plugin_page(&key.0, &key.1, window, cx);
+            let session = ws.plugins.sessions.get_mut(&key).unwrap();
+            assert!(session.root.is_none(), "opening the page must not inherit the explorer directory");
+            // Simulate an explicitly selected root and an in-flight scan.
+            session.root = Some(root.clone());
+            session.busy = true;
+            session.error = Some("Old error must not hide new scan progress".into());
+            cx.notify();
+        });
+    }).unwrap();
+    let mut vcx = VisualTestContext::from_window(window, cx);
+    vcx.run_until_parked();
+    let bounds = vcx.debug_bounds("plugin-page-progress").expect("scan progress is visible");
+    assert!(f32::from(bounds.size.height) > 0.);
+    vcx.update(|window, cx| ws.update(cx, |ws, cx| {
+        let session = ws.plugins.sessions.get_mut(&key).unwrap();
+        session.busy = false;
+        session.error = None;
+        session.view = Some(rile_plugins::PageView { nodes: vec![] });
+        ws.open_plugin_page(&key.0, &key.1, window, cx);
+        assert_eq!(ws.plugins.sessions[&key].root.as_ref(), Some(&root), "reopening keeps the selected directory");
+        cx.notify();
+    }));
+    vcx.run_until_parked();
+    assert!(vcx.debug_bounds("plugin-page-progress").is_none(), "progress disappears after completion");
+}
+
+/// Opens the analyzer on `root` and waits for the scan to finish.
+fn analyze(cx: &mut TestAppContext, window: AnyWindowHandle, ws: &Entity<Workspace>, root: &Path) {
+    cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.analyze_folder(root.to_path_buf(), window, cx))).unwrap();
+    for _ in 0..200 {
+        cx.run_until_parked();
+        if cx.read(|cx| ws.read(cx).space.running.is_none()) {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    panic!("scan did not finish");
+}
+
+fn space_fixture(root: &Path) {
+    fs::create_dir_all(root.join("project/node_modules/pkg")).unwrap();
+    fs::write(root.join("project/package.json"), "{}").unwrap();
+    fs::write(root.join("project/node_modules/pkg/index.js"), vec![1u8; 2_000_000]).unwrap();
+    fs::create_dir_all(root.join("media/clips")).unwrap();
+    fs::write(root.join("media/clips/a.mov"), vec![1u8; 3_000_000]).unwrap();
+    fs::write(root.join("notes.txt"), "hi").unwrap();
+}
+
+/// Drilling into bubbles, going back and up are answered from the cached
+/// scan: no second scan starts.
+#[gpui_kit::test]
+async fn space_analyzer_navigates_from_cache(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    space_fixture(&root);
+    let (window, ws) = setup(&root, cx);
+    analyze(cx, window, &ws, &root);
+    let media = root.join("media");
+    cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| {
+        assert_eq!(ws.space.scans.len(), 1);
+        assert_eq!(ws.pane().read(cx).location, Location::SpaceAnalyzer(Some(root.clone())));
+        let generation = ws.space.generation;
+        ws.space_navigate(media.clone(), window, cx);
+        ws.space_navigate(media.join("clips"), window, cx);
+        ws.space_up(&media.join("clips"), window, cx);
+        assert_eq!(ws.pane().read(cx).location, Location::SpaceAnalyzer(Some(media.clone())));
+        ws.pane().update(cx, |p, cx| p.go_back(cx));
+        ws.pane().update(cx, |p, cx| p.go_back(cx));
+        assert_eq!(ws.pane().read(cx).location, Location::SpaceAnalyzer(Some(media.clone())));
+        assert!(ws.space.running.is_none(), "navigation inside a scan never rescans");
+        assert_eq!((ws.space.scans.len(), ws.space.generation), (1, generation));
+        // Analyzing a folder inside the scan reuses it, too.
+        ws.analyze_folder(root.join("project"), window, cx);
+        assert!(ws.space.running.is_none());
+        // Leaving and coming back resumes where the user was.
+        ws.open_location(Location::Home, window, cx);
+        ws.open_space_analyzer(window, cx);
+        assert_eq!(ws.pane().read(cx).location, Location::SpaceAnalyzer(Some(root.join("project"))));
+    })).unwrap();
+}
+
+#[gpui_kit::test]
+async fn space_analyzer_selection_and_suggestions(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    space_fixture(&root);
+    let (window, ws) = setup(&root, cx);
+    analyze(cx, window, &ws, &root);
+    cx.update_window(window, |_, _, cx| ws.update(cx, |ws, cx| {
+        let scan = ws.space.scan_for(&root).unwrap();
+        assert!(scan.suggestions.iter().any(|s| s.path == root.join("project/node_modules")));
+        let nm = root.join("project/node_modules");
+        ws.toggle_space_selection(nm.join("pkg"), cx);
+        ws.toggle_space_selection(nm.clone(), cx);
+        assert_eq!(ws.space.selected.len(), 1, "a selected folder subsumes its contents");
+        assert!(ws.space.is_selected(&nm.join("pkg/index.js")));
+        ws.toggle_space_selection(root.join("media/clips/a.mov"), cx);
+        let (paths, bytes) = ws.space.selection();
+        assert_eq!(paths.len(), 2);
+        assert!(bytes >= 5_000_000);
+        ws.toggle_space_group(rile_services::space::SuggestionKind::Developer, &root, cx);
+        assert!(!ws.space.selected.contains(&nm), "a fully selected group toggles off");
+        ws.toggle_space_group(rile_services::space::SuggestionKind::Developer, &root, cx);
+        assert!(ws.space.selected.contains(&nm));
+        let library = root.join("Library");
+        ws.toggle_space_selection(library.clone(), cx);
+        assert!(!ws.space.selected.contains(&library), "system-managed folders can't be selected");
+    })).unwrap();
+}
+
+#[gpui_kit::test]
+async fn space_analyzer_layout_fits_wide_and_narrow_windows(cx: &mut TestAppContext) {
+    use gpui_kit::{VisualTestContext, px, size};
+    use crate::workspace::space::SpaceTab;
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    space_fixture(&root);
+    let (window, ws) = setup(&root, cx);
+    cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.open_space_analyzer(window, cx))).unwrap();
+    {
+        let mut vcx = VisualTestContext::from_window(window, cx);
+        vcx.run_until_parked();
+        assert!(vcx.debug_bounds("space-welcome").is_some(), "start page before any analysis");
+    }
+    analyze(cx, window, &ws, &root);
+    let mut vcx = VisualTestContext::from_window(window, cx);
+    for width in [1440., 760., 520.] {
+        vcx.simulate_resize(size(px(width), px(1000.)));
+        for (tab, selector) in [(SpaceTab::Overview, "space-map"), (SpaceTab::Files, "space-files"), (SpaceTab::Cleanup, "space-cleanup")] {
+            vcx.update(|_, cx| ws.update(cx, |ws, cx| { ws.space.tab = tab; cx.notify(); }));
+            vcx.run_until_parked();
+            let page = vcx.debug_bounds("space-page").unwrap();
+            let summary = vcx.debug_bounds("space-summary").expect("summary");
+            let body = vcx.debug_bounds(selector).unwrap_or_else(|| panic!("{selector} at {width}"));
+            for b in [summary, body] {
+                assert!(b.left() >= page.left() && b.right() <= page.right() + px(1.), "{selector} overflows at {width}");
+            }
+        }
+        vcx.update(|_, cx| ws.update(cx, |ws, cx| { ws.space.tab = SpaceTab::Overview; ws.space.selected.insert(root.join("notes.txt")); cx.notify(); }));
+        vcx.run_until_parked();
+        assert!(vcx.debug_bounds("space-action-bar").is_some(), "selection shows the cleanup bar");
+        vcx.update(|_, cx| ws.update(cx, |ws, cx| { ws.space.selected.clear(); cx.notify(); }));
+    }
+}
+
+#[gpui_kit::test]
+async fn plugin_root_is_chosen_in_rile_and_cancel_keeps_results(cx: &mut TestAppContext) {
+    use gpui_kit::VisualTestContext;
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    let child = root.join("project");
+    fs::create_dir(&child).unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["project"]).await;
+    let key = ("test.pages".to_string(), "page".to_string());
+    cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| {
+        ws.plugins.pages.push((key.0.clone(), rile_plugins::Page { id: key.1.clone(), title: "Test Page".into(), icon: None }));
+        ws.open_plugin_page(&key.0, &key.1, window, cx);
+        ws.choose_plugin_root(&key.0, &key.1, window, cx);
+        assert!(ws.plugin_root_picker_active());
+        assert_eq!(ws.pane().read(cx).location, Location::Dir(root.clone()));
+        assert!(ws.plugins.sessions[&key].root.is_none(), "browsing is not confirmation");
+    })).unwrap();
+    {
+        let mut vcx = VisualTestContext::from_window(window, cx);
+        vcx.run_until_parked();
+        assert!(vcx.debug_bounds("plugin-root-picker").is_some(), "confirmation uses an inline explorer bar, not a system dialog");
+        vcx.update(|window, cx| ws.update(cx, |ws, cx| {
+            ws.cancel_plugin_root(window, cx);
+            assert!(!ws.plugin_root_picker_active());
+            assert!(ws.plugins.sessions[&key].root.is_none());
+            assert!(matches!(ws.pane().read(cx).location, Location::PluginPage { .. }));
+            ws.choose_plugin_root(&key.0, &key.1, window, cx);
+        }));
+    }
+    wait_for_names(cx, window, &ws, &["project"]).await;
+    cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| {
+        ws.pane().update(cx, |pane, _| { pane.selected.insert(child.clone()); });
+        assert_eq!(ws.plugin_root_picker_path(cx), Some(child.clone()));
+        ws.confirm_plugin_root(window, cx);
+        assert!(!ws.plugin_root_picker_active());
+        assert_eq!(ws.plugins.sessions[&key].root.as_ref(), Some(&child));
+        assert!(matches!(ws.pane().read(cx).location, Location::PluginPage { .. }));
+    })).unwrap();
+}
+
+fn wait_for_backup(cx: &mut TestAppContext, ws: &Entity<Workspace>) {
+    for _ in 0..500 {
+        cx.run_until_parked();
+        if cx.read(|cx| ws.read(cx).backups.running.is_empty()) {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    panic!("backup did not finish");
+}
+
+/// A job created in the app backs up incrementally, keeps replaced files as
+/// versions, records its history and persists its configuration.
+#[gpui_kit::test]
+async fn backup_job_runs_incrementally(cx: &mut TestAppContext) {
+    use rile_backup::{BackupConfig, Destination, Outcome, Schedule, Trigger};
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    let (src, dest) = (root.join("Docs"), root.join("Backup"));
+    fs::create_dir_all(src.join("sub")).unwrap();
+    fs::write(src.join("a.txt"), "one").unwrap();
+    fs::write(src.join("sub/b.txt"), "two").unwrap();
+    let (window, ws) = setup(&root, cx);
+    let _config = config_lock(); // backups live in RILE_CONFIG_DIR
+    let id = cx
+        .update_window(window, |_, window, cx| {
+            ws.update(cx, |ws, cx| {
+                let id = ws.add_backup_job(vec![src.clone()], cx);
+                ws.update_backup_job(&id, cx, |j| {
+                    j.destination = Destination::Local { path: dest.clone() };
+                    j.schedule = Schedule::Manual;
+                });
+                ws.run_backup(&id, Trigger::Manual, false, window, cx);
+                assert!(ws.backups.running.contains_key(&id));
+                assert!(ws.ops.iter().all(|op| op.backgrounded), "backups never open the transfer window");
+                ws.open_location(Location::Backups, window, cx);
+                id
+            })
+        })
+        .unwrap();
+    wait_for_backup(cx, &ws);
+    assert_eq!(fs::read_to_string(dest.join("Docs/sub/b.txt")).unwrap(), "two");
+    let saved = BackupConfig::load();
+    assert_eq!(saved.job.len(), 1);
+    assert_eq!(saved.job[0].name, "Docs");
+    // "Edit" on the page opens Settings → Backups from inside a workspace update.
+    cx.update_window(window, |_, window, cx| {
+        ws.update(cx, |ws, cx| crate::dialogs::open_backup_settings(cx.entity(), ws.settings.clone(), Some(id.clone()), window, cx))
+    })
+    .unwrap();
+    cx.run_until_parked();
+    cx.update_window(window, |_, window, _| window.refresh()).unwrap();
+    cx.run_until_parked();
+
+    // Change one file: only it is copied, the old copy becomes a version.
+    fs::write(src.join("a.txt"), "one, edited").unwrap();
+    let f = fs::OpenOptions::new().write(true).open(src.join("a.txt")).unwrap();
+    f.set_modified(std::time::SystemTime::now() + Duration::from_secs(5)).unwrap();
+    cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.run_backup(&id, Trigger::Manual, false, window, cx))).unwrap();
+    wait_for_backup(cx, &ws);
+    let history = cx.read(|cx| ws.read(cx).backups.history(&id).to_vec());
+    assert_eq!(history.len(), 2);
+    assert_eq!((history[0].outcome.clone(), history[0].copied, history[0].files), (Outcome::Success, 1, 2));
+    assert_eq!(fs::read_to_string(dest.join("Docs/a.txt")).unwrap(), "one, edited");
+    assert!(dest.join(rile_backup::engine::VERSIONS_DIR).is_dir());
+    // Both runs are listed with the finished background jobs.
+    assert_eq!(cx.read(|cx| ws.read(cx).finished_jobs.len()), 2);
+
+    cx.update_window(window, |_, _, cx| ws.update(cx, |ws, cx| ws.remove_backup_job(&id, cx))).unwrap();
+    assert!(BackupConfig::load().job.is_empty());
+    assert!(dest.join("Docs/a.txt").exists(), "deleting a job keeps the backup");
+}
+
+fn click_selector(vcx: &mut gpui_kit::VisualTestContext, selector: &'static str) {
+    vcx.run_until_parked();
+    let at = vcx.debug_bounds(selector).unwrap_or_else(|| panic!("{selector} not rendered")).center();
+    vcx.simulate_click(at, gpui_kit::Modifiers::default());
+    vcx.run_until_parked();
+}
+
+/// Restoring and deleting runs from the Backups page go through their
+/// confirmation dialogs and act on the real backup.
+#[gpui_kit::test]
+async fn backups_page_restores_and_deletes_runs(cx: &mut TestAppContext) {
+    use rile_backup::{Destination, Schedule, Trigger};
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().canonicalize().unwrap();
+    let (src, dest) = (root.join("Docs"), root.join("Backup"));
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("a.txt"), "one").unwrap();
+    fs::write(src.join("b.txt"), "two").unwrap();
+    let (window, ws) = setup(&root, cx);
+    let _config = config_lock();
+    let run_now = |cx: &mut TestAppContext, id: &str| {
+        cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.run_backup(id, Trigger::Manual, false, window, cx))).unwrap();
+        wait_for_backup(cx, &ws);
+    };
+    let id = cx
+        .update_window(window, |_, window, cx| {
+            ws.update(cx, |ws, cx| {
+                let id = ws.add_backup_job(vec![src.clone()], cx);
+                ws.update_backup_job(&id, cx, |j| {
+                    j.destination = Destination::Local { path: dest.clone() };
+                    j.schedule = Schedule::Manual;
+                });
+                ws.open_location(Location::Backups, window, cx);
+                id
+            })
+        })
+        .unwrap();
+    run_now(cx, &id);
+    fs::remove_file(src.join("b.txt")).unwrap();
+    run_now(cx, &id);
+    let history = cx.read(|cx| ws.read(cx).backups.history(&id).to_vec());
+    assert!(history[0].versions.is_some(), "the removed file was kept as a version");
+
+    // Lose a file locally; Restore → "Restore to Original Locations" brings it back.
+    fs::remove_file(src.join("a.txt")).unwrap();
+    let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
+    click_selector(&mut vcx, "backup-restore-0");
+    click_selector(&mut vcx, "choose-1");
+    for _ in 0..500 {
+        vcx.run_until_parked();
+        if src.join("a.txt").exists() && !vcx.read(|cx| ws.read(cx).backup_task_running(&id)) {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let finished: Vec<String> = vcx.read(|cx| ws.read(cx).finished_jobs.iter().map(|j| format!("{} {:?}", j.label, j.error)).collect());
+    assert!(src.join("a.txt").exists(), "restore didn't run: {finished:?}");
+    assert_eq!(fs::read_to_string(src.join("a.txt")).unwrap(), "one");
+    assert!(!src.join("b.txt").exists(), "files removed before the last backup stay in its versions");
+
+    // Deleting the newest run asks first, then removes it and its versions.
+    let version = dest.join(rile_backup::engine::VERSIONS_DIR).join(history[0].versions.clone().unwrap());
+    assert!(version.exists());
+    click_selector(&mut vcx, "backup-run-delete-0-0");
+    assert_eq!(vcx.read(|cx| ws.read(cx).backups.history(&id).len()), 2, "nothing happens before confirming");
+    click_selector(&mut vcx, "confirm-ok");
+    for _ in 0..500 {
+        vcx.run_until_parked();
+        if vcx.read(|cx| ws.read(cx).backups.history(&id).len()) == 1 {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert_eq!(vcx.read(|cx| ws.read(cx).backups.history(&id).len()), 1);
+    assert!(!version.exists());
+
+    // Deleting the backup with its files removes both job and data.
+    vcx.update(|window, cx| ws.update(cx, |ws, cx| ws.delete_backup(&id, true, window, cx)));
+    for _ in 0..500 {
+        vcx.run_until_parked();
+        if vcx.read(|cx| ws.read(cx).backups.config.job.is_empty()) {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(vcx.read(|cx| ws.read(cx).backups.config.job.is_empty()));
+    assert!(!dest.join("Docs").exists());
 }

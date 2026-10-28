@@ -34,11 +34,15 @@ A plugin exports:
 - `render-page(req)` / `page-event(req, event)` – return a `page-update`: the
   page UI, a new opaque `state` string (handed back next call, kept by the host
   so it survives re-instantiation) and actions. Pages may also return
-  `choose-root` (folder picker) and `set-root(dir)`; both re-render the page.
+  `choose-root` (browse in Rile, then confirm a folder) and `set-root(dir)`;
+  confirming a new root re-renders the page. Cancelling keeps the current view.
 
 ### Pages
 
-A page works on a **root** folder (initially the explorer's current folder).
+A page works on a **root** folder, initially unset. Use `choose-root` to ask
+the user for a directory before scanning; opening a page does not scan the
+explorer's current directory automatically. The host shows an animated,
+indeterminate progress indicator while a page call is running.
 During page calls the plugin may `list-dir`/`read-dir`/`dir-size` anything below it.
 The UI is a flat node list; each node names its parent container by index
 (`none` = top level, laid out in a column):

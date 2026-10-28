@@ -1,88 +1,83 @@
-//! Set the running Dock icon to match the selected accent, even under cargo run.
+//! Set the running Dock icon to the selected style and accent, even under cargo run.
 
-use rile_core::settings::Accent;
+use rile_core::settings::{Accent, AppIcon};
 
-fn icon_bytes(accent: Accent) -> &'static [u8] {
-    match accent {
-        Accent::Blue => include_bytes!("../assets/app-icons/blue.icns"),
-        Accent::Purple => include_bytes!("../assets/app-icons/purple.icns"),
-        Accent::Pink => include_bytes!("../assets/app-icons/pink.icns"),
-        Accent::Red => include_bytes!("../assets/app-icons/red.icns"),
-        Accent::Orange => include_bytes!("../assets/app-icons/orange.icns"),
-        Accent::Green => include_bytes!("../assets/app-icons/green.icns"),
-        Accent::Teal => include_bytes!("../assets/app-icons/teal.icns"),
-        Accent::Graphite => include_bytes!("../assets/app-icons/graphite.icns"),
+include!("app_icon_table.rs");
+
+/// The icon as an image for drawing in the UI (cached, so renders stay cheap).
+pub fn png(style: AppIcon, accent: Accent) -> Option<std::sync::Arc<gpui_kit::Image>> {
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    thread_local! {
+        static CACHE: RefCell<HashMap<(AppIcon, Accent), Arc<gpui_kit::Image>>> = RefCell::new(HashMap::new());
     }
-}
-
-/// The embedded PNG (512pt@2x if present) for an accent, for drawing in the UI.
-pub fn png(accent: Accent) -> Option<std::sync::Arc<gpui_kit::Image>> {
-    let bytes = icon_bytes(accent);
-    let mut best: Option<&[u8]> = None;
-    let mut i = 8;
-    while i + 8 <= bytes.len() {
-        let tag = &bytes[i..i + 4];
-        let len = u32::from_be_bytes(bytes[i + 4..i + 8].try_into().ok()?) as usize;
-        if len < 8 || i + len > bytes.len() {
-            break;
-        }
-        let data = &bytes[i + 8..i + len];
-        if data.starts_with(b"\x89PNG") && matches!(tag, b"ic10" | b"ic09" | b"ic14" | b"ic08") {
-            if best.is_none_or(|b| data.len() > b.len()) {
-                best = Some(data);
-            }
-        }
-        i += len;
-    }
-    best.map(|d| std::sync::Arc::new(gpui_kit::Image::from_bytes(gpui_kit::ImageFormat::Png, d.to_vec())))
+    let image = CACHE.with(|cache| {
+        cache
+            .borrow_mut()
+            .entry((style, accent))
+            .or_insert_with(|| Arc::new(gpui_kit::Image::from_bytes(gpui_kit::ImageFormat::Png, png_bytes(style, accent).to_vec())))
+            .clone()
+    });
+    Some(image)
 }
 
 // Tests use GPUI's simulated app, not the actual NSApplication.
 #[cfg(all(target_os = "macos", not(test)))]
-pub fn install(accent: Accent) {
+pub fn install(style: AppIcon, accent: Accent) {
     use std::cell::Cell;
     use objc2::{AnyThread, MainThreadMarker};
     use objc2_app_kit::{NSApplication, NSImage};
     use objc2_foundation::NSData;
 
     thread_local! {
-        static CURRENT: Cell<Option<Accent>> = const { Cell::new(None) };
+        static CURRENT: Cell<Option<(AppIcon, Accent)>> = const { Cell::new(None) };
     }
-    if CURRENT.with(|current| current.get() == Some(accent)) {
+    if CURRENT.with(|current| current.get() == Some((style, accent))) {
         return;
     }
     let mtm = MainThreadMarker::new().expect("app icon must be installed on the main thread");
     objc2::rc::autoreleasepool(|_| {
-        let data = NSData::with_bytes(icon_bytes(accent));
+        let data = NSData::with_bytes(png_bytes(style, accent));
         let image = NSImage::initWithData(NSImage::alloc(), &data)
-            .expect("embedded Pathline app icon must decode");
+            .expect("embedded app icon must decode");
         // SAFETY: called on the main thread with a valid, non-null image.
         unsafe { NSApplication::sharedApplication(mtm).setApplicationIconImage(Some(&image)) };
     });
-    CURRENT.with(|current| current.set(Some(accent)));
+    CURRENT.with(|current| current.set(Some((style, accent))));
 }
 
 #[cfg(any(not(target_os = "macos"), test))]
-pub fn install(_accent: Accent) {}
+pub fn install(_style: AppIcon, _accent: Accent) {}
 
 #[cfg(test)]
 mod tests {
-    use super::icon_bytes;
-    use rile_core::settings::Accent;
+    use super::png_bytes;
+    use rile_core::settings::{Accent, AppIcon};
 
     #[test]
-    fn all_accents_have_distinct_complete_icons() {
-        for (i, accent) in Accent::ALL.into_iter().enumerate() {
-            let bytes = icon_bytes(accent);
-            assert_eq!(&bytes[..4], b"icns", "{accent:?}");
-            let length = u32::from_be_bytes(bytes[4..8].try_into().unwrap()) as usize;
-            assert_eq!(length, bytes.len(), "{accent:?}");
-            assert!(bytes.windows(4).any(|tag| tag == b"ic10"), "{accent:?}");
-            for other in &Accent::ALL[..i] {
-                assert_ne!(bytes, icon_bytes(*other), "{accent:?} and {other:?}");
+    fn every_style_and_accent_has_a_distinct_png() {
+        let mut seen: Vec<&[u8]> = Vec::new();
+        for style in AppIcon::ALL {
+            for accent in Accent::ALL {
+                let bytes = png_bytes(style, accent);
+                assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"), "{style:?} {accent:?}");
+                // IHDR width and height: 512 × 512.
+                assert_eq!(&bytes[16..24], &[0, 0, 2, 0, 0, 0, 2, 0], "{style:?} {accent:?}");
+                assert!(!seen.contains(&bytes), "{style:?} {accent:?} duplicates another icon");
+                seen.push(bytes);
             }
         }
-        assert_eq!(icon_bytes(Accent::Blue), include_bytes!("../assets/Rile.icns"));
+    }
+
+    #[test]
+    fn finder_icon_is_a_complete_icns() {
+        let bytes = include_bytes!("../assets/Rile.icns");
+        assert_eq!(&bytes[..4], b"icns");
+        let length = u32::from_be_bytes(bytes[4..8].try_into().unwrap()) as usize;
+        assert_eq!(length, bytes.len());
+        assert!(bytes.windows(4).any(|tag| tag == b"ic10"));
     }
 
     #[cfg(target_os = "macos")]
@@ -93,12 +88,13 @@ mod tests {
         use objc2_foundation::NSData;
 
         objc2::rc::autoreleasepool(|_| {
-            for accent in Accent::ALL {
-                let data = NSData::with_bytes(icon_bytes(accent));
-                let image = NSImage::initWithData(NSImage::alloc(), &data).unwrap();
-                assert!(image.isValid(), "{accent:?}");
-                assert!(image.size().width > 0., "{accent:?}");
-                assert!(image.size().height > 0., "{accent:?}");
+            for style in AppIcon::ALL {
+                for accent in Accent::ALL {
+                    let data = NSData::with_bytes(png_bytes(style, accent));
+                    let image = NSImage::initWithData(NSImage::alloc(), &data).unwrap();
+                    assert!(image.isValid(), "{style:?} {accent:?}");
+                    assert!(image.size().width > 0., "{style:?} {accent:?}");
+                }
             }
         });
     }

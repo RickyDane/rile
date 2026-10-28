@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rile Icons — Round 5</title>
+<style>
+  :root {
+    --bg: #f3f3f5; --card: #ffffff; --text: #1c1c1f; --muted: #6b6b73; --line: #e3e3e8;
+    --wall: linear-gradient(135deg, #b9c9e6, #e8d6e8 55%, #f2dcc4);
+  }
+  :root[data-theme="dark"] {
+    --bg: #161618; --card: #202023; --text: #ececf0; --muted: #9a9aa3; --line: #2e2e33;
+    --wall: linear-gradient(135deg, #1d2740, #2c1f3a 55%, #3a2a22);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 16px;
+    align-items: center; justify-content: space-between; padding: 14px 28px;
+    background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--line); }
+  h1 { font-size: 17px; margin: 0; letter-spacing: -.01em; }
+  h1 span { color: var(--muted); font-weight: 400; }
+  .controls { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .swatches { display: flex; gap: 6px; }
+  .sw { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
+    outline: 1px solid rgba(0,0,0,.12); outline-offset: -1px; }
+  .sw[aria-pressed="true"] { border-color: var(--text); }
+  button.toggle { font: inherit; padding: 5px 12px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); cursor: pointer; }
+  main { max-width: 1240px; margin: 0 auto; padding: 28px; }
+  .dock-wrap { border-radius: 18px; background: var(--wall); padding: 56px 20px 22px; margin-bottom: 28px;
+    display: flex; justify-content: center; }
+  .dock { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; align-items: flex-end; padding: 10px 14px; border-radius: 24px;
+    background: rgba(255,255,255,.28); border: 1px solid rgba(255,255,255,.35); backdrop-filter: blur(20px); }
+  :root[data-theme="dark"] .dock { background: rgba(40,40,46,.45); border-color: rgba(255,255,255,.12); }
+  .dock .slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .dock .slot svg { width: 64px; height: 64px; transition: transform .15s; }
+  .dock .slot:hover svg { transform: translateY(-8px) scale(1.12); }
+  .dock .slot small { font-size: 11px; color: rgba(0,0,0,.6); }
+  :root[data-theme="dark"] .dock .slot small { color: rgba(255,255,255,.65); }
+  .dock .sep { width: 1px; align-self: stretch; background: rgba(0,0,0,.15); margin: 6px 4px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+  .card.current { opacity: .85; }
+  .hero { display: flex; gap: 18px; align-items: center; }
+  .hero svg.big { width: 168px; height: 168px; flex: none; }
+  .num { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+  .card h2 { margin: 2px 0 6px; font-size: 19px; letter-spacing: -.01em; }
+  .card p { margin: 0; color: var(--muted); font-size: 13px; }
+  .sizes { display: flex; align-items: flex-end; gap: 14px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .sizes figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .sizes figcaption { font-size: 10px; color: var(--muted); }
+  .accents { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 14px; }
+  .accents svg { width: 100%; height: auto; }
+  @media (max-width: 520px) {
+    header, main { padding-left: 16px; padding-right: 16px; }
+    .grid { grid-template-columns: 1fr; }
+    .hero svg.big { width: 120px; height: 120px; }
+    .dock .slot svg { width: 44px; height: 44px; }
+    .dock { gap: 4px; padding: 8px; overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Rile app icon <span>— round 5 · Folio &amp; Drawer + speed</span></h1>
+  <div class="controls">
+    <div class="swatches" id="swatches"></div>
+    <button class="toggle" id="theme">Dark</button>
+  </div>
+</header>
+<main>
+  <div class="dock-wrap"><div class="dock" id="dock"></div></div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<script>
+const ACCENTS = [
+  ["blue", 212, 92], ["purple", 268, 75], ["pink", 330, 80], ["red", 0, 80],
+  ["orange", 28, 95], ["green", 142, 65], ["teal", 178, 70], ["graphite", 220, 8],
+];
+let current = ACCENTS[0];
+let uidN = 0;
+
+// Shared macOS-style squircle tile: shadow, body fill, top gloss, hairline rim.
+function tile(u, fill) {
+  return `
+    <filter id="${u}sh" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="18" stdDeviation="18" flood-color="#070d18" flood-opacity=".22"/></filter>
+    <linearGradient id="${u}gl" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".22"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="${fill}" filter="url(#${u}sh)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#${u}gl)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="3"/>`;
+}
+const A = (l, sMul = 1, a = 1) => `hsl(var(--h) calc(var(--s) * ${sMul}) ${l}% / ${a})`;
+const stop = (o, c) => `<stop offset="${o}" style="stop-color:${c}"/>`;
+const lift = u => `<filter id="${u}lf" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="14" stdDeviation="14" flood-color="#081321" flood-opacity=".28"/></filter>`;
+
+// --- Shared parts from round 4: Folio (#1) and Drawer (#5) ---
+const skew = (dx, deg, s = 1, cy = 540) => `translate(${dx} 0) translate(512 ${cy}) skewX(${deg}) scale(${s}) translate(-512 -${cy})`;
+const tileClip = u => `<clipPath id="${u}tc"><rect x="100" y="100" width="824" height="824" rx="184"/></clipPath>`;
+// Speed lines: rounded strokes that fade in from the left (userSpace so flat lines still get the gradient).
+const streakDef = (u, color, x1 = 150, x2 = 340) =>
+  `<linearGradient id="${u}sl" gradientUnits="userSpaceOnUse" x1="${x1}" x2="${x2}">${stop(0, color.replace(/\/ [\d.]+\)$/, "/ 0)"))}${stop(1, color)}</linearGradient>`;
+const streaks = (u, lines) => `<g stroke="url(#${u}sl)" stroke-linecap="round">` +
+  lines.map(([y, a, b, w = 26]) => `<path d="M${a} ${y}H${b}" stroke-width="${w}"/>`).join("") + `</g>`;
+
+const folioDefs = (u, extra = "") => `<defs>
+  <linearGradient id="${u}t" x2=".2" y2="1"><stop stop-color="#fdfdfe"/><stop offset="1" stop-color="#e4e7ee"/></linearGradient>
+  <linearGradient id="${u}b" x2="0" y2="1">${stop(0, A(42))}${stop(1, A(34))}</linearGradient>
+  <linearGradient id="${u}f" x2=".15" y2="1">${stop(0, A(66))}${stop(1, A(50))}</linearGradient>
+  ${lift(u)}${extra}${tile(u, `url(#${u}t)`)}`;
+const FOLIO_FRONT = "M232 488q-4-36 32-36h496q36 0 32 36l-28 254q-3 30-34 30H294q-31 0-34-30z";
+const folioBody = (u, deco = "", sheets = true) => `
+  <path d="M262 300h150q22 0 36 17l26 31h290q34 0 34 34v356H228V334q0-34 34-34z" fill="url(#${u}b)"/>
+  ${sheets ? `<g filter="url(#${u}lf)">
+    <rect x="300" y="352" width="400" height="300" rx="18" fill="#fff" transform="rotate(-6 500 500)"/>
+    <rect x="330" y="372" width="400" height="300" rx="18" fill="#f4f6fa" transform="rotate(4 530 520)"/>
+  </g>
+  <g fill="${A(55, 0.5, .35)}" transform="rotate(4 530 520)"><rect x="370" y="410" width="220" height="22" rx="11"/><rect x="370" y="452" width="300" height="22" rx="11"/></g>` : ""}
+  <path d="${FOLIO_FRONT}" fill="url(#${u}f)" filter="url(#${u}lf)"/>
+  <path d="M262 468h500" stroke="#fff" stroke-opacity=".45" stroke-width="6" stroke-linecap="round"/>${deco}`;
+
+const drawerDefs = (u, extra = "") => `<defs>
+  <linearGradient id="${u}t" x2=".25" y2="1">${stop(0, A(30, .5))}${stop(1, A(16, .55))}</linearGradient>
+  <linearGradient id="${u}d" x2="0" y2="1">${stop(0, A(64))}${stop(1, A(48))}</linearGradient>
+  ${lift(u)}${extra}${tile(u, `url(#${u}t)`)}`;
+const drawerFolders = () => `
+  <path d="M262 380h110q14 0 14 14v20h220V560H262z" fill="#dfe4ec"/>
+  <path d="M300 330h110q14 0 14 14v20h292V560H300z" fill="${A(80, .7)}"/>
+  <path d="M560 288h124q14 0 14 14v26h44V560H330V328h216q14 0 14-14z" fill="#fbfcfe"/>
+  <g fill="${A(55, .5, .3)}"><rect x="378" y="380" width="200" height="20" rx="10"/><rect x="378" y="420" width="300" height="20" rx="10"/></g>`;
+const HANDLE = `<rect x="402" y="612" width="220" height="56" rx="28" fill="${A(26, .6, .55)}"/>
+  <rect x="418" y="622" width="188" height="16" rx="8" fill="#fff" fill-opacity=".25"/>`;
+const drawerFront = (u, deco = HANDLE) => `
+  <g filter="url(#${u}lf)"><rect x="214" y="500" width="596" height="290" rx="54" fill="url(#${u}d)"/></g>
+  <path d="M268 506h488" stroke="#fff" stroke-opacity=".45" stroke-width="6" stroke-linecap="round"/>${deco}`;
+
+// Lightning bolt, centred on (cx, cy), ~h tall.
+const bolt = (cx, cy, k, fill, extra = "") =>
+  `<path transform="translate(${cx} ${cy}) scale(${k})" d="M18-100-62 12h52l-20 88 82-118h-54z" fill="${fill}" stroke="${fill}" stroke-width="10" stroke-linejoin="round" ${extra}/>`;
+
+const ICONS = [
+  {
+    name: "Folio Dash",
+    blurb: "Folio leaning forward with speed lines trailing behind it. The simplest way to add motion to the folder.",
+    draw: u => `${folioDefs(u, streakDef(u, A(58, 1, 1)))}${streaks(u, [[520, 196, 300], [600, 150, 290, 30], [680, 210, 296]])}
+      <g transform="${skew(66, -9, .84)}">${folioBody(u)}</g>`,
+  },
+  {
+    name: "Folio Bolt",
+    blurb: "Folio with a lightning bolt on the front panel. Still clearly a folder, with the bolt saying 'fast'. Holds up at small sizes.",
+    draw: u => `${folioDefs(u)}${folioBody(u, bolt(512, 620, 1.12, "#fff", `filter="url(#${u}lf)"`))}`,
+  },
+  {
+    name: "Folio Fast-Forward",
+    blurb: "Fast-forward chevrons pressed into the folder front. A familiar 'faster' symbol that stays neat and simple.",
+    draw: u => `${folioDefs(u)}${folioBody(u, `
+      <path d="M408 552l84 64-84 64M532 552l84 64-84 64" fill="none" stroke="#fff" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>`)}`,
+  },
+  {
+    name: "Folio Streak",
+    blurb: "The folder leaves fading copies of itself behind as it moves, like a photo with motion blur.",
+    draw: u => `${folioDefs(u, tileClip(u))}
+      <g clip-path="url(#${u}tc)">
+        <g opacity=".14" transform="${skew(-60, -9, .84)}"><path d="M262 300h150q22 0 36 17l26 31h290q34 0 34 34v356H228V334q0-34 34-34z" fill="${A(50)}"/></g>
+        <g opacity=".28" transform="${skew(0, -9, .84)}"><path d="M262 300h150q22 0 36 17l26 31h290q34 0 34 34v356H228V334q0-34 34-34z" fill="${A(50)}"/></g>
+      </g>
+      <g transform="${skew(66, -9, .84)}">${folioBody(u)}</g>`,
+  },
+  {
+    name: "Folio Launch",
+    blurb: "A page shoots out of the open folder with a motion trail. Shows files opening and moving instantly.",
+    draw: u => `${folioDefs(u, `<linearGradient id="${u}tr" gradientUnits="userSpaceOnUse" x1="470" y1="500" x2="660" y2="320">${stop(0, A(58, 1, 0))}${stop(1, A(58, 1, .9))}</linearGradient>`)}
+      <g transform="translate(-36 74) translate(512 540) scale(.8) translate(-512 -540)">${folioBody(u, "", false)}</g>
+      <g stroke="url(#${u}tr)" stroke-linecap="round" stroke-width="24"><path d="M462 470 594 352"/><path d="M528 520 650 410"/><path d="M420 410 530 312"/></g>
+      <g filter="url(#${u}lf)" transform="rotate(18 690 290)">
+        <rect x="600" y="180" width="180" height="224" rx="20" fill="#fff"/>
+        <g fill="${A(55, .5, .35)}"><rect x="630" y="222" width="90" height="18" rx="9"/><rect x="630" y="256" width="120" height="18" rx="9"/><rect x="630" y="290" width="104" height="18" rx="9"/></g>
+      </g>`,
+  },
+  {
+    name: "Drawer Launch",
+    blurb: "The drawer slides out fast, leaning forward with speed lines. Takes the tactile Drawer and adds motion.",
+    draw: u => `${drawerDefs(u, streakDef(u, "hsl(0 0% 100% / 1)", 130, 300))}${streaks(u, [[560, 170, 270], [640, 140, 262, 30], [720, 190, 268]])}
+      <g transform="${skew(64, -9, .86, 560)}">${drawerFolders()}${drawerFront(u)}</g>`,
+  },
+  {
+    name: "Drawer Bolt",
+    blurb: "The drawer handle is replaced by a lightning bolt. The Drawer metaphor stays the same, with one clear 'fast' detail.",
+    draw: u => `${drawerDefs(u)}${drawerFolders()}${drawerFront(u, `
+      ${bolt(512, 646, .98, A(26, .6, .55))}
+      <path transform="translate(512 640) scale(.98)" d="M18-100-62 12h52l-20 88 82-118h-54z" fill="#fff" fill-opacity=".92" stroke="#fff" stroke-opacity=".92" stroke-width="10" stroke-linejoin="round"/>`)}`,
+  },
+  {
+    name: "Drawer Rush",
+    blurb: "The hanging folders tip forward with motion ticks behind them, as if the drawer just slammed open. Livelier, while the drawer stays steady.",
+    draw: u => `${drawerDefs(u, streakDef(u, "hsl(0 0% 100% / .9)", 140, 290))}${streaks(u, [[330, 190, 280, 22], [390, 160, 266, 26], [446, 196, 270, 22]])}
+      <g transform="rotate(10 512 600)">${drawerFolders()}</g>${drawerFront(u)}`,
+  },
+];
+
+const REFS = [
+  { name: "Folio (round 4)", blurb: "Your pick from round 4: concept 1.", draw: u => `${folioDefs(u)}${folioBody(u)}` },
+  { name: "Drawer (round 4)", blurb: "Your pick from round 4: concept 5.", draw: u => `${drawerDefs(u)}${drawerFolders()}${drawerFront(u)}` },
+];
+
+function svg(icon, accent = current, cls = "") {
+  const u = `i${uidN++}`;
+  return `<svg class="${cls}" viewBox="0 0 1024 1024" style="--h:${accent[1]};--s:${accent[2]}%" role="img" aria-label="${icon.name}">${icon.draw(u)}</svg>`;
+}
+
+function render() {
+  uidN = 0;
+  document.getElementById("dock").innerHTML =
+    ICONS.map(i => `<div class="slot">${svg(i)}<small>${i.name.replace(/^\w+ /, "")}</small></div>`).join("") +
+    `<div class="sep"></div>` + REFS.map(i => `<div class="slot">${svg(i)}<small>${i.name.split(" ")[0]}</small></div>`).join("");
+  document.getElementById("grid").innerHTML = [...ICONS, ...REFS].map((icon, n) => {
+    const ref = REFS.includes(icon);
+    return `
+    <article class="card${ref ? " current" : ""}">
+      <div class="hero">${svg(icon, current, "big")}
+        <div><div class="num">${ref ? "Reference" : "Concept " + (n + 1)}</div>
+        <h2>${icon.name}</h2><p>${icon.blurb}</p></div>
+      </div>
+      <div class="sizes">${[128, 64, 32, 16].map(s => `<figure><div style="width:${s}px;height:${s}px">${svg(icon)}</div><figcaption>${s}px</figcaption></figure>`).join("")}</div>
+      ${ref ? "" : `<div class="accents">${ACCENTS.map(a => svg(icon, a)).join("")}</div>`}
+    </article>`;
+  }).join("");
+}
+
+
+document.getElementById("swatches").innerHTML = ACCENTS.map((a, i) =>
+  `<button class="sw" title="${a[0]}" aria-pressed="${i === 0}" data-i="${i}" style="background:hsl(${a[1]} ${a[2]}% 55%)"></button>`).join("");
+document.getElementById("swatches").addEventListener("click", e => {
+  const i = e.target.dataset.i; if (i == null) return;
+  current = ACCENTS[i];
+  document.querySelectorAll(".sw").forEach(b => b.setAttribute("aria-pressed", b.dataset.i === i));
+  render();
+});
+document.getElementById("theme").addEventListener("click", e => {
+  const dark = document.documentElement.dataset.theme !== "dark";
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  e.target.textContent = dark ? "Light" : "Dark";
+});
+render();
+</script>
+</body>
+</html>

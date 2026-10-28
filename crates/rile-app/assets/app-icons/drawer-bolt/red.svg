@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+  <linearGradient id="t" x2=".25" y2="1"><stop offset="0" stop-color="rgb(107,46,46)"/><stop offset="1" stop-color="rgb(59,23,23)"/></linearGradient>
+  <linearGradient id="d" x2="0" y2="1"><stop offset="0" stop-color="rgb(237,90,90)"/><stop offset="1" stop-color="rgb(220,24,24)"/></linearGradient>
+  <filter id="lf" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="14" stdDeviation="14" flood-color="#081321" flood-opacity=".28"/></filter>
+  <filter id="sh" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dy="18" stdDeviation="18" flood-color="#070d18" flood-opacity=".22"/></filter>
+  <linearGradient id="gl" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".22"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#t)" filter="url(#sh)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#gl)"/>
+  <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="3"/>
+  <path d="M262 380h110q14 0 14 14v20h220V560H262z" fill="#dfe4ec"/>
+  <path d="M300 330h110q14 0 14 14v20h292V560H300z" fill="rgb(233,175,175)"/>
+  <path d="M560 288h124q14 0 14 14v26h44V560H330V328h216q14 0 14-14z" fill="#fbfcfe"/>
+  <g fill="rgba(186,94,94,0.3)"><rect x="378" y="380" width="200" height="20" rx="10"/><rect x="378" y="420" width="300" height="20" rx="10"/></g>
+  <g filter="url(#lf)"><rect x="214" y="500" width="596" height="290" rx="54" fill="url(#d)"/></g>
+  <path d="M268 506h488" stroke="#fff" stroke-opacity=".45" stroke-width="6" stroke-linecap="round"/>
+    <path transform="translate(512 646) scale(0.98)" d="M18-100-62 12h52l-20 88 82-118h-54z" fill="rgba(98,34,34,0.55)" stroke="rgba(98,34,34,0.55)" stroke-width="10" stroke-linejoin="round" />
+    <path transform="translate(512 640) scale(.98)" d="M18-100-62 12h52l-20 88 82-118h-54z" fill="#fff" fill-opacity=".92" stroke="#fff" stroke-opacity=".92" stroke-width="10" stroke-linejoin="round"/>
+</svg>
