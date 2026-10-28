@@ -1572,6 +1572,8 @@ mod tests {
         cx.run_until_parked();
     }
 
+    // The Apple Intelligence tab exists only on macOS.
+    #[cfg(target_os = "macos")]
     #[gpui_kit::test]
     fn progressive_setup_and_provider_switching(cx: &mut TestAppContext) {
         let (_dir, window, _ws, models) = open(cx);
@@ -1595,6 +1597,8 @@ mod tests {
         assert_eq!(cx.read(|cx| models.read(cx).provider), Provider::Apple);
     }
 
+    // The Apple Intelligence tab exists only on macOS.
+    #[cfg(target_os = "macos")]
     #[gpui_kit::test]
     fn download_progress_is_visible_and_cancellable(cx: &mut TestAppContext) {
         let (_dir, window, _ws, models) = open(cx);
@@ -1632,6 +1636,8 @@ mod tests {
         assert!(cancel.load(Ordering::Relaxed));
     }
 
+    // The Apple Intelligence tab exists only on macOS.
+    #[cfg(target_os = "macos")]
     #[gpui_kit::test]
     fn guide_controls_and_disabled_photo_actions(cx: &mut TestAppContext) {
         let (_dir, window, ws, view) = open(cx);

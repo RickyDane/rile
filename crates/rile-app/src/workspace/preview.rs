@@ -62,13 +62,17 @@ mod markdown_image_tests {
             ("screenshots/native-list.png", "/project/docs/screenshots/native-list.png"),
             ("../images/screen%20shot.png", "/project/images/screen shot.png"),
             ("/images/photo.png", "/images/photo.png"),
+            #[cfg(not(windows))]
             ("file:///images/screen%20shot.png", "/images/screen shot.png"),
+            #[cfg(windows)]
+            ("file:///C:/images/screen%20shot.png", "C:/images/screen shot.png"),
             ("images/photo.png?raw=true#preview", "/project/docs/images/photo.png"),
         ] {
             let ImageSource::Resource(Resource::Path(path)) = markdown_image_source(document, &link.into()) else {
                 panic!("expected a filesystem image for {link}");
             };
-            assert_eq!(path.as_ref(), Path::new(expected));
+            // Windows resolves rooted paths against the current drive.
+            assert_eq!(path.as_ref(), std::path::absolute(expected).unwrap());
         }
     }
 

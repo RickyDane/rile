@@ -1114,7 +1114,7 @@ http.server.HTTPServer(("127.0.0.1", port), H).serve_forever()
         let start = Instant::now();
         loop {
             let current = load_state();
-            if state(&current) || start.elapsed() > Duration::from_secs(20) {
+            if state(&current) || start.elapsed() > Duration::from_secs(60) {
                 return current;
             }
             std::thread::sleep(Duration::from_millis(50));

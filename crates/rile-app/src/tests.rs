@@ -104,6 +104,7 @@ fn platform_keys(keys: &str) -> String {
         "cmd-alt-c" => "ctrl-shift-c".into(),
         "cmd-alt-o" => "ctrl-shift-right".into(),
         "cmd-y" => "f3".into(),
+        "cmd-down" => "ctrl-end".into(),
         _ => keys.replace("cmd-", "ctrl-"),
     }
 }
@@ -1997,7 +1998,7 @@ async fn space_analyzer_selection_and_suggestions(cx: &mut TestAppContext) {
         assert!(!ws.space.selected.contains(&nm), "a fully selected group toggles off");
         ws.toggle_space_group(rile_services::space::SuggestionKind::Developer, &root, cx);
         assert!(ws.space.selected.contains(&nm));
-        let library = root.join("Library");
+        let library = root.join(if cfg!(windows) { "AppData" } else { "Library" });
         ws.toggle_space_selection(library.clone(), cx);
         assert!(!ws.space.selected.contains(&library), "system-managed folders can't be selected");
     })).unwrap();
