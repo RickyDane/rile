@@ -3,10 +3,19 @@
 //! `rile-server` (the systemd service) shares folders with Rile apps on the
 //! LAN; `rilectl` sets it up and changes what it shares.
 
+//! The service and the CLI use Unix sockets and systemd: they build on Unix
+//! only (on Windows the binaries just say so, keeping `cargo build --workspace` working).
+
+#[cfg(unix)]
+pub mod cli;
 pub mod config;
+#[cfg(unix)]
 pub mod daemon;
 pub mod facts;
+#[cfg(unix)]
 pub mod ipc;
+#[cfg(unix)]
+pub mod service;
 
 use std::path::PathBuf;
 
@@ -42,4 +51,11 @@ impl Paths {
     pub fn is_system(&self) -> bool {
         self.config == std::path::Path::new(CONFIG_PATH)
     }
+}
+
+/// What the binaries do on platforms Rile Server doesn't support.
+#[cfg(not(unix))]
+pub fn unsupported(program: &str) -> ! {
+    eprintln!("{program}: Rile Server runs on Linux. On Windows, the Rile app itself is a Nearby device (Settings → Nearby).");
+    std::process::exit(1)
 }

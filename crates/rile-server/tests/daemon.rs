@@ -1,4 +1,5 @@
 //! A daemon and a Rile "app" (a peer store) in one process.
+#![cfg(unix)]
 
 use std::fs;
 use std::sync::atomic::AtomicBool;
