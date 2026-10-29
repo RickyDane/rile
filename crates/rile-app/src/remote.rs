@@ -113,6 +113,12 @@ pub fn connect_dedicated(id: &str) -> Result<(Box<dyn RemoteFs>, String)> {
     Ok((fs, label(id)))
 }
 
+/// The secret for connection `id`: this session's, else the keychain's.
+pub fn saved_secret(id: &str) -> Option<String> {
+    let session = registry().lock().ok().and_then(|r| r.secrets.get(id).cloned());
+    session.or_else(|| rile_remote::credentials::load(id).ok().flatten())
+}
+
 pub fn is_connected(id: &str) -> bool {
     Pool::global().is_connected(id)
 }

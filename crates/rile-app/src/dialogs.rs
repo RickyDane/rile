@@ -885,6 +885,11 @@ impl Render for SettingsView {
                             ),
                             r("Accent color", "Selection, buttons, highlights and sidebar icons", swatches),
                             r(
+                                "Sidebar scroll shadows",
+                                "Show shadows when sidebar items are hidden above or below",
+                                self.switch("s-sidebar-scroll-shadows", s.sidebar_scroll_shadows, |s, v| s.sidebar_scroll_shadows = v),
+                            ),
+                            r(
                                 "Glass effect",
                                 "Blurred sidebar and toolbar; solid panels and popups for readability",
                                 self.switch("s-glass", s.glass, |s, v| s.glass = v),

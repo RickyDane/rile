@@ -175,7 +175,7 @@ pub mod mac {
         }
     );
 
-    fn descriptor_paths(items: &NSAppleEventDescriptor) -> Vec<PathBuf> {
+    pub(crate) fn descriptor_paths(items: &NSAppleEventDescriptor) -> Vec<PathBuf> {
         if items.descriptorType() == u32::from_be_bytes(*b"list") {
             return (1..=items.numberOfItems())
                 .filter_map(|i| items.descriptorAtIndex(i))

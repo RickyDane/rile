@@ -337,7 +337,7 @@ impl Backend for PeerBackend {
         }
     }
 
-    fn write_file(&mut self, _path: &str, _src: &mut dyn Read) -> Result<()> {
+    fn write_file(&mut self, _path: &str, _src: &mut dyn Read, _size: u64) -> Result<()> {
         Err(read_only())
     }
 

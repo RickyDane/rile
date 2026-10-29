@@ -334,6 +334,8 @@ pub struct Settings {
     pub glass_hue: u16,
     /// Percentage of the background visible through the glass (0–100).
     pub glass_translucency: u8,
+    /// Shadows indicating sidebar items hidden above or below the viewport.
+    pub sidebar_scroll_shadows: bool,
     /// Sidebar width chosen by dragging its edge (None: automatic).
     pub sidebar_width: Option<f32>,
     // Search
@@ -365,6 +367,8 @@ pub struct Settings {
     pub remote_enabled: bool,
     /// Order of the sidebar sections (see [`Settings::sidebar_order`]).
     pub sidebar_sections: Vec<SidebarSection>,
+    /// Sidebar sections the user collapsed to just their header.
+    pub collapsed_sidebar_sections: Vec<SidebarSection>,
     /// Default program per file type (application bundle paths). Keys are
     /// a category, or a single extension as ".ext" which takes precedence.
     pub default_apps: std::collections::BTreeMap<String, PathBuf>,
@@ -447,6 +451,7 @@ impl Default for Settings {
             glass: false,
             glass_hue: 0,
             glass_translucency: 50,
+            sidebar_scroll_shadows: true,
             sidebar_width: None,
             search_respect_gitignore: false,
             search_max_results: 5000,
@@ -466,6 +471,7 @@ impl Default for Settings {
             remote_enabled: true,
             sidebar_sections: SidebarSection::ALL.to_vec(),
             nearby: NearbySettings::default(),
+            collapsed_sidebar_sections: Vec::new(),
             default_apps: Default::default(),
             favorites: dirs::home_dir()
                 .into_iter()
@@ -499,6 +505,19 @@ impl Settings {
         let moved = order.remove(from);
         order.insert(to, moved);
         self.sidebar_sections = order;
+    }
+
+    pub fn sidebar_section_collapsed(&self, section: SidebarSection) -> bool {
+        self.collapsed_sidebar_sections.contains(&section)
+    }
+
+    /// Collapses `section` if it is expanded, expands it otherwise.
+    pub fn toggle_sidebar_section(&mut self, section: SidebarSection) {
+        if let Some(ix) = self.collapsed_sidebar_sections.iter().position(|s| *s == section) {
+            self.collapsed_sidebar_sections.remove(ix);
+        } else {
+            self.collapsed_sidebar_sections.push(section);
+        }
     }
 
     /// `$RILE_CONFIG_DIR/settings.toml` if set, else the platform config dir.
@@ -606,18 +625,20 @@ mod tests {
 
     #[test]
     fn roundtrip_and_partial() {
-        let s = Settings { show_hidden: true, glass_hue: 215, glass_translucency: 72,
+        let s = Settings { show_hidden: true, glass_hue: 215, glass_translucency: 72, sidebar_scroll_shadows: false,
             ai_model_path: Some(PathBuf::from("/models/chat.gguf")), ai_llama_server: "/opt/bin/llama-server".into(), ..Default::default() };
         let parsed: Settings = toml::from_str(&toml::to_string(&s).unwrap()).unwrap();
         assert!(parsed.show_hidden);
         assert_eq!(parsed.glass_hue, 215);
         assert_eq!(parsed.glass_translucency, 72);
+        assert!(!parsed.sidebar_scroll_shadows);
         assert_eq!(parsed.ai_model_path, s.ai_model_path);
         assert_eq!(parsed.ai_llama_server, s.ai_llama_server);
         let partial: Settings = toml::from_str("theme = \"dark\"").unwrap();
         assert_eq!(partial.theme, ThemeMode::Dark);
         assert_eq!(partial.glass_hue, 0);
         assert_eq!(partial.glass_translucency, 50);
+        assert!(partial.sidebar_scroll_shadows);
         assert_eq!(partial.app_icon, AppIcon::FolioBolt);
         assert_eq!(partial.ai_model_path, None);
         assert_eq!(partial.ai_llama_server, "llama-server");

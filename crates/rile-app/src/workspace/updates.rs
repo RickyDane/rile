@@ -123,7 +123,7 @@ impl Workspace {
                                 move |_, _, cx| cx.open_url(&url)
                             }))
                             .child(if restart_pending {
-                                Button::new("upd-restart").cursor_pointer().primary().label("Restart Now").on_click(|_, _, cx| cx.restart())
+                                Button::new("upd-restart").cursor_pointer().primary().label("Restart Now").on_click(|_, _, cx| restart(cx))
                             } else {
                                 Button::new("upd-install").cursor_pointer().primary().label("Download & Install").disabled_if(!can_install).on_click(
                                     move |_, window, cx| {
@@ -174,4 +174,29 @@ impl DisabledIf for Button {
     fn disabled_if(self, disabled: bool) -> Self {
         crate::views::kit::PointerUnless::pointer_unless(self, disabled)
     }
+}
+
+/// Relaunches Rile. On macOS not through gpui's `cx.restart()`: it reopens
+/// the bundle with plain `open`, which LaunchServices hands to the backup
+/// menu helper (same bundle, still running) instead of starting the app.
+fn restart(cx: &mut gpui_kit::App) {
+    #[cfg(target_os = "macos")]
+    if let Some(bundle) = std::env::current_exe().ok().and_then(|exe| exe.ancestors().nth(3).map(std::path::Path::to_path_buf))
+        && bundle.extension().is_some_and(|e| e == "app")
+    {
+        use std::os::unix::process::CommandExt as _;
+        // Wait for this process to exit, then start a new instance.
+        let script = "while kill -0 \"$0\" 2>/dev/null; do sleep 0.1; done; exec /usr/bin/open -n \"$1\"";
+        let spawned = std::process::Command::new("/bin/sh")
+            .args(["-c", script])
+            .arg(std::process::id().to_string())
+            .arg(&bundle)
+            .process_group(0)
+            .spawn();
+        if spawned.is_ok() {
+            cx.dispatch_action(&Quit);
+            return;
+        }
+    }
+    cx.restart();
 }

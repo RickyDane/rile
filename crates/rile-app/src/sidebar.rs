@@ -23,6 +23,12 @@ use crate::workspace::{Workspace, display_name};
 pub const MIN_WIDTH: f32 = 160.;
 pub const MAX_WIDTH: f32 = 420.;
 
+// Wheel events can leave the handle outside its bounds until prepaint.
+// Keep the frosted copy in sync with the position the real list will paint.
+fn clamped_scroll_y(offset: f32, max_scroll: f32) -> f32 {
+    offset.clamp(-max_scroll, 0.)
+}
+
 /// The sidebar's width: the icon rail on phone-sized windows, else the
 /// width the user dragged it to, else one that suits the window.
 pub fn width(ws: &Workspace, window: &Window) -> f32 {
@@ -54,8 +60,15 @@ impl Render for SidebarResize {
     }
 }
 
-pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>) -> impl IntoElement {
-    let sidebar_width = width(ws, window);
+thread_local! {
+    /// Set while building the frosted copies of the list under the glass
+    /// footer: their drop targets must not track drags (they sit elsewhere).
+    static GHOST: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// The scrolling list of sidebar sections. `ghost` builds a copy for the
+/// glass footer's fake blur: same layout, no scrolling, no drag tracking.
+fn places(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>, ghost: bool) -> gpui_kit::Stateful<gpui_kit::Div> {
     let theme = cx.theme().clone();
     let ch = chrome(cx);
     let rail = width_class(window) <= Width::Phone;
@@ -370,9 +383,7 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
     let drop_hl = theme.drop_target;
     let mut col = v_flex()
         .id("places")
-        .flex_1()
-        .min_h_0()
-        .overflow_y_scroll()
+        .when(!ghost, |d| d.flex_1().min_h_0().overflow_y_scroll().track_scroll(&ws.sidebar_scroll))
         .px(px(if rail { 8. } else { 10. }))
         .pb_2();
     for section in ws.settings.sidebar_order() {
@@ -386,13 +397,34 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
             SidebarSection::Nearby if ws.settings.nearby.enabled => std::mem::take(&mut near),
             SidebarSection::Nearby => continue,
         };
+        // The rail has no header labels to click, so it always shows items.
+        let collapsed = !rail && ws.settings.sidebar_section_collapsed(section);
         let mut head = h_flex()
             .id(("section-header", section as usize))
+            .debug_selector(move || format!("section-header-{}", section as usize))
+            .group("section-header")
             .child(div().flex_1().min_w_0().child(header(section.label())))
             .when(!rail, |d| {
-                d.cursor_grab()
-                    .tooltip(|w, cx| gpui_kit::component::tooltip::Tooltip::new("Drag to reorder").build(w, cx))
+                d.cursor_pointer()
+                    .tooltip(move |w, cx| {
+                        let tip = if collapsed { "Click to expand, drag to reorder" } else { "Click to collapse, drag to reorder" };
+                        gpui_kit::component::tooltip::Tooltip::new(tip).build(w, cx)
+                    })
+                    .on_click(cx.listener(move |this, _, w, cx| this.toggle_sidebar_section(section, w, cx)))
                     .on_drag(DraggedSection(section), |d, _, _, cx| cx.new(|_| d.clone()))
+                    // Chevron shows on hover, and always while collapsed.
+                    .child(
+                        div()
+                            .flex_none()
+                            .mt(px(6.))
+                            .mr(px(if section == SidebarSection::Network { 2. } else { 8. }))
+                            .when(!collapsed, |d| d.invisible().group_hover("section-header", |s| s.visible()))
+                            .child(
+                                crate::icons::icon(if collapsed { IconName::ChevronRight } else { IconName::ChevronDown })
+                                    .size(px(12.))
+                                    .text_color(ch.text_muted),
+                            ),
+                    )
             });
         match section {
             // Dropping folders on the Favorites header adds them.
@@ -456,9 +488,17 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
                         }))
                     }
                 }))
-                .children(items),
+                .when(!collapsed, |d| d.children(items)),
         );
     }
+    col
+}
+
+pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>) -> impl IntoElement {
+    let sidebar_width = width(ws, window);
+    let ch = chrome(cx);
+    let rail = width_class(window) <= Width::Phone;
+    let col = places(ws, window, cx, false);
 
     let mac = cfg!(target_os = "macos") && !window.is_fullscreen();
     // The drag area is a sibling of the toggle, not its parent: on Windows a
@@ -483,74 +523,142 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
     // toggle goes right of the drag area there and left of it elsewhere.
     let brand = if mac { header.child(drag).children(toggle) } else { header.children(toggle).child(drag) };
 
-    // Settings and background jobs, at the bottom of the sidebar.
-    let jobs = ws.ops.len();
-    let jobs_open = ws.jobs_open;
-    let footer_button = |id: &'static str, icon: IconName, tip: String, active: bool| {
+    // Settings, at the bottom right of the sidebar (background jobs live in
+    // the status bar).
+    let settings_button = |cx: &mut Context<Workspace>| {
         div()
-            .id(id)
-            .relative()
-            .size(px(28.))
+            .id("sidebar-settings")
+            .size(px(22.))
             .flex()
             .items_center()
             .justify_center()
-            .rounded(px(7.))
+            .rounded(px(6.))
             .cursor_pointer()
-            .when(active, |d| d.bg(ch.sidebar_active))
             .hover(|s| s.bg(ch.hover_strong))
-            .child(crate::icons::icon(icon).size(px(16.)).text_color(if active { ch.sidebar_active_icon } else { ch.sidebar_icon }))
-            .tooltip(move |w, cx| gpui_kit::component::tooltip::Tooltip::new(tip.clone()).build(w, cx))
+            .child(crate::icons::icon(IconName::Settings).size(px(14.)).text_color(ch.sidebar_icon))
+            .tooltip(|w, cx| {
+                gpui_kit::component::tooltip::Tooltip::new(format!("Settings ({},)", crate::views::chrome::mod_key())).build(w, cx)
+            })
+            .on_click(cx.listener(|this, _, w, cx| this.open_settings(&crate::actions::OpenSettings, w, cx)))
     };
-    let buttons = |cx: &mut Context<Workspace>| {
-        let settings = footer_button("sidebar-settings", IconName::Settings, format!("Settings ({},)", crate::views::chrome::mod_key()), false)
-            .on_click(cx.listener(|this, _, w, cx| this.open_settings(&crate::actions::OpenSettings, w, cx)));
-        let jobs_button = footer_button(
-            "sidebar-jobs",
-            IconName::Activity,
-            if jobs == 0 { "Background jobs".to_string() } else { format!("Background jobs: {jobs} running") },
-            jobs_open || jobs > 0,
-        )
-        .when(jobs > 0, |d| {
-            d.child(
-                div()
-                    .absolute()
-                    .top(px(-3.))
-                    .right(px(-3.))
-                    .min_w(px(15.))
-                    .h(px(15.))
-                    .px(px(4.))
-                    .rounded_full()
-                    .bg(ch.accent)
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .text_size(px(9.))
-                    .font_weight(FontWeight::BOLD)
-                    .text_color(gpui_kit::white())
-                    .child(jobs.to_string()),
-            )
-        })
-        .on_click(cx.listener(|this, _, _, cx| {
-            let just_closed = this.jobs_closed_at.is_some_and(|t| t.elapsed() < std::time::Duration::from_millis(400));
-            this.jobs_open = !this.jobs_open && !just_closed;
-            cx.notify();
-        }));
-        (settings, jobs_button)
-    };
-    let (settings_button, jobs_button) = buttons(cx);
     let rail_buttons = rail.then(|| {
-        v_flex().flex_none().items_center().gap(px(4.)).pb(px(14.)).child(settings_button).child(jobs_button)
-    });
-    let (settings_button, jobs_button) = buttons(cx);
-    let footer = (!rail).then(|| {
-        h_flex()
+        v_flex()
             .flex_none()
-            .px(px(if sidebar_width < 180. { 10. } else { 16. }))
-            .pt(px(6.))
-            .pb(px(10.))
-            .gap(px(4.))
-            .child(settings_button)
-            .child(jobs_button)
+            .h(px(crate::views::chrome::FOOTER_HEIGHT))
+            .items_center()
+            .justify_center()
+            .border_t_1()
+            .border_color(ch.sidebar_border)
+            .child(settings_button(cx))
+    });
+    // Items scrolled under the footer: a soft shadow above it says so.
+    // A wheel event moves the offset unclamped; GPUI only clamps it when the
+    // list is laid out again, after this render. Clamp it here the same way
+    // so the frosted copies never run past the list's ends.
+    let max_scroll = f32::from(ws.sidebar_scroll.max_offset().y);
+    let scroll_y = clamped_scroll_y(f32::from(ws.sidebar_scroll.offset().y), max_scroll);
+    let more_below = max_scroll > 0.5 && -scroll_y < max_scroll - 0.5;
+    // Mirror the footer shadow when content is hidden above the viewport.
+    let header_shadow = (ws.settings.sidebar_scroll_shadows && scroll_y < -0.5).then(|| {
+        div()
+            .debug_selector(|| "sidebar-header-shadow".into())
+            .absolute()
+            .top_0()
+            .left_0()
+            .right_0()
+            .h(px(14.))
+            .bg(linear_gradient(
+                180.,
+                linear_color_stop(gpui_kit::black().opacity(0.28), 0.),
+                linear_color_stop(gpui_kit::black().opacity(0.), 1.),
+            ))
+    });
+    let footer_shadow = (ws.settings.sidebar_scroll_shadows && more_below).then(|| {
+        div()
+            .debug_selector(|| "sidebar-footer-shadow".into())
+            .absolute()
+            .left_0()
+            .right_0()
+            .bottom_full()
+            .h(px(14.))
+            .bg(linear_gradient(
+                180.,
+                linear_color_stop(gpui_kit::black().opacity(0.), 0.),
+                linear_color_stop(gpui_kit::black().opacity(0.28), 1.),
+            ))
+    });
+    // Glass: the footer shows the items continuing beneath it through
+    // frosted glass. GPUI can't blur in-window content, so it layers a few
+    // offset, faint copies of the list (a cheap box blur) under a milky veil.
+    let frost_copies = (!rail && more_below)
+        .then_some(ch.sidebar_footer)
+        .flatten()
+        .map(|_| {
+            let viewport = ws.sidebar_scroll.bounds().size.height;
+            // The list's top, relative to the footer (which starts where the
+            // list's viewport ends).
+            let top = scroll_y - f32::from(viewport);
+            // A Gaussian-weighted disc of taps: rings every 2px out to 10px, each
+            // turned against the last so no copy lines up with another, and
+            // fainter further out, so the copies melt into one soft blur
+            // instead of showing as separate bands.
+            const RINGS: [(f32, usize); 6] = [(0., 1), (2., 6), (4., 8), (6., 10), (8., 12), (10., 14)];
+            const SIGMA: f32 = 5.;
+            let mut taps: Vec<(f32, f32, f32)> = Vec::new();
+            for (ring, (r, n)) in RINGS.iter().enumerate() {
+                let weight = (-r * r / (2. * SIGMA * SIGMA)).exp();
+                for k in 0..*n {
+                    let a = (k as f32 / *n as f32 + ring as f32 * 0.17) * std::f32::consts::TAU;
+                    // Half-pixel steps keep the glyph cache small.
+                    let snap = |v: f32| (v * 2.).round() / 2.;
+                    taps.push((snap(r * a.cos()), snap(r * a.sin()), weight));
+                }
+            }
+            // Total ink roughly that of 1.6 full copies.
+            let total: f32 = taps.iter().map(|t| t.2).sum();
+            GHOST.with(|g| g.set(true));
+            let copies: Vec<_> = taps
+                .iter()
+                .enumerate()
+                .map(|(i, (dx, dy, w))| {
+                    div()
+                        .id(("sidebar-frost", i))
+                        .absolute()
+                        .left(px(*dx))
+                        .top(px(top + dy))
+                        .w(px(sidebar_width - 1.))
+                        .opacity(w / total * 1.6)
+                        .child(places(ws, window, cx, true))
+                })
+                .collect();
+            GHOST.with(|g| g.set(false));
+            copies
+        });
+    let glass = frost_copies.is_some();
+    let footer = (!rail).then(|| {
+        let bar = h_flex()
+            .id("sidebar-footer")
+            .relative()
+            .flex_none()
+            .h(px(crate::views::chrome::FOOTER_HEIGHT))
+            .overflow_hidden()
+            .justify_end()
+            .items_center()
+            .px(px(if sidebar_width < 180. { 6. } else { 10. }))
+            .border_t_1()
+            .border_color(ch.sidebar_border)
+            .when_some(frost_copies, |d, copies| {
+                d.children(copies)
+                    // Milky veil over the copies; it also keeps them from
+                    // receiving clicks or hovers.
+                    .child(div().id("sidebar-frost-veil").absolute().inset_0().occlude().when_some(ch.sidebar_footer, |d, c| d.bg(c)))
+            })
+            // Glass: a faint highlight along the top edge.
+            .when(ch.sidebar_footer.is_some(), |d| {
+                d.border_color(if ch.dark { gpui_kit::white().opacity(0.08) } else { gpui_kit::white().opacity(0.6) })
+            })
+            .child(settings_button(cx));
+        div().relative().flex_none().children(footer_shadow.filter(|_| !glass)).child(bar)
     });
 
     let resize_handle = (!rail).then(|| {
@@ -583,7 +691,7 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
         .border_r_1()
         .border_color(ch.sidebar_border)
         .child(brand)
-        .child(col)
+        .child(v_flex().relative().flex_1().min_h_0().child(col).children(header_shadow))
         .children(footer)
         .children(rail_buttons)
         .children(resize_handle)
@@ -592,6 +700,9 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
 /// Sidebar entries accept drops: files are moved/copied into `dest`. Drag
 /// movement over them drives the hover animation and spring-loading.
 fn drop_into(el: gpui_kit::Stateful<gpui_kit::Div>, dest: PathBuf, cx: &mut Context<Workspace>) -> gpui_kit::Stateful<gpui_kit::Div> {
+    if GHOST.with(|g| g.get()) {
+        return el;
+    }
     let dest2 = dest.clone();
     let (h1, h2) = (dest.clone(), dest.clone());
     let hl = cx.theme().drop_target;
@@ -649,5 +760,25 @@ fn usage_color(used: f32, ch: &crate::theme::Chrome) -> gpui_kit::Hsla {
         gpui_kit::rgba(0xe5a54bff).into()
     } else {
         ch.accent
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::clamped_scroll_y;
+
+    #[test]
+    fn frosted_scroll_stops_at_both_list_ends() {
+        assert_eq!(clamped_scroll_y(-125., 100.), -100.);
+        assert_eq!(clamped_scroll_y(25., 100.), 0.);
+        assert_eq!(clamped_scroll_y(-40., 100.), -40.);
+        assert_eq!(clamped_scroll_y(-100., 100.), -100.);
+    }
+
+    #[test]
+    fn frosted_scroll_stays_at_origin_when_list_fits() {
+        for offset in [-25., 0., 25.] {
+            assert_eq!(clamped_scroll_y(offset, 0.), 0.);
+        }
     }
 }

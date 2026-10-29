@@ -1,6 +1,5 @@
 //! Native explorer chrome around the file views: the window toolbar,
-//! folder tabs, the browser header (location, view switch, sort, options)
-//! and the path bar.
+//! folder tabs, and the browser header (location, view switch, sort, options).
 
 use std::path::{Path, PathBuf};
 
@@ -29,6 +28,7 @@ use crate::theme::{Chrome, chrome};
 use crate::workspace::{Workspace, item_count};
 
 pub const TOOLBAR_HEIGHT: f32 = 52.;
+pub const FOOTER_HEIGHT: f32 = 32.;
 pub const TAB_STRIP_HEIGHT: f32 = 45.;
 /// Right edge (window x) of the macOS traffic lights plus breathing room;
 /// they sit at x = 20 (see main.rs) and span 52px.
@@ -88,6 +88,37 @@ pub fn window_drag(el: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<D
     if cfg!(windows) {
         return el.window_control_area(gpui_kit::WindowControlArea::Drag);
     }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = cx;
+        el.on_mouse_down(MouseButton::Left, |ev: &MouseDownEvent, window, _| {
+            if ev.click_count >= 2 {
+                mac_window_move::end();
+                window.titlebar_double_click();
+            } else {
+                mac_window_move::begin(window);
+            }
+        })
+        // Follow the pointer from window-level listeners, so a fast drag that
+        // briefly leaves this element (or the window) keeps moving it.
+        .child(
+            gpui_kit::canvas(|_, _, _| (), |_, _, window, _| {
+                window.on_mouse_event(|ev: &gpui_kit::MouseMoveEvent, phase, _, _| {
+                    if phase == gpui_kit::DispatchPhase::Capture {
+                        mac_window_move::follow(ev.pressed_button == Some(MouseButton::Left));
+                    }
+                });
+                window.on_mouse_event(|ev: &gpui_kit::MouseUpEvent, phase, _, _| {
+                    if phase == gpui_kit::DispatchPhase::Capture && ev.button == MouseButton::Left {
+                        mac_window_move::end();
+                    }
+                });
+            })
+            .absolute()
+            .size_0(),
+        )
+    }
+    #[cfg(not(target_os = "macos"))]
     el.on_mouse_down(
         MouseButton::Left,
         cx.listener(|this, ev: &MouseDownEvent, window, _| {
@@ -105,6 +136,66 @@ pub fn window_drag(el: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<D
             window.start_window_move();
         }
     }))
+}
+
+/// Moves the window by hand on macOS. gpui's `start_window_move` hands the
+/// drag to AppKit (`performWindowDragWithEvent:`), which on macOS 27 refuses
+/// real pointer drags outside the system titlebar strip ("Window move
+/// completed without beginning"), so the window stayed put.
+#[cfg(target_os = "macos")]
+mod mac_window_move {
+    use std::cell::Cell;
+
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+    use objc2_foundation::{NSPoint, NSRect};
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+    struct Move {
+        ns_window: *mut AnyObject,
+        pointer: NSPoint,
+        origin: NSPoint,
+    }
+
+    thread_local! {
+        static ACTIVE: Cell<Option<Move>> = const { Cell::new(None) };
+    }
+
+    fn pointer() -> NSPoint {
+        unsafe { msg_send![class!(NSEvent), mouseLocation] }
+    }
+
+    /// Starts a move on left mouse-down: remembers pointer and window origin (screen coordinates).
+    pub fn begin(window: &gpui_kit::Window) {
+        let Ok(RawWindowHandle::AppKit(handle)) = HasWindowHandle::window_handle(window).map(|h| h.as_raw()) else { return };
+        let ns_window: *mut AnyObject = unsafe { msg_send![handle.ns_view.as_ptr() as *mut AnyObject, window] };
+        if ns_window.is_null() {
+            return;
+        }
+        let frame: NSRect = unsafe { msg_send![ns_window, frame] };
+        ACTIVE.set(Some(Move { ns_window, pointer: pointer(), origin: frame.origin }));
+    }
+
+    /// Keeps the window under the pointer while the left button stays down.
+    pub fn follow(left_pressed: bool) {
+        let Some(m) = ACTIVE.take() else { return };
+        // A release we never saw (e.g. eaten by a menu) ends the move.
+        if !left_pressed {
+            return;
+        }
+        let now = pointer();
+        let origin = NSPoint::new(m.origin.x + now.x - m.pointer.x, m.origin.y + now.y - m.pointer.y);
+        // `begin` read the window from this gpui window's live view; gpui keeps it
+        // alive while it dispatches events to that window.
+        unsafe {
+            let _: () = msg_send![m.ns_window, setFrameOrigin: origin];
+        }
+        ACTIVE.set(Some(m));
+    }
+
+    pub fn end() {
+        ACTIVE.set(None);
+    }
 }
 
 pub fn icon_button(id: impl Into<gpui_kit::ElementId>, icon: IconName, tip: impl Into<SharedString>, ch: &Chrome) -> Button {
@@ -621,8 +712,7 @@ pub fn render_tab_strip(ws: &mut Workspace, window: &mut Window, cx: &mut Contex
 
 // --- Browser (one pane slot) ----------------------------------------------------
 
-/// A pane slot: location header with view controls, the file view and the
-/// path bar.
+/// A pane slot: location header with view controls and the file view.
 pub fn render_browser(ws: &mut Workspace, pane: Entity<Pane>, slot: usize, window: &mut Window, cx: &mut Context<Workspace>) -> AnyElement {
     let ch = chrome(cx);
     let width = content_class(ws.slot_width(slot, window));
@@ -813,67 +903,5 @@ pub fn render_browser(ws: &mut Workspace, pane: Entity<Pane>, slot: usize, windo
         }))
         .child(header)
         .child(div().flex_1().min_h_0().child(pane))
-        .child(render_path_bar(ws, &location, slot, width, cx))
-        .into_any_element()
-}
-
-fn render_path_bar(ws: &Workspace, location: &Location, slot: usize, width: Width, cx: &mut Context<Workspace>) -> AnyElement {
-    let ch = chrome(cx);
-    let mut crumbs = crumbs(ws, location);
-    // Long paths keep the volume and the deepest folders: "HD › … › a › b › c";
-    // narrow slots keep only the deepest two.
-    let keep = match width {
-        Width::Phone => 2,
-        Width::Narrow => 3,
-        _ => 5,
-    };
-    if width <= Width::Phone && crumbs.len() > keep {
-        crumbs.drain(..crumbs.len() - keep);
-    } else if crumbs.len() > keep {
-        let tail = crumbs.split_off(crumbs.len() - (keep - 2).max(1));
-        let collapsed = crumbs.last().and_then(|c| c.1.clone());
-        crumbs.truncate(1);
-        crumbs.push(("…".into(), collapsed, IconName::Ellipsis));
-        crumbs.extend(tail);
-    }
-    let last = crumbs.len().saturating_sub(1);
-    h_flex()
-        .id(("path-bar", slot))
-        .h(px(35.))
-        .flex_none()
-        .px(px(20.))
-        .gap(px(8.))
-        .bg(ch.statusbar)
-        .border_t_1()
-        .border_color(ch.hairline)
-        .overflow_x_scroll()
-        .text_size(px(10.))
-        .children(crumbs.into_iter().enumerate().map(|(ix, (name, target, icon))| {
-            let current = ix == last;
-            h_flex()
-                .flex_none()
-                .gap(px(8.))
-                .when(ix > 0, |d| d.child(crate::icons::icon(IconName::ChevronRight).size(px(10.)).text_color(ch.text_faint)))
-                .child(
-                    h_flex()
-                        .id(("path-crumb", ix))
-                        .gap(px(6.))
-                        .py(px(3.))
-                        .px(px(3.))
-                        .rounded(px(4.))
-                        .cursor_pointer()
-                        .whitespace_nowrap()
-                        .text_color(if current { ch.text } else { ch.text_muted })
-                        .hover(|s| s.bg(ch.hover_strong).text_color(ch.text))
-                        .when(icon != IconName::Ellipsis, |d| d.child(crate::icons::icon(icon.clone()).size(px(12.))))
-                        .child(name)
-                        .when_some(target, |d, target| {
-                            d.on_click(cx.listener(move |this, _, w, cx| {
-                                this.set_active_pane(slot, w, cx);
-                                this.open_location(target.clone(), w, cx)
-                            }))
-                        }),
-                )
-        }))
         .into_any_element()
 }

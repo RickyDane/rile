@@ -128,7 +128,7 @@ impl FtpBackend {
                 },
                 secret.unwrap_or("anonymous@").to_string(),
             ),
-            Auth::KeyFile { .. } | Auth::Agent => {
+            Auth::KeyFile { .. } | Auth::Agent | Auth::OAuth { .. } => {
                 bail!("key file / agent authentication is only supported for SFTP")
             }
         };
@@ -438,7 +438,7 @@ impl Backend for FtpBackend {
         }
     }
 
-    fn write_file(&mut self, path: &str, src: &mut dyn Read) -> Result<()> {
+    fn write_file(&mut self, path: &str, src: &mut dyn Read, _size: u64) -> Result<()> {
         let mut stream = self.cmd(|f| f.put_with_stream(path))?;
         let mut buf = vec![0u8; CHUNK];
         let outcome: Result<()> = loop {

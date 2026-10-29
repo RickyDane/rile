@@ -853,7 +853,7 @@ impl Workspace {
     fn remote_properties(&self, cx: &Context<Self>) -> Option<(SharedString, Vec<(&'static str, String)>)> {
         let conn = self.pane().read(cx).conn()?;
         let entry = self.pane().read(cx).cursor_entry().cloned()?;
-        let server = crate::remote::info(&conn).map(|i| format!("{} ({})", i.display(), i.protocol.label())).unwrap_or_default();
+        let server = crate::remote::info(&conn).map(|i| if i.protocol.is_cloud() { i.display() } else { format!("{} ({})", i.display(), i.protocol.label()) }).unwrap_or_default();
         let size = if entry.is_dir { "—".to_string() } else { humansize::format_size(entry.size, humansize::DECIMAL) };
         let modified = entry
             .modified

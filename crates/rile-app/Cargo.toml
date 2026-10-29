@@ -69,8 +69,8 @@ tray-icon = { version = "0.21", default-features = false }
 # Lower thread priority (QoS) for background photo describing.
 libc = "0.2"
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSBundle", "NSData", "NSAppleEventManager", "NSAppleEventDescriptor", "objc2-core-services", "NSString", "NSURL", "NSTimer", "NSRunLoop", "NSDate", "NSObject"] }
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSImage", "NSRunningApplication", "NSStatusBar", "NSStatusItem", "NSStatusBarButton", "NSButton", "NSButtonCell", "NSCell", "NSControl", "NSView", "NSResponder", "NSMenu", "NSMenuItem", "NSWorkspace"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSBundle", "NSData", "NSAppleEventManager", "NSAppleEventDescriptor", "NSArray", "NSError", "libc", "objc2-core-services", "NSString", "NSURL", "NSTimer", "NSRunLoop", "NSDate", "NSObject"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSImage", "NSRunningApplication", "libc", "NSStatusBar", "NSStatusItem", "NSStatusBarButton", "NSButton", "NSButtonCell", "NSCell", "NSControl", "NSView", "NSResponder", "NSMenu", "NSMenuItem", "NSWorkspace"] }
 
 [target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
 spotlight-llm = { version = "0.1.2", optional = true }

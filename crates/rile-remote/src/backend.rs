@@ -26,16 +26,31 @@ pub(crate) trait Backend: Send {
     fn rename(&mut self, from: &str, to: &str) -> Result<()>;
     /// Stream a file's contents to `sink`; `sink` returns `Ok(false)` to stop early.
     fn read_file(&mut self, path: &str, sink: &mut dyn FnMut(&[u8]) -> Result<bool>) -> Result<()>;
-    /// Create/truncate `path` and write everything `src` yields.
-    fn write_file(&mut self, path: &str, src: &mut dyn Read) -> Result<()>;
+    /// Create/truncate `path` and write everything `src` yields. `size` is the
+    /// number of bytes `src` will yield (cloud uploads need it up front).
+    fn write_file(&mut self, path: &str, src: &mut dyn Read, size: u64) -> Result<()>;
     /// False once the connection is known to be unusable.
     fn is_alive(&self) -> bool;
+    /// Whether a failed or cancelled [`Backend::write_file`] leaves the previous
+    /// file untouched (so it must not be removed afterwards).
+    fn atomic_writes(&self) -> bool {
+        false
+    }
+    /// Remove `path` and everything below it in one request, when the backend
+    /// can (cloud drives move whole folders to their trash). `None` = use the
+    /// generic recursive removal.
+    fn remove_all(&mut self, _path: &str) -> Option<Result<()>> {
+        None
+    }
 }
 
 pub(crate) fn remove_recursive(b: &mut dyn Backend, path: &str) -> Result<()> {
     let path = paths::normalize(path);
     if path == "/" {
         bail!("refusing to remove the root directory");
+    }
+    if let Some(result) = b.remove_all(&path) {
+        return result;
     }
     let entry = b.stat(&path)?;
     if entry.is_dir && !entry.is_symlink {
@@ -265,15 +280,16 @@ pub(crate) fn upload(
         }
         let file =
             fs::File::open(&lpath).with_context(|| format!("opening {}", lpath.display()))?;
+        let size = file.metadata().map(|m| m.len()).unwrap_or(0);
         let mut reader = ProgressReader {
             inner: file,
             cancel,
             prog: &mut prog,
             transferred,
         };
-        if let Err(e) = b.write_file(&rpath, &mut reader) {
+        if let Err(e) = b.write_file(&rpath, &mut reader, size) {
             if crate::is_cancelled(&e) {
-                if b.is_alive() {
+                if b.is_alive() && !b.atomic_writes() {
                     let _ = b.remove_file(&rpath);
                 }
                 return Err(Cancelled.into());

@@ -282,6 +282,26 @@ fn exit_cleanly() -> ! {
     std::process::exit(0)
 }
 
+/// Identity of this program's file, to notice an update replacing it.
+#[cfg(target_os = "macos")]
+fn exe_stamp() -> Option<(u64, u64, std::time::SystemTime)> {
+    use std::os::unix::fs::MetadataExt;
+    let meta = std::fs::metadata(std::env::current_exe().ok()?).ok()?;
+    Some((meta.dev(), meta.ino(), meta.modified().ok()?))
+}
+
+/// After an update replaced the app, exits with a failure code once idle so
+/// launchd (KeepAlive on unsuccessful exit) starts the new version.
+#[cfg(target_os = "macos")]
+fn restart_if_replaced() {
+    static STARTED: std::sync::OnceLock<Option<(u64, u64, std::time::SystemTime)>> = std::sync::OnceLock::new();
+    let started = *STARTED.get_or_init(exe_stamp);
+    let busy = own_runs().lock().map_or(true, |r| r.iter().any(|(_, t)| !t.is_finished()));
+    if started.is_some() && !busy && exe_stamp().is_some_and(|now| Some(now) != started) {
+        std::process::exit(75);
+    }
+}
+
 fn stop_job(id: &str) {
     if let Some(dir) = state::job_dir(id) {
         state::request_cancel(&dir).ok();
@@ -294,7 +314,8 @@ fn stop_job(id: &str) {
 fn open_rile(page: &str) {
     let exe = std::env::current_exe().unwrap_or_default();
     if exe.to_string_lossy().contains(".app/Contents/MacOS/") {
-        std::process::Command::new("/usr/bin/open").arg(format!("rile://{page}")).spawn().ok();
+        // Not `open rile://…`: LaunchServices could hand it back to this process.
+        mac::forward(mac::Forward::Urls(vec![format!("rile://{page}")]));
     } else {
         std::process::Command::new(exe).arg("--backups").spawn().ok();
     }
@@ -305,12 +326,108 @@ fn open_rile(page: &str) {
 #[cfg(target_os = "macos")]
 mod mac {
     use objc2::rc::Retained;
-    use objc2::runtime::{AnyObject, Sel};
+    use objc2::runtime::{AnyObject, Bool, Sel};
     use objc2::{DefinedClass, MainThreadOnly, define_class, msg_send, sel};
-    use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSImage, NSMenu, NSMenuItem, NSStatusBar, NSStatusItem};
-    use objc2_foundation::{MainThreadMarker, NSObject, NSRunLoop, NSRunLoopCommonModes, NSString, NSTimer};
+    use objc2_app_kit::{
+        NSApplication, NSApplicationActivationOptions, NSApplicationActivationPolicy, NSImage, NSMenu, NSMenuItem, NSRunningApplication,
+        NSStatusBar, NSStatusItem,
+    };
+    use objc2_foundation::{
+        MainThreadMarker, NSAppleEventDescriptor, NSAppleEventManager, NSAppleEventSendOptions, NSArray, NSBundle, NSObject, NSRunLoop,
+        NSRunLoopCommonModes, NSString, NSTimer, NSURL,
+    };
 
     use super::*;
+
+    const KEY_DIRECT: u32 = u32::from_be_bytes(*b"----");
+
+    /// A LaunchServices request meant for the app.
+    pub enum Forward {
+        /// Dock click or `open Rile.app`.
+        Reopen,
+        /// rile:// links and files to open.
+        Urls(Vec<String>),
+        /// Reveal in Finder (Rile as file viewer): the event's direct object.
+        Reveal(Retained<NSAppleEventDescriptor>),
+    }
+
+    /// Hands `request` to the running app (by pid, so LaunchServices can't
+    /// route it back here) or starts a fresh instance with it.
+    pub fn forward(request: Forward) {
+        let Some(mtm) = MainThreadMarker::new() else { return };
+        let bundle = NSBundle::mainBundle();
+        let own = std::process::id() as libc::pid_t;
+        let app = bundle.bundleIdentifier().and_then(|id| {
+            NSRunningApplication::runningApplicationsWithBundleIdentifier(&id)
+                .iter()
+                .find(|a| a.processIdentifier() != own && a.activationPolicy() == NSApplicationActivationPolicy::Regular)
+        });
+        match app {
+            Some(app) => {
+                let target = NSAppleEventDescriptor::descriptorWithProcessIdentifier(app.processIdentifier());
+                let event = |class: &[u8; 4], id: &[u8; 4]| {
+                    NSAppleEventDescriptor::appleEventWithEventClass_eventID_targetDescriptor_returnID_transactionID(
+                        u32::from_be_bytes(*class),
+                        u32::from_be_bytes(*id),
+                        Some(&target),
+                        -1, // kAutoGenerateReturnID
+                        0,  // kAnyTransactionID
+                    )
+                };
+                let events = match &request {
+                    Forward::Reopen => vec![event(b"aevt", b"rapp")],
+                    Forward::Urls(urls) => urls
+                        .iter()
+                        .map(|url| {
+                            let e = event(b"GURL", b"GURL");
+                            e.setParamDescriptor_forKeyword(&NSAppleEventDescriptor::descriptorWithString(&NSString::from_str(url)), KEY_DIRECT);
+                            e
+                        })
+                        .collect(),
+                    Forward::Reveal(items) => {
+                        let e = event(b"misc", b"mvis");
+                        e.setParamDescriptor_forKeyword(items, KEY_DIRECT);
+                        vec![e]
+                    }
+                };
+                for e in events {
+                    e.sendEventWithOptions_timeout_error(NSAppleEventSendOptions::NoReply, 5.0).ok();
+                }
+                app.activateWithOptions(NSApplicationActivationOptions::ActivateAllWindows);
+            }
+            None => {
+                let mut open = std::process::Command::new("/usr/bin/open");
+                // -n: a new instance, never this process.
+                open.arg("-n").arg(bundle.bundlePath().to_string());
+                match &request {
+                    Forward::Reopen => {}
+                    Forward::Urls(urls) => {
+                        open.arg("--args").args(urls.iter().map(|u| launch_arg(u)));
+                    }
+                    Forward::Reveal(items) => {
+                        let paths = crate::external_open::mac::descriptor_paths(items);
+                        open.arg("--args").args(paths.first());
+                    }
+                }
+                open.spawn().ok();
+            }
+        }
+        // LaunchServices activated this process as if it were the app; stay
+        // a menu bar item without a Dock dot.
+        let ns_app = NSApplication::sharedApplication(mtm);
+        ns_app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
+        ns_app.hide(None);
+    }
+
+    /// Launch arguments take paths, not file:// URLs.
+    fn launch_arg(url: &str) -> String {
+        if url.starts_with("file://")
+            && let Some(path) = crate::external_open::file_paths(vec![url.to_owned()]).into_iter().next()
+        {
+            return path.to_string_lossy().into_owned();
+        }
+        url.to_owned()
+    }
 
     pub struct Ivars {
         tray: RefCell<Tray>,
@@ -342,7 +459,31 @@ mod mac {
         impl Menu {
             #[unsafe(method(tick:))]
             fn tick(&self, _timer: &NSTimer) {
+                restart_if_replaced();
                 self.update();
+            }
+
+            // This helper runs from Rile.app, so LaunchServices sees it as
+            // Rile: Dock clicks, `open Rile.app`, rile:// links, files and
+            // Reveal in Finder can land here instead of in the app.
+            // SAFETY (all three): NSApplicationDelegate / Apple Event handler signatures.
+            #[unsafe(method(applicationShouldHandleReopen:hasVisibleWindows:))]
+            fn should_reopen(&self, _app: &NSApplication, _visible: Bool) -> Bool {
+                forward(Forward::Reopen);
+                Bool::NO
+            }
+
+            #[unsafe(method(application:openURLs:))]
+            fn open_urls(&self, _app: &NSApplication, urls: &NSArray<NSURL>) {
+                let urls = urls.iter().filter_map(|u| u.absoluteString()).map(|s| s.to_string()).collect();
+                forward(Forward::Urls(urls));
+            }
+
+            #[unsafe(method(reveal:withReplyEvent:))]
+            fn reveal(&self, event: &NSAppleEventDescriptor, _reply: &NSAppleEventDescriptor) {
+                if let Some(items) = event.paramDescriptorForKeyword(KEY_DIRECT) {
+                    forward(Forward::Reveal(items));
+                }
             }
 
             #[unsafe(method(runJob:))]
@@ -524,6 +665,17 @@ mod mac {
         let this = Menu::alloc(mtm).set_ivars(Ivars { tray: RefCell::new(Tray::default()), item, menu, items: RefCell::new(None) });
         // SAFETY: Initialize the NSObject superclass.
         let this: Retained<Menu> = unsafe { msg_send![super(this), init] };
+        // SAFETY: `this` implements the delegate methods above and outlives
+        // the run loop; the handler selector has the Apple Event signature.
+        unsafe {
+            let _: () = msg_send![&app, setDelegate: &*this];
+            NSAppleEventManager::sharedAppleEventManager().setEventHandler_andSelector_forEventClass_andEventID(
+                &this,
+                sel!(reveal:withReplyEvent:),
+                u32::from_be_bytes(*b"misc"),
+                u32::from_be_bytes(*b"mvis"),
+            );
+        }
         this.update();
         // SAFETY: `tick:` has the timer-callback signature; common modes keep
         // the menu live while it is open.

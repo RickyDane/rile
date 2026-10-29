@@ -1,5 +1,6 @@
-//! Remote file system access for Rile: FTP, FTPS (explicit TLS), SFTP, SMB2/3
-//! and other Rile devices nearby ([`peer`]).
+//! Remote file system access for Rile: FTP, FTPS (explicit TLS), SFTP, SMB2/3,
+//! Google Drive and OneDrive (HTTPS APIs, OAuth sign-in; see [`oauth`]) and
+//! other Rile devices nearby ([`peer`]).
 //!
 //! The API is synchronous and blocking; callers are expected to run it on
 //! background threads. SFTP (`russh`/`russh-sftp`) and SMB use private tokio
@@ -9,10 +10,14 @@
 //! Remote paths are always `/`-separated strings; see [`paths`].
 
 mod backend;
+mod cloud;
 pub mod credentials;
 pub mod discovery;
 mod ftp;
+mod gdrive;
 pub mod known_hosts;
+pub mod oauth;
+mod onedrive;
 pub mod paths;
 pub mod peer;
 mod pool;
@@ -42,6 +47,8 @@ pub enum Protocol {
     Smb,
     /// Another Rile on the local network (Nearby Devices); see [`peer`].
     Peer,
+    GoogleDrive,
+    OneDrive,
 }
 
 impl Protocol {
@@ -51,6 +58,7 @@ impl Protocol {
             Protocol::Ftp | Protocol::Ftps => 21,
             Protocol::Smb => 445,
             Protocol::Peer => peer::DEFAULT_PORT,
+            Protocol::GoogleDrive | Protocol::OneDrive => 443,
         }
     }
 
@@ -61,6 +69,22 @@ impl Protocol {
             Protocol::Ftps => "FTPS",
             Protocol::Smb => "SMB",
             Protocol::Peer => "Rile",
+            Protocol::GoogleDrive => "Google Drive",
+            Protocol::OneDrive => "OneDrive",
+        }
+    }
+
+    /// Cloud drives: signed in with OAuth ([`Auth::OAuth`]) instead of a server login.
+    pub fn is_cloud(self) -> bool {
+        matches!(self, Protocol::GoogleDrive | Protocol::OneDrive)
+    }
+
+    /// Fixed API host recorded for cloud connections.
+    pub fn cloud_host(self) -> Option<&'static str> {
+        match self {
+            Protocol::GoogleDrive => Some("www.googleapis.com"),
+            Protocol::OneDrive => Some("graph.microsoft.com"),
+            _ => None,
         }
     }
 }
@@ -75,12 +99,15 @@ pub enum Auth {
     Agent,
     /// FTP: `anonymous` login. SFTP: the `none` auth method. SMB: guest login.
     Anonymous,
+    /// Google Drive / OneDrive: the user's own OAuth app. `secret` is the JSON
+    /// produced by [`oauth::Pending::finish`] (refresh token and, for Google, the client secret).
+    OAuth { client_id: String },
 }
 
 impl Auth {
-    /// Whether this auth method uses a secret (password or key passphrase).
+    /// Whether this auth method uses a secret (password, key passphrase or OAuth tokens).
     pub fn uses_secret(&self) -> bool {
-        matches!(self, Auth::Password | Auth::KeyFile { .. })
+        matches!(self, Auth::Password | Auth::KeyFile { .. } | Auth::OAuth { .. })
     }
 }
 
@@ -140,7 +167,15 @@ impl ConnectionInfo {
     }
 
     /// `user@host:port` (user omitted when empty; IPv6 hosts are bracketed).
+    /// Cloud drives: `Google Drive · account`.
     pub fn display(&self) -> String {
+        if self.protocol.is_cloud() {
+            return if self.username.is_empty() {
+                self.protocol.label().to_string()
+            } else {
+                format!("{} · {}", self.protocol.label(), self.username)
+            };
+        }
         let host = if self.host.contains(':') && !self.host.starts_with('[') {
             format!("[{}]", self.host)
         } else {

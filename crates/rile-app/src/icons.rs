@@ -27,6 +27,7 @@ gpui_kit::assets::icon_assets!(
         Archive, PackageOpen, AppWindow, ExternalLink, Images, Files, Link, FilePlus, WandSparkles,
         LayoutDashboard, TextSearch, Brain, GripVertical, AppWindowMac, Gauge, Play,
         DatabaseBackup, ArchiveRestore, Clock, FolderSync, CircleCheck, Pause, Square,
+        SquareTerminal, ShieldCheck, Network, User, KeyRound, FileKey, Lock, IdCard, Cloud, Lightbulb,
     ]
 );
 
@@ -99,6 +100,29 @@ pub fn intelligence_glyph(size: f32, color: gpui_kit::Hsla, view: gpui_kit::Enti
         }
     }
     icon(IconName::Sparkles).size(gpui_kit::px(size)).text_color(color).into_any_element()
+}
+
+/// A connection protocol's glyph: the provider's own full-color logo for
+/// cloud drives, a Lucide icon tinted `color` for server protocols.
+pub fn protocol_glyph(protocol: rile_remote::Protocol, size: f32, color: gpui_kit::Hsla) -> gpui_kit::AnyElement {
+    use gpui_kit::{IntoElement, Styled, StyledImage};
+    use rile_remote::Protocol;
+    static LOGOS: std::sync::OnceLock<[std::sync::Arc<gpui_kit::Image>; 2]> = std::sync::OnceLock::new();
+    let logos = LOGOS.get_or_init(|| {
+        let svg = |bytes: &[u8]| std::sync::Arc::new(gpui_kit::Image::from_bytes(gpui_kit::ImageFormat::Svg, bytes.to_vec()));
+        [svg(include_bytes!("../assets/logos/google-drive.svg")), svg(include_bytes!("../assets/logos/onedrive.svg"))]
+    });
+    let logo = |i: usize| gpui_kit::img(logos[i].clone()).size(gpui_kit::px(size)).object_fit(gpui_kit::ObjectFit::Contain).into_any_element();
+    let name = match protocol {
+        Protocol::GoogleDrive => return logo(0),
+        Protocol::OneDrive => return logo(1),
+        Protocol::Sftp => IconName::SquareTerminal,
+        Protocol::Ftps => IconName::ShieldCheck,
+        Protocol::Smb => IconName::Network,
+        Protocol::Ftp => IconName::Server,
+        Protocol::Peer => IconName::Laptop,
+    };
+    icon(name).size(gpui_kit::px(size)).text_color(color).into_any_element()
 }
 
 /// Asset path of the Apple Intelligence symbol as an SVG, see [`intelligence_svg`].

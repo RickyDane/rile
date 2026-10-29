@@ -348,7 +348,7 @@ impl Backend for SmbBackend {
         )
     }
 
-    fn write_file(&mut self, path: &str, src: &mut dyn Read) -> Result<()> {
+    fn write_file(&mut self, path: &str, src: &mut dyn Read, _size: u64) -> Result<()> {
         self.with_resource(
             path,
             FileCreateArgs::make_overwrite(

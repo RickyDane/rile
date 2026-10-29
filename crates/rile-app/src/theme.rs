@@ -130,6 +130,8 @@ pub struct Chrome {
     pub window: Hsla,
     pub sidebar_top: Hsla,
     pub sidebar_bottom: Hsla,
+    /// Frosted band behind the sidebar footer (glass only).
+    pub sidebar_footer: Option<Hsla>,
     pub sidebar_border: Hsla,
     pub sidebar_text: Hsla,
     pub sidebar_heading: Hsla,
@@ -213,6 +215,10 @@ impl Chrome {
             let a = 1. - settings.glass_translucency.min(100) as f32 / 100.;
             chrome.window = chrome.window.opacity(0.);
             chrome.sidebar_top = frost(chrome.sidebar_top, a);
+            // Milky veil of the footer's frosted glass, over the faint copies
+            // of the items beneath it (see `sidebar::render`).
+            let b = chrome.sidebar_bottom;
+            chrome.sidebar_footer = Some(frost(hsla(b.h, b.s, if chrome.dark { (b.l + 0.05).min(1.) } else { b.l }, 1.), (a * 0.45).min(0.4)));
             chrome.sidebar_bottom = frost(chrome.sidebar_bottom, a);
             // Muted headings disappear over brighter desktops showing through glass.
             chrome.sidebar_heading = chrome.text_strong;
@@ -240,6 +246,7 @@ impl Chrome {
             return Self {
                 dark,
                 glass: false,
+                sidebar_footer: None,
                 window: c(0x202020ff),
                 sidebar_top: c(0x2d2d30ff),
                 sidebar_bottom: c(0x26272bff),
@@ -298,6 +305,7 @@ impl Chrome {
         Self {
             dark,
             glass: false,
+            sidebar_footer: None,
             window: t.background,
             sidebar_top: mix(t.sidebar, t.background, 0.15),
             sidebar_bottom: t.sidebar,

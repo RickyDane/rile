@@ -333,6 +333,7 @@ async fn authenticate(
         }
         Auth::Agent => agent_auth(handle, user).await?,
         Auth::Anonymous => handle.authenticate_none(user).await?.success(),
+        Auth::OAuth { .. } => bail!("OAuth sign-in is only supported for cloud drives"),
     };
     if !ok {
         bail!("authentication failed for {}", info.display());
@@ -556,7 +557,7 @@ impl Backend for SftpBackend {
         self.check(r)
     }
 
-    fn write_file(&mut self, path: &str, src: &mut dyn Read) -> Result<()> {
+    fn write_file(&mut self, path: &str, src: &mut dyn Read, _size: u64) -> Result<()> {
         let sftp = &self.sftp;
         let fut = async move {
             let mut file = sftp.create(path).await.map_err(map_sftp)?;

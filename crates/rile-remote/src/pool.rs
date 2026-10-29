@@ -16,6 +16,8 @@ fn open_backend(info: &ConnectionInfo, secret: Option<&str>) -> Result<Box<dyn B
         Protocol::Sftp => Box::new(crate::sftp::SftpBackend::connect(info, secret)?),
         Protocol::Smb => Box::new(crate::smb::SmbBackend::connect(info, secret)?),
         Protocol::Peer => Box::new(crate::peer::PeerBackend::connect(info)?),
+        Protocol::GoogleDrive => Box::new(crate::gdrive::DriveBackend::connect(info, secret)?),
+        Protocol::OneDrive => Box::new(crate::onedrive::OneDriveBackend::connect(info, secret)?),
     })
 }
 
@@ -107,7 +109,7 @@ impl RemoteFs for Reconnecting {
 
     fn create_file(&mut self, path: &str) -> Result<()> {
         let path = paths::normalize(path);
-        self.simple(|b| b.write_file(&path, &mut std::io::empty()))
+        self.simple(|b| b.write_file(&path, &mut std::io::empty(), 0))
     }
 
     fn remove(&mut self, path: &str) -> Result<()> {

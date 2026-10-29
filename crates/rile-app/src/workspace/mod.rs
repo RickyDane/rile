@@ -123,6 +123,8 @@ pub struct Workspace {
     pub finished_jobs: Vec<FinishedJob>,
     /// The background jobs panel in the sidebar footer.
     pub jobs_open: bool,
+    /// Scroll position of the sidebar's places list (for the footer shadow).
+    pub sidebar_scroll: gpui_kit::ScrollHandle,
     /// When a click outside last closed the jobs panel (so the button's own
     /// click doesn't immediately reopen it).
     pub(crate) jobs_closed_at: Option<std::time::Instant>,
@@ -164,6 +166,7 @@ pub struct Workspace {
     /// Grid zoom slider in the status bar.
     pub zoom: Entity<gpui_kit::component::slider::SliderState>,
     /// A press on a window-drag region that may become a window move.
+    #[cfg(not(target_os = "macos"))]
     pub(crate) drag_armed: bool,
     /// The sidebar edge is being dragged (saved on release).
     resizing_sidebar: bool,
@@ -234,6 +237,7 @@ impl Workspace {
             ops: Vec::new(),
             finished_jobs: Vec::new(),
             jobs_open: false,
+            sidebar_scroll: gpui_kit::ScrollHandle::new(),
             jobs_closed_at: None,
             next_op_id: 0,
             path_input,
@@ -259,6 +263,7 @@ impl Workspace {
             gallery: None,
             photo_job: None,
             zoom,
+            #[cfg(not(target_os = "macos"))]
             drag_armed: false,
             resizing_sidebar: false,
             _spring_task: None,
@@ -526,15 +531,24 @@ impl Workspace {
         }));
     }
 
-    /// Polls mounted volumes so drives attached/detached show up without a manual refresh.
+    /// Polls mounted volumes so drives attached/detached show up within 2s, and refreshes
+    /// drive usage (free/total space) every 10s.
     fn watch_volumes(cx: &mut Context<Self>) -> Task<()> {
+        const USAGE_EVERY_TICKS: u32 = 5; // 5 × 2s = 10s
         cx.spawn(async move |this, cx| {
+            let mut tick: u32 = 0;
             loop {
                 cx.background_executor().timer(std::time::Duration::from_secs(2)).await;
+                tick = tick.wrapping_add(1);
+                let check_usage = tick % USAGE_EVERY_TICKS == 0;
                 let volumes = cx.background_spawn(async { places::volumes() }).await;
                 let Ok(changed) = this.read_with(cx, |this, _| {
                     this.volumes.len() != volumes.len()
-                        || this.volumes.iter().zip(&volumes).any(|(a, b)| a.mount_point != b.mount_point || a.name != b.name)
+                        || this.volumes.iter().zip(&volumes).any(|(a, b)| {
+                            a.mount_point != b.mount_point
+                                || a.name != b.name
+                                || (check_usage && (a.available != b.available || a.total != b.total))
+                        })
                 }) else {
                     break;
                 };
@@ -618,6 +632,13 @@ impl Workspace {
             return;
         }
         self.settings.move_sidebar_section(section, target);
+        self.save_settings(window, cx);
+        cx.notify();
+    }
+
+    /// Collapses or expands a sidebar section and saves the choice.
+    pub fn toggle_sidebar_section(&mut self, section: rile_core::settings::SidebarSection, window: &mut Window, cx: &mut Context<Self>) {
+        self.settings.toggle_sidebar_section(section);
         self.save_settings(window, cx);
         cx.notify();
     }
@@ -913,8 +934,8 @@ impl Render for Workspace {
         let jobs_panel = self.jobs_open.then(|| {
             div()
                 .absolute()
-                .left(px(10.))
-                .bottom(px(if views::chrome::width_class(window) <= views::chrome::Width::Phone { 90. } else { 64. }))
+                .right(px(10.))
+                .bottom(px(36.))
                 .child(crate::jobs::render_panel(self, window, cx))
         });
         if let Some((started, _)) = self.sidebar_transition {

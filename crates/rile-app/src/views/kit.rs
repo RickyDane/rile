@@ -112,6 +112,18 @@ pub fn segmented(cx: &App) -> Div {
 
 /// One option of a segmented control; attach `on_click` to it.
 pub fn segment(id: impl Into<ElementId>, label: impl Into<SharedString>, active: bool, cx: &App) -> Stateful<Div> {
+    segment_base(id, active, cx).child(label.into())
+}
+
+/// A [`segment`] with a leading icon.
+pub fn segment_with_icon(id: impl Into<ElementId>, icon: IconName, label: impl Into<SharedString>, active: bool, cx: &App) -> Stateful<Div> {
+    segment_base(id, active, cx)
+        .gap(px(5.))
+        .child(crate::icons::icon(icon).size(px(13.)))
+        .child(label.into())
+}
+
+fn segment_base(id: impl Into<ElementId>, active: bool, cx: &App) -> Stateful<Div> {
     let ch = chrome(cx);
     div()
         .id(id)
@@ -125,7 +137,6 @@ pub fn segment(id: impl Into<ElementId>, label: impl Into<SharedString>, active:
         .text_size(px(12.))
         .when(active, |d| d.bg(ch.segmented_active).shadow_xs().text_color(ch.text_strong).font_weight(FontWeight::MEDIUM))
         .when(!active, |d| d.text_color(ch.text_muted).hover(|s| s.bg(ch.hover_strong).text_color(ch.text)))
-        .child(label.into())
 }
 
 /// A small label above a control.

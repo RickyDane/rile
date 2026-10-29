@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## v0.8.0-beta.1
+
+### Cloud storage
+- Add Google Drive and OneDrive connections for browsing and transferring files.
+
+### Interface and fixes
+- Refine the sidebar, device views, backup menus and status bar.
+- Fix restarting the app after an update on macOS.
+
 ### Nearby Devices
 - Find other computers running Rile on the local network (Bonjour `_rile._tcp`). They appear under **Nearby** in the sidebar and on the new **Nearby Devices** page, a card for each device with its model, system, storage and shared folders.
 - Pair two devices once by confirming the same 6-digit code on both screens. Devices talk over mutual TLS 1.3 with a key generated on each computer; the code comes from the encrypted session, so a device in the middle would show a different one.

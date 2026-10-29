@@ -1306,6 +1306,44 @@ async fn sidebar_animation_reverses_and_finishes(cx: &mut TestAppContext) {
     assert_eq!(collapsed, 0.);
 }
 
+#[gpui_kit::test]
+async fn sidebar_header_shadow_tracks_hidden_items(cx: &mut TestAppContext) {
+    use gpui_kit::{VisualTestContext, point, px};
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &[]).await;
+    let mut vcx = VisualTestContext::from_window(window, cx);
+    vcx.update(|_, cx| {
+        ws.update(cx, |ws, cx| {
+            ws.settings.favorites = (0..40).map(|i| root.join(format!("Favorite {i}"))).collect();
+            cx.notify();
+        });
+    });
+    vcx.run_until_parked();
+    assert!(vcx.debug_bounds("sidebar-header-shadow").is_none());
+
+    for (offset, enabled, visible) in [(-40., true, true), (-40., false, false), (-40., true, true), (0., true, false)] {
+        vcx.update(|_, cx| {
+            ws.update(cx, |ws, cx| {
+                assert!(ws.sidebar_scroll.max_offset().y > px(40.));
+                ws.sidebar_scroll.set_offset(point(px(0.), px(offset)));
+                ws.settings.sidebar_scroll_shadows = enabled;
+                cx.notify();
+            });
+        });
+        vcx.run_until_parked();
+        let shadow = vcx.debug_bounds("sidebar-header-shadow");
+        assert_eq!(shadow.is_some(), visible);
+        assert_eq!(vcx.debug_bounds("sidebar-footer-shadow").is_some(), enabled);
+        if let Some(shadow) = shadow {
+            let header = vcx.debug_bounds("sidebar-header").unwrap();
+            assert!((shadow.top() - header.bottom()).abs() < px(1.));
+            assert_eq!(shadow.size.height, px(14.));
+        }
+    }
+}
+
 /// The sidebar header toggle hides it; the toolbar toggle brings it back.
 #[gpui_kit::test]
 async fn sidebar_toggle_button_moves_with_visibility(cx: &mut TestAppContext) {
@@ -1632,6 +1670,29 @@ async fn sidebar_sections_reorder_and_persist(cx: &mut TestAppContext) {
     assert_eq!(cx.update(|cx| ws.read(cx).settings.sidebar_order()), [Library, Locations, Favorites, Devices, Network, Nearby]);
     let saved = rile_core::settings::Settings::load();
     assert_eq!(saved.sidebar_order(), [Library, Locations, Favorites, Devices, Network, Nearby]);
+}
+
+/// Clicking a sidebar section header collapses it (items hidden), clicking
+/// again expands it, and the state is saved.
+#[gpui_kit::test]
+async fn sidebar_sections_collapse_and_persist(cx: &mut TestAppContext) {
+    use rile_core::settings::SidebarSection::*;
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    fs::write(root.join("f"), "").unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["f"]).await;
+    let _config = config_lock();
+    let toggle = |cx: &mut TestAppContext| {
+        cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.toggle_sidebar_section(Library, window, cx))).unwrap();
+        cx.run_until_parked();
+    };
+    toggle(cx);
+    assert!(cx.update(|cx| ws.read(cx).settings.sidebar_section_collapsed(Library)));
+    assert!(rile_core::settings::Settings::load().sidebar_section_collapsed(Library));
+    toggle(cx);
+    assert!(!cx.update(|cx| ws.read(cx).settings.sidebar_section_collapsed(Library)));
+    assert!(!rile_core::settings::Settings::load().sidebar_section_collapsed(Library));
 }
 
 /// Folders the user opens are remembered, and a later search from a parent
