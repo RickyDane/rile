@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="title">
+  <title id="title">Rile — Path Ribbon</title>
+  <defs>
+    <linearGradient id="front" x1="0" y1="0" x2=".3" y2="1"><stop stop-color="#73caff"/><stop offset="1" stop-color="#2176e8"/></linearGradient>
+    <linearGradient id="back" x2="0" y2="1"><stop stop-color="#2687e8"/><stop offset="1" stop-color="#174fa6"/></linearGradient>
+    <linearGradient id="paper" x2=".3" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#d9e7fa"/></linearGradient>
+    <linearGradient id="violet" x2=".7" y2="1"><stop stop-color="#a49aff"/><stop offset="1" stop-color="#6659dc"/></linearGradient>
+    <linearGradient id="gold" x2=".2" y2="1"><stop stop-color="#ffe18c"/><stop offset="1" stop-color="#efac34"/></linearGradient>
+  </defs>
+  <path d="M49 210V69q0-17 17-17h111q30 0 30 30v33q0 30-30 30h-55l-24-36h73V88H87v122Z" fill="url(#front)"/><path d="m122 145 55 65h-49l-41-49v-52h11Z" fill="url(#violet)"/><path d="M51 72q0-17 17-17h106" fill="none" stroke="#b5e8ff" stroke-width="2"/><path d="m122 145-24-36h26l26 36Z" fill="#194caa" opacity=".55"/>
+</svg>

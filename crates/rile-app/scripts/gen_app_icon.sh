@@ -1,6 +1,7 @@
 #!/bin/sh
 # Regenerate the checked-in app icons: every style × accent as a 512px PNG for
-# the runtime Dock icon, plus the default Finder icon (Folio Bolt, blue).
+# the runtime Dock icon, the default Finder icon (Folio Bolt, blue), and
+# the Windows Folded Folio icon.
 set -eu
 cd "$(dirname "$0")/.."
 command -v rsvg-convert >/dev/null || { echo "Install librsvg (brew install librsvg)" >&2; exit 1; }
@@ -18,6 +19,5 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$tmp/Rile.iconset" -o assets/Rile.icns
 # Windows: the .exe icon (embedded by build.rs) with the sizes Explorer uses.
-rsvg-convert -w 256 -h 256 assets/app-icons/folio-bolt/blue.svg -o "$tmp/ico-256.png"
-python3 -c 'import sys; from PIL import Image; Image.open(sys.argv[1]).save(sys.argv[2], sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])' "$tmp/ico-256.png" assets/Rile.ico
+python3 scripts/gen_windows_icon.py
 echo "Generated the app icon styles and default Finder and Explorer icons"

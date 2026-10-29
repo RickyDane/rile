@@ -58,7 +58,11 @@ fn start_session(paths: Vec<std::path::PathBuf>, window: &impl raw_window_handle
     // A small, valid PNG is required by AppKit; reuse the bundled app artwork.
     static PREVIEW: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
     let preview = PREVIEW.get_or_init(|| {
-        let icon = image::load_from_memory(include_bytes!("../assets/app-icons/drawer-hot-rod/blue.png"))
+        #[cfg(windows)]
+        let artwork = crate::app_icon::WINDOWS_PNG;
+        #[cfg(not(windows))]
+        let artwork = include_bytes!("../assets/app-icons/drawer-hot-rod/blue.png");
+        let icon = image::load_from_memory(artwork)
             .expect("bundled drag icon")
             .resize(32, 32, image::imageops::FilterType::Lanczos3);
         let mut bytes = std::io::Cursor::new(Vec::new());

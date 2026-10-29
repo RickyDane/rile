@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.8.0-beta.2
+
+### Windows
+- Remove app icon customization; use the default icon consistently. macOS icon customization is unchanged.
+- Use the transparent Folded Folio icon for the executable, installer, About dialog, backup tray and drag preview, without the macOS background tile.
+
 ## v0.8.0-beta.1
 
 ### Cloud storage

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="title">
+  <title id="title">Rile — Twin Panes</title>
+  <defs>
+    <linearGradient id="front" x1="0" y1="0" x2=".3" y2="1"><stop stop-color="#73caff"/><stop offset="1" stop-color="#2176e8"/></linearGradient>
+    <linearGradient id="back" x2="0" y2="1"><stop stop-color="#2687e8"/><stop offset="1" stop-color="#174fa6"/></linearGradient>
+    <linearGradient id="paper" x2=".3" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#d9e7fa"/></linearGradient>
+    <linearGradient id="violet" x2=".7" y2="1"><stop stop-color="#a49aff"/><stop offset="1" stop-color="#6659dc"/></linearGradient>
+    <linearGradient id="gold" x2=".2" y2="1"><stop stop-color="#ffe18c"/><stop offset="1" stop-color="#efac34"/></linearGradient>
+  </defs>
+  <path d="M31 62h46l17 17h73q12 0 12 12v87q0 12-12 12H31q-12 0-12-12V74q0-12 12-12Z" fill="url(#violet)"/><path d="M87 87h43l16 17h79q12 0 12 12v82q0 12-12 12H87q-12 0-12-12V99q0-12 12-12Z" fill="url(#front)"/><path d="M89 108h132" stroke="#b5e8ff" stroke-width="2" stroke-linecap="round"/><path d="m144 139 18 17-18 17m-26-17h43" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

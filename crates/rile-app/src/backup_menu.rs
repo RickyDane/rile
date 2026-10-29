@@ -747,8 +747,7 @@ mod win {
 
     /// The app icon with a status dot: accent for running, red for a problem.
     fn image(icon: Icon) -> Option<TrayImage> {
-        const PNG: &[u8] = include_bytes!("../assets/app-icons/folio-bolt/blue.png");
-        let mut img = image::load_from_memory(PNG).ok()?.resize(32, 32, image::imageops::FilterType::Lanczos3).to_rgba8();
+        let mut img = image::load_from_memory(crate::app_icon::WINDOWS_PNG).ok()?.resize(32, 32, image::imageops::FilterType::Lanczos3).to_rgba8();
         let dot = match icon {
             Icon::Idle => None,
             Icon::Running => Some([0x2f, 0xb3, 0x4a, 0xff]),

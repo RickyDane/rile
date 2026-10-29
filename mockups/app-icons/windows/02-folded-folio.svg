@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="title">
+  <title id="title">Rile — Folded Folio</title>
+  <defs>
+    <linearGradient id="front" x1="0" y1="0" x2=".3" y2="1"><stop stop-color="#73caff"/><stop offset="1" stop-color="#2176e8"/></linearGradient>
+    <linearGradient id="back" x2="0" y2="1"><stop stop-color="#2687e8"/><stop offset="1" stop-color="#174fa6"/></linearGradient>
+    <linearGradient id="paper" x2=".3" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#d9e7fa"/></linearGradient>
+    <linearGradient id="violet" x2=".7" y2="1"><stop stop-color="#a49aff"/><stop offset="1" stop-color="#6659dc"/></linearGradient>
+    <linearGradient id="gold" x2=".2" y2="1"><stop stop-color="#ffe18c"/><stop offset="1" stop-color="#efac34"/></linearGradient>
+  </defs>
+  <path d="M42 57h47l18 19h105v112H30V69q0-12 12-12Z" fill="url(#back)"/><path d="m62 70 113-10 9 106-113 10Z" fill="url(#paper)"/><path d="m88 80 104 7-7 101-104-7Z" fill="url(#paper)"/><path d="m103 98 63 4m-64 10 76 5" stroke="#a7bdd9" stroke-width="5" stroke-linecap="round"/><path d="M38 108h179q11 0 9 12l-15 76q-2 10-13 10H47q-10 0-12-10l-9-74q-2-14 12-14Z" fill="url(#front)"/><path d="m178 108 40 0-7 38Z" fill="#b5e8ff"/><path d="m178 108 7 35 26 3Z" fill="#1669c3" opacity=".5"/><path d="M44 112h121" stroke="#b5e8ff" stroke-width="2" stroke-linecap="round"/>
+</svg>

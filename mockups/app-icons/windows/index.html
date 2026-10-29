@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rile — Windows icon directions</title>
+<link rel="icon" type="image/svg+xml" href="01-folio-bolt.svg">
+<style>
+:root{color-scheme:dark;--bg:#1d1e21;--surface:#282a2e;--line:#ffffff12;--text:#f1f2f5;--muted:#969ba5;--accent:#8bbfff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px "Segoe UI",system-ui,sans-serif}
+main{max-width:1360px;margin:auto;padding:42px 40px 32px}header{display:flex;align-items:flex-start;justify-content:space-between;gap:32px}
+.brand{font-size:20px;font-weight:750;letter-spacing:-1px}.brand span{color:var(--accent)}
+.eyebrow{color:var(--accent);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:650;margin:30px 0 10px}
+h1{font-size:38px;line-height:1.15;letter-spacing:-1.4px;margin:0 0 14px;font-weight:650}p{color:var(--muted);line-height:1.6;margin:0}.intro{max-width:660px}
+.note{font-size:12px;color:var(--muted);text-align:right;padding-top:5px;line-height:1.8}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:28px 0 18px}.toolbar label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:10px}
+select{font:inherit;color:var(--text);background:#383b41;border:1px solid #ffffff18;border-radius:7px;min-height:34px;padding:6px 10px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}a:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.card{border:1px solid var(--line);background:var(--surface);border-radius:12px;overflow:hidden}
+.preview{height:190px;display:flex;align-items:center;justify-content:center;position:relative;background:#202125;transition:background-color .15s}
+.preview>img{width:176px;height:176px}.number{position:absolute;top:15px;left:17px;color:#969ba5;font-size:11px;font-variant-numeric:tabular-nums;letter-spacing:.1em}
+.preview::after{content:"TRANSPARENT SVG";position:absolute;bottom:12px;right:14px;font-size:8px;letter-spacing:.14em;color:#969ba5}
+[data-backdrop="light"] .preview{background:#edf0f5}[data-backdrop="light"] .number,[data-backdrop="light"] .preview::after{color:#626b79}
+[data-backdrop="check"] .preview{background-color:#e8ebf0;background-image:conic-gradient(#cfd5de 25%,transparent 0 50%,#cfd5de 0 75%,transparent 0);background-size:20px 20px}
+[data-backdrop="check"] .number,[data-backdrop="check"] .preview::after{color:#526073}
+.details{padding:18px 20px 16px}.heading{display:flex;justify-content:space-between;align-items:center;gap:10px}h2{font-size:16px;letter-spacing:-.25px;margin:0;font-weight:600}.download{font-size:11px;white-space:nowrap}.tag{font-size:10px;color:var(--accent);margin:7px 0 8px}.description{font-size:12px;min-height:58px}
+.sizes{display:flex;align-items:end;justify-content:space-between;border-top:1px solid var(--line);margin-top:16px;padding-top:12px;gap:8px}
+figure{margin:0;display:flex;align-items:center;flex-direction:column;gap:6px}figcaption{font-size:9px;color:var(--muted)}.sample{display:flex;align-items:center;justify-content:center;height:48px;min-width:30px}
+.contrast{display:flex;gap:3px;padding-bottom:17px}.contrast span{width:40px;height:40px;display:grid;place-items:center;border-radius:7px}.contrast img{width:32px;height:32px}.contrast .light{background:#edf0f5}.contrast .dark{background:#171b23}
+.taskbar-section{margin-top:28px}.section-label{font-size:11px;font-weight:500;color:var(--muted);margin:0 0 10px}.taskbar{display:flex;gap:14px;align-items:center;justify-content:center;background:#202125;border:1px solid var(--line);border-radius:10px;padding:12px}
+.taskbar a{display:grid;place-items:center;width:44px;height:42px;border-radius:5px;position:relative}.taskbar a:hover{background:#ffffff0c}.taskbar a:first-child::after{content:"";position:absolute;bottom:-6px;left:14px;right:14px;height:3px;background:var(--accent);border-radius:3px}.taskbar img{width:32px;height:32px}
+footer{font-size:11px;color:var(--muted);margin-top:20px;display:flex;justify-content:space-between;gap:14px}
+@media(max-width:1050px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}main{padding:30px 24px}.note{display:none}}
+@media(max-width:620px){.grid{grid-template-columns:1fr}main{padding:24px 16px}h1{font-size:30px}.toolbar,footer{align-items:flex-start;flex-direction:column}.description{min-height:0}.taskbar{gap:4px}}
+</style>
+</head>
+<body data-backdrop="dark">
+<main>
+<header><div><div class="brand">rile<span>.</span></div><div class="eyebrow">Windows / Icon explorations</div>
+<h1>Same Rile. No box.</h1><p class="intro">Six freestanding directions for Windows. No colored backplate, no rounded-square tile — just the icon, with real transparency around its silhouette.</p></div><div class="note">DESIGN STUDY · 01—06<br>Standalone SVG artwork<br>Application assets unchanged</div></header>
+<div class="toolbar"><p style="font-size:12px">Blue-led identity · open silhouettes · taskbar-scale previews</p><label for="backdrop">Preview on <select id="backdrop"><option value="dark">Dark surface</option><option value="light">Light surface</option><option value="check">Transparency grid</option></select></label></div>
+<div class="grid">
+<article class="card" id="concept-1">
+<div class="preview"><span class="number">01</span><img src="01-folio-bolt.svg" width="176" height="176" alt="Folio Bolt icon"></div>
+<div class="details"><div class="heading"><h2>Folio Bolt</h2><a class="download" href="01-folio-bolt.svg" download aria-label="Download Folio Bolt SVG">SVG ↓</a></div>
+<div class="tag">Closest to the current icon</div><p class="description">The familiar blue folio and white bolt, freed from its macOS tile. The safest evolution of Rile’s identity.</p>
+<div class="sizes"><figure><div class="sample"><img src="01-folio-bolt.svg" width="48" height="48" alt=""></div><figcaption>48 px</figcaption></figure><figure><div class="sample"><img src="01-folio-bolt.svg" width="32" height="32" alt=""></div><figcaption>32 px</figcaption></figure><figure><div class="sample"><img src="01-folio-bolt.svg" width="24" height="24" alt=""></div><figcaption>24 px</figcaption></figure><figure><div class="sample"><img src="01-folio-bolt.svg" width="16" height="16" alt=""></div><figcaption>16 px</figcaption></figure><div class="contrast" aria-label="32 pixel light and dark surface previews"><span class="light"><img src="01-folio-bolt.svg" alt="Folio Bolt on light"></span><span class="dark"><img src="01-folio-bolt.svg" alt="Folio Bolt on dark"></span></div></div></div></article>
+<article class="card" id="concept-2">
+<div class="preview"><span class="number">02</span><img src="02-folded-folio.svg" width="176" height="176" alt="Folded Folio icon"></div>
+<div class="details"><div class="heading"><h2>Folded Folio</h2><a class="download" href="02-folded-folio.svg" download aria-label="Download Folded Folio SVG">SVG ↓</a></div>
+<div class="tag">Quiet & familiar</div><p class="description">An open folder with a folded corner. Less decoration, a strong silhouette, and a calmer everyday presence.</p>
+<div class="sizes"><figure><div class="sample"><img src="02-folded-folio.svg" width="48" height="48" alt=""></div><figcaption>48 px</figcaption></figure><figure><div class="sample"><img src="02-folded-folio.svg" width="32" height="32" alt=""></div><figcaption>32 px</figcaption></figure><figure><div class="sample"><img src="02-folded-folio.svg" width="24" height="24" alt=""></div><figcaption>24 px</figcaption></figure><figure><div class="sample"><img src="02-folded-folio.svg" width="16" height="16" alt=""></div><figcaption>16 px</figcaption></figure><div class="contrast" aria-label="32 pixel light and dark surface previews"><span class="light"><img src="02-folded-folio.svg" alt="Folded Folio on light"></span><span class="dark"><img src="02-folded-folio.svg" alt="Folded Folio on dark"></span></div></div></div></article>
+<article class="card" id="concept-3">
+<div class="preview"><span class="number">03</span><img src="03-drawer-bolt.svg" width="176" height="176" alt="Drawer Bolt icon"></div>
+<div class="details"><div class="heading"><h2>Drawer Bolt</h2><a class="download" href="03-drawer-bolt.svg" download aria-label="Download Drawer Bolt SVG">SVG ↓</a></div>
+<div class="tag">A little more depth</div><p class="description">A freestanding file drawer with staggered folders. Keeps the bolt while giving the app a more substantial object-like form.</p>
+<div class="sizes"><figure><div class="sample"><img src="03-drawer-bolt.svg" width="48" height="48" alt=""></div><figcaption>48 px</figcaption></figure><figure><div class="sample"><img src="03-drawer-bolt.svg" width="32" height="32" alt=""></div><figcaption>32 px</figcaption></figure><figure><div class="sample"><img src="03-drawer-bolt.svg" width="24" height="24" alt=""></div><figcaption>24 px</figcaption></figure><figure><div class="sample"><img src="03-drawer-bolt.svg" width="16" height="16" alt=""></div><figcaption>16 px</figcaption></figure><div class="contrast" aria-label="32 pixel light and dark surface previews"><span class="light"><img src="03-drawer-bolt.svg" alt="Drawer Bolt on light"></span><span class="dark"><img src="03-drawer-bolt.svg" alt="Drawer Bolt on dark"></span></div></div></div></article>
+<article class="card" id="concept-4">
+<div class="preview"><span class="number">04</span><img src="04-twin-panes.svg" width="176" height="176" alt="Twin Panes icon"></div>
+<div class="details"><div class="heading"><h2>Twin Panes</h2><a class="download" href="04-twin-panes.svg" download aria-label="Download Twin Panes SVG">SVG ↓</a></div>
+<div class="tag">Built for a file manager</div><p class="description">Two overlapping folder panes, not a generic app badge. Blue and indigo make the dual-pane workflow the identity.</p>
+<div class="sizes"><figure><div class="sample"><img src="04-twin-panes.svg" width="48" height="48" alt=""></div><figcaption>48 px</figcaption></figure><figure><div class="sample"><img src="04-twin-panes.svg" width="32" height="32" alt=""></div><figcaption>32 px</figcaption></figure><figure><div class="sample"><img src="04-twin-panes.svg" width="24" height="24" alt=""></div><figcaption>24 px</figcaption></figure><figure><div class="sample"><img src="04-twin-panes.svg" width="16" height="16" alt=""></div><figcaption>16 px</figcaption></figure><div class="contrast" aria-label="32 pixel light and dark surface previews"><span class="light"><img src="04-twin-panes.svg" alt="Twin Panes on light"></span><span class="dark"><img src="04-twin-panes.svg" alt="Twin Panes on dark"></span></div></div></div></article>
+<article class="card" id="concept-5">
+<div class="preview"><span class="number">05</span><img src="05-path-ribbon.svg" width="176" height="176" alt="Path Ribbon icon"></div>
+<div class="details"><div class="heading"><h2>Path Ribbon</h2><a class="download" href="05-path-ribbon.svg" download aria-label="Download Path Ribbon SVG">SVG ↓</a></div>
+<div class="tag">The most distinctive</div><p class="description">A continuous folded path suggests an “r” and forward motion. An open, abstract mark instead of another folder.</p>
+<div class="sizes"><figure><div class="sample"><img src="05-path-ribbon.svg" width="48" height="48" alt=""></div><figcaption>48 px</figcaption></figure><figure><div class="sample"><img src="05-path-ribbon.svg" width="32" height="32" alt=""></div><figcaption>32 px</figcaption></figure><figure><div class="sample"><img src="05-path-ribbon.svg" width="24" height="24" alt=""></div><figcaption>24 px</figcaption></figure><figure><div class="sample"><img src="05-path-ribbon.svg" width="16" height="16" alt=""></div><figcaption>16 px</figcaption></figure><div class="contrast" aria-label="32 pixel light and dark surface previews"><span class="light"><img src="05-path-ribbon.svg" alt="Path Ribbon on light"></span><span class="dark"><img src="05-path-ribbon.svg" alt="Path Ribbon on dark"></span></div></div></div></article>
+<article class="card" id="concept-6">
+<div class="preview"><span class="number">06</span><img src="06-swift-folder.svg" width="176" height="176" alt="Swift Folder icon"></div>
+<div class="details"><div class="heading"><h2>Swift Folder</h2><a class="download" href="06-swift-folder.svg" download aria-label="Download Swift Folder SVG">SVG ↓</a></div>
+<div class="tag">Warm & Windows-familiar</div><p class="description">A golden folder with a blue forward arrow. A warmer alternative that puts file navigation first and speed second.</p>
+<div class="sizes"><figure><div class="sample"><img src="06-swift-folder.svg" width="48" height="48" alt=""></div><figcaption>48 px</figcaption></figure><figure><div class="sample"><img src="06-swift-folder.svg" width="32" height="32" alt=""></div><figcaption>32 px</figcaption></figure><figure><div class="sample"><img src="06-swift-folder.svg" width="24" height="24" alt=""></div><figcaption>24 px</figcaption></figure><figure><div class="sample"><img src="06-swift-folder.svg" width="16" height="16" alt=""></div><figcaption>16 px</figcaption></figure><div class="contrast" aria-label="32 pixel light and dark surface previews"><span class="light"><img src="06-swift-folder.svg" alt="Swift Folder on light"></span><span class="dark"><img src="06-swift-folder.svg" alt="Swift Folder on dark"></span></div></div></div></article>
+</div>
+<section class="taskbar-section" aria-label="Taskbar comparison"><h2 class="section-label">AT A GLANCE / 32 PX TASKBAR STUDY</h2><div class="taskbar"><a href="#concept-1" title="1. Folio Bolt"><img src="01-folio-bolt.svg" alt="Folio Bolt"></a><a href="#concept-2" title="2. Folded Folio"><img src="02-folded-folio.svg" alt="Folded Folio"></a><a href="#concept-3" title="3. Drawer Bolt"><img src="03-drawer-bolt.svg" alt="Drawer Bolt"></a><a href="#concept-4" title="4. Twin Panes"><img src="04-twin-panes.svg" alt="Twin Panes"></a><a href="#concept-5" title="5. Path Ribbon"><img src="05-path-ribbon.svg" alt="Path Ribbon"></a><a href="#concept-6" title="6. Swift Folder"><img src="06-swift-folder.svg" alt="Swift Folder"></a></div></section>
+<footer><span>Suggested starting point: <strong>01 Folio Bolt</strong> for continuity · <strong>05 Path Ribbon</strong> for a new identity.</span><span>Concept artwork only · final Windows .ico export and pixel tuning after selection.</span></footer>
+</main>
+<script>
+document.getElementById("backdrop").addEventListener("change", event => {
+  document.body.dataset.backdrop = event.target.value;
+});
+</script>
+</body>
+</html>

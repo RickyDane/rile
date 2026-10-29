@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="title">
+  <title id="title">Rile — Swift Folder</title>
+  <defs>
+    <linearGradient id="front" x1="0" y1="0" x2=".3" y2="1"><stop stop-color="#73caff"/><stop offset="1" stop-color="#2176e8"/></linearGradient>
+    <linearGradient id="back" x2="0" y2="1"><stop stop-color="#2687e8"/><stop offset="1" stop-color="#174fa6"/></linearGradient>
+    <linearGradient id="paper" x2=".3" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#d9e7fa"/></linearGradient>
+    <linearGradient id="violet" x2=".7" y2="1"><stop stop-color="#a49aff"/><stop offset="1" stop-color="#6659dc"/></linearGradient>
+    <linearGradient id="gold" x2=".2" y2="1"><stop stop-color="#ffe18c"/><stop offset="1" stop-color="#efac34"/></linearGradient>
+  </defs>
+  <path d="M40 61h57l18 19h91q14 0 14 14v99H27V74q0-13 13-13Z" fill="#d69825"/><path d="M54 85h140v79H54Z" fill="url(#paper)"/><path d="M38 108h180q12 0 10 13l-14 75q-2 11-14 11H47q-11 0-13-11l-9-74q-2-14 13-14Z" fill="url(#gold)"/><path d="M39 111h174" stroke="#fff0b8" stroke-width="2" stroke-linecap="round"/><path d="m151 132 36 31-36 31v-18h-40v-26h40Z" fill="#236fe0"/><path d="m151 132 36 31h-76v-13h40Z" fill="#4c9dff"/>
+</svg>

@@ -12,7 +12,9 @@ use gpui_kit::{
     Render, SharedString, StatefulInteractiveElement, Styled, Subscription, Window, div,
     prelude::FluentBuilder, px,
 };
-use rile_core::settings::{Accent, AppIcon, Density, FileCategory, IconSet, Settings, StartLocation, ThemeMode, ViewKind};
+#[cfg(not(windows))]
+use rile_core::settings::AppIcon;
+use rile_core::settings::{Accent, Density, FileCategory, IconSet, Settings, StartLocation, ThemeMode, ViewKind};
 
 use crate::views::kit::PointerUnless;
 use crate::theme::accent_color;
@@ -834,6 +836,7 @@ impl Render for SettingsView {
                             })
                     }))
                     .into_any_element();
+                #[cfg(not(windows))]
                 let app_icons = h_flex()
                     .flex_wrap()
                     .w(px(332.))
@@ -873,6 +876,12 @@ impl Render for SettingsView {
                             })
                     }))
                     .into_any_element();
+                let icon_card = kit::card(cx)
+                    .child(kit::row("Icon style", "Used across the sidebar, toolbar, menus and files", icon_sets, true, &ch));
+                #[cfg(not(windows))]
+                let icon_card = icon_card.child(
+                    kit::row("App icon", "Shown in the Dock and Finder; follows the accent color", app_icons, false, &ch).items_start(),
+                );
                 v_flex()
                     .gap(px(16.))
                     .child(section(
@@ -915,9 +924,7 @@ impl Render for SettingsView {
                     ))
                     .child(
                         v_flex().gap(px(8.)).child(kit::caption("ICONS", cx)).child(
-                            kit::card(cx)
-                                .child(kit::row("Icon style", "Used across the sidebar, toolbar, menus and files", icon_sets, true, &ch))
-                                .child(kit::row("App icon", if cfg!(windows) { "Shown in the taskbar and window title; follows the accent color" } else { "Shown in the Dock and Finder; follows the accent color" }, app_icons, false, &ch).items_start()),
+                            icon_card,
                         ),
                     )
                     .child(section(

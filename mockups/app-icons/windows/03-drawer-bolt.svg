@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="title">
+  <title id="title">Rile — Drawer Bolt</title>
+  <defs>
+    <linearGradient id="front" x1="0" y1="0" x2=".3" y2="1"><stop stop-color="#73caff"/><stop offset="1" stop-color="#2176e8"/></linearGradient>
+    <linearGradient id="back" x2="0" y2="1"><stop stop-color="#2687e8"/><stop offset="1" stop-color="#174fa6"/></linearGradient>
+    <linearGradient id="paper" x2=".3" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#d9e7fa"/></linearGradient>
+    <linearGradient id="violet" x2=".7" y2="1"><stop stop-color="#a49aff"/><stop offset="1" stop-color="#6659dc"/></linearGradient>
+    <linearGradient id="gold" x2=".2" y2="1"><stop stop-color="#ffe18c"/><stop offset="1" stop-color="#efac34"/></linearGradient>
+  </defs>
+  <path d="m32 118 29-26h134l29 26v77H32Z" fill="url(#back)"/><path d="M53 75h47l11 13h72v73H53Z" fill="#b5d8fc"/><path d="M73 57h45l11 14h70v91H73Z" fill="url(#paper)"/><path d="M101 86h67m-67 12h81" stroke="#abc1dc" stroke-width="5" stroke-linecap="round"/><path d="M32 118h192v75q0 15-15 15H47q-15 0-15-15Z" fill="url(#front)"/><path d="M36 120h184" stroke="#b5e8ff" stroke-width="2"/><path d="m139 127-39 42h26l-9 30 40-46h-26Z" fill="#fff" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+</svg>
