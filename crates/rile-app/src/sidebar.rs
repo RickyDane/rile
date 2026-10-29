@@ -409,7 +409,9 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
             .debug_selector(|| "sidebar-toggle".into())
             .on_click(cx.listener(|this, _, w, cx| this.toggle_sidebar(&crate::actions::ToggleSidebar, w, cx)))
             // Margins rather than header padding, so the rest stays draggable.
-            .when(mac, |b| b.mr(px(if sidebar_width < 180. { 4. } else { 12. })))
+            // The right margin matches the button's vertical inset in the
+            // header, so it sits evenly in the corner.
+            .when(mac, |b| b.mr(px((crate::views::chrome::TOOLBAR_HEIGHT - 30.) / 2.)))
             .when(!mac, |b| b.ml(px(12.)))
     });
     let header = h_flex()

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.4
+
+### macOS
+- Space the sidebar toggle button evenly from the top and right edges of the sidebar header at every sidebar width.
+
 ## v0.7.3
 
 ### Drag and drop
