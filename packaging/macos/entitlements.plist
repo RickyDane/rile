@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>com.apple.security.cs.allow-jit</key><false/>
+  <!-- wasmtime (WASM plugins) JIT-compiles code and maps it executable at
+       runtime; under the hardened runtime that page gets the process killed
+       with CODESIGNING "Invalid Page" unless these are granted (wasmtime does not use MAP_JIT). -->
+  <key>com.apple.security.cs.allow-jit</key><true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
 </dict>
 </plist>

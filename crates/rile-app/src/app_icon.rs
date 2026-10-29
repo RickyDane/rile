@@ -129,12 +129,24 @@ mod tests {
     fn assert_transparent_folio(bytes: &[u8], size: u32) {
         let image = image::load_from_memory(bytes).unwrap().to_rgba8();
         assert_eq!(image.dimensions(), (size, size));
-        // Empty space above the folder must stay transparent, not a macOS tile.
-        assert_eq!(image.get_pixel(size / 2, size / 8).0[3], 0);
+        // Keep transparent margins without shrinking the artwork inside them.
+        assert_eq!(image.get_pixel(size / 2, 0).0[3], 0);
         for (x, y) in [(0, 0), (size - 1, 0), (0, size - 1), (size - 1, size - 1)] {
             assert_eq!(image.get_pixel(x, y).0[3], 0);
         }
         assert_eq!(image.get_pixel(size / 2, size * 5 / 8).0[3], 255);
+        let mut bounds = (size, size, 0, 0);
+        for (x, y, pixel) in image.enumerate_pixels() {
+            if pixel.0[3] >= 128 {
+                bounds.0 = bounds.0.min(x);
+                bounds.1 = bounds.1.min(y);
+                bounds.2 = bounds.2.max(x + 1);
+                bounds.3 = bounds.3.max(y + 1);
+            }
+        }
+        // Round down to whole pixels, especially for the 16px ICO frame.
+        assert!(bounds.2 - bounds.0 >= size * 90 / 100, "{size}px icon is too narrow");
+        assert!(bounds.3 - bounds.1 >= size * 82 / 100, "{size}px icon is too short");
     }
 
     #[test]

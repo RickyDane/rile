@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.8.0-beta.4
+
+### Windows
+- Enlarge the Folded Folio icon to fill the taskbar icon area, reducing transparent padding and increasing its height.
+
+### macOS
+- Fix hardened-runtime crashes when running WebAssembly plugins by enabling executable memory for the plugin JIT.
+
 ## v0.8.0-beta.3
 
 ### Nearby Devices
