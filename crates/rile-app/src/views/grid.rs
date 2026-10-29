@@ -72,7 +72,9 @@ fn render_tile(pane: &Pane, ix: usize, entry: &Entry, tile_w: f32, cx: &mut Cont
     let selected = pane.selected.contains(&entry.path);
     let dimmed = entry.hidden || pane.cut_paths.contains(&entry.path);
     let object = object_size(prefs.icon_size);
-    let visual = crate::art::file_object(entry, object, prefs.thumbnails, pane.conn().is_none(), cx);
+    let local = pane.conn().is_none();
+    let visual = crate::art::file_object(entry, object, prefs.thumbnails, local, cx);
+    let visual = crate::icons::with_shared_badge(visual, entry, object * 0.55, local, cx);
     let meta: SharedString = if entry.is_dir { entry.kind_label().into() } else { super::list::format_size(entry).into() };
     let tile = v_flex()
         .id(ix)

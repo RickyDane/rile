@@ -2376,7 +2376,7 @@ async fn nearby_device_browse_and_receive(cx: &mut TestAppContext) {
     let tx = std::sync::Mutex::new(tx);
     let local = LocalDevice {
         info: DeviceInfo { name: "Studio".into(), ..Default::default() },
-        shares: vec![Share { name: "Shared".into(), path: shared.clone() }],
+        shares: vec![Share { name: "Shared".into(), path: shared.clone(), writable: false }],
     };
     let server = PeerServer::start(theirs.clone(), local, 0, move |e| {
         let _ = tx.lock().unwrap().send(e);

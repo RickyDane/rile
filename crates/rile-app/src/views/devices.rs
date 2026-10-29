@@ -93,16 +93,16 @@ fn storage_bar(used: u64, total: u64, ch: &Chrome) -> Div {
 }
 
 fn fact(label: &str, value: String, ch: &Chrome) -> AnyElement {
-    v_flex().flex_1().min_w_0().p(px(10.)).rounded(px(6.)).bg(ch.hover)
-        .gap(px(5.)).child(text(label.to_uppercase(), 9., ch.text_faint))
-        .child(text(value, 13., ch.text_strong).truncate()).into_any_element()
+    v_flex().flex_1().min_w_0().px(px(10.)).py(px(6.)).rounded(px(6.)).bg(ch.hover)
+        .gap(px(2.)).child(text(label.to_uppercase(), 9., ch.text_faint))
+        .child(text(value, 12.5, ch.text_strong).truncate()).into_any_element()
 }
 
 fn node_symbol(symbol: IconName, ch: &Chrome) -> Div {
-    div().relative().size(px(72.)).flex_none().flex().items_center().justify_center()
+    div().relative().size(px(52.)).flex_none().flex().items_center().justify_center()
         .rounded_full().border_1().border_color(ch.accent.opacity(0.15)).bg(ch.accent.opacity(0.04))
-        .child(div().absolute().size(px(54.)).rounded_full().border_1().border_color(ch.accent.opacity(0.3)))
-        .child(icon(symbol).size(px(28.)).text_color(ch.accent))
+        .child(div().absolute().size(px(40.)).rounded_full().border_1().border_color(ch.accent.opacity(0.3)))
+        .child(icon(symbol).size(px(20.)).text_color(ch.accent))
 }
 
 struct CardData {
@@ -129,7 +129,7 @@ fn device_card(data: CardData, ch: &Chrome) -> gpui_kit::Stateful<Div> {
     let (used, free, load) = storage_stats(data.storage);
     let storage = match data.storage {
         Some((used, total)) if total > 0 => v_flex()
-            .gap(px(7.))
+            .gap(px(6.))
             .child(
                 h_flex()
                     .justify_between()
@@ -157,10 +157,10 @@ fn device_card(data: CardData, ch: &Chrome) -> gpui_kit::Stateful<Div> {
         })
         .flex_1()
         .min_w_0()
-        .p(px(20.))
+        .p(px(16.))
         .flex()
         .flex_col()
-        .gap(px(18.))
+        .gap(px(12.))
         .cursor_pointer()
         .hover(|s| s.border_color(ch.accent.opacity(0.45)))
         .child(
@@ -173,7 +173,7 @@ fn device_card(data: CardData, ch: &Chrome) -> gpui_kit::Stateful<Div> {
                     v_flex()
                         .flex_1()
                         .min_w_0()
-                        .gap(px(3.))
+                        .gap(px(1.))
                         .child(text("NODE / ".to_owned() + &data.key, 9., ch.text_faint).truncate())
                         .child(text(data.name.clone(), 16., ch.text_strong).font_weight(FontWeight::SEMIBOLD).truncate())
                         .child(text(if data.os.is_empty() { "—".to_string() } else { data.os.clone() }, 11., ch.text_muted).truncate()),
@@ -183,17 +183,17 @@ fn device_card(data: CardData, ch: &Chrome) -> gpui_kit::Stateful<Div> {
         .child(storage)
         .child(grid(vec![fact("Used", used, ch), fact("Available", free, ch), fact("Utilization", load, ch)], 3, 6.))
         .child(
-            v_flex().gap(px(8.))
+            v_flex().gap(px(4.))
                 .child(h_flex().justify_between().gap_2().child(text("ENDPOINT", 9., ch.text_faint)).child(text(data.endpoint, 11., ch.text_muted).truncate()))
                 .child(h_flex().justify_between().gap_2().child(text("RILE VERSION", 9., ch.text_faint)).child(text(data.version, 11., ch.text_muted)))
                 .child(h_flex().justify_between().gap_2().child(text("ACCESS", 9., ch.text_faint)).child(text(data.trust, 11., ch.text_muted))),
         )
         .when(!data.specs.is_empty(), |d| {
             d.child(
-                v_flex().gap(px(7.)).pt(px(10.)).border_t_1().border_color(ch.hairline)
+                v_flex().gap(px(6.)).pt(px(10.)).border_t_1().border_color(ch.hairline)
                     .child(text("SPECIFICATIONS", 9., ch.text_faint))
                     .child(h_flex().flex_wrap().gap(px(5.)).children(data.specs.iter().map(|(label, value)| {
-                        v_flex().flex_grow(1.).max_w_full().min_w_0().overflow_hidden().gap(px(2.)).px(px(8.)).py(px(5.)).rounded(px(6.)).bg(ch.hover)
+                        v_flex().flex_grow(1.).max_w_full().min_w_0().overflow_hidden().gap(px(1.)).px(px(8.)).py(px(4.)).rounded(px(6.)).bg(ch.hover)
                             .child(text(label.to_uppercase(), 8.5, ch.text_faint))
                             .child(text(value.clone(), 11., ch.text_strong).truncate())
                     }))),
@@ -205,7 +205,7 @@ fn device_card(data: CardData, ch: &Chrome) -> gpui_kit::Stateful<Div> {
                 .child(text(data.note, 10.5, ch.text_faint).flex_1().min_w_0())
                 .into_any_element()
         } else {
-            v_flex().gap(px(8.)).pt(px(10.)).border_t_1().border_color(ch.hairline)
+            v_flex().gap(px(6.)).pt(px(10.)).border_t_1().border_color(ch.hairline)
                 .child(h_flex().justify_between().child(text("SHARED DIRECTORIES", 9., ch.text_faint))
                     .child(text(if data.shares_known { format!("{:02}", data.shares.len()) } else { "—".into() }, 11., ch.text_muted)))
                 .child(chips).into_any_element()

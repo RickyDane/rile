@@ -11,6 +11,9 @@ use rile_remote::peer::{
     self, DeviceInfo, LocalDevice, Pairing, PeerEvent, PeerServer, PeerStore, Share,
 };
 
+/// Tests that browse use the process-wide store (`RILE_CONFIG_DIR`): one at a time.
+static GLOBAL_STORE: Mutex<()> = Mutex::new(());
+
 struct Device {
     store: Arc<PeerStore>,
     server: PeerServer,
@@ -134,6 +137,7 @@ fn offers_are_accepted_into_the_chosen_folder_or_declined() {
 
 #[test]
 fn browsing_a_paired_device_is_read_only_and_stays_inside_shares() {
+    let _serial = GLOBAL_STORE.lock().unwrap_or_else(|e| e.into_inner());
     let dir = tempfile::tempdir().unwrap();
     // The browsing side uses the global store: point it at a temp config.
     let config: PathBuf = dir.path().join("client-config");
@@ -146,7 +150,7 @@ fn browsing_a_paired_device_is_read_only_and_stays_inside_shares() {
     fs::write(dir.path().join("secret.txt"), "nope").unwrap();
     #[cfg(unix)]
     std::os::unix::fs::symlink(dir.path().join("secret.txt"), shared.join("escape")).unwrap();
-    let host = device(&dir.path().join("host"), "Studio", vec![Share { name: "Work".into(), path: shared.clone() }]);
+    let host = device(&dir.path().join("host"), "Studio", vec![Share { name: "Work".into(), path: shared.clone(), writable: false }]);
 
     let info = peer::connection_info(host.store.id(), "Studio", "127.0.0.1", host.server.port());
     // Not paired yet.
@@ -183,4 +187,61 @@ fn browsing_a_paired_device_is_read_only_and_stays_inside_shares() {
     assert!(fs_.mkdir("/Work/new").is_err());
     assert!(fs_.remove("/Work/Docs/report.txt").is_err());
     assert!(fs::metadata(shared.join("Docs/report.txt")).is_ok());
+}
+
+#[test]
+fn writable_shares_accept_changes_and_read_only_ones_refuse() {
+    let _serial = GLOBAL_STORE.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = tempfile::tempdir().unwrap();
+    let config: PathBuf = dir.path().join("writer-config");
+    unsafe { std::env::set_var("RILE_CONFIG_DIR", &config) };
+    let client_store = PeerStore::global().unwrap();
+
+    let (ro, rw) = (dir.path().join("ro"), dir.path().join("rw"));
+    fs::create_dir_all(&ro).unwrap();
+    fs::create_dir_all(&rw).unwrap();
+    fs::write(ro.join("keep.txt"), "keep").unwrap();
+    let host = device(
+        &dir.path().join("server"),
+        "Server",
+        vec![
+            Share { name: "Archive".into(), path: ro.clone(), writable: false },
+            Share { name: "Drop".into(), path: rw.clone(), writable: true },
+        ],
+    );
+    let pairing = Pairing::start(client_store.clone(), "127.0.0.1", host.server.port(), Some(host.store.id())).unwrap();
+    let PeerEvent::PairRequest { reply, .. } = next_event(&host) else { panic!() };
+    reply.send(true);
+    assert!(pairing.finish(true).unwrap());
+
+    let (shown, _) = peer::probe(&client_store, "127.0.0.1", host.server.port(), None).unwrap();
+    assert_eq!(shown.writable, ["Drop"]);
+
+    let info = peer::connection_info(host.store.id(), "Server", "127.0.0.1", host.server.port());
+    let mut fs_ = rile_remote::connect(&info, None).unwrap();
+    fs_.mkdir("/Drop/Photos").unwrap();
+    let src = dir.path().join("big.bin");
+    fs::write(&src, vec![3u8; 700_000]).unwrap();
+    fs_.upload(&src, "/Drop/Photos/big.bin", &AtomicBool::new(false), &mut |_, _| {}).unwrap();
+    assert_eq!(fs::read(rw.join("Photos/big.bin")).unwrap().len(), 700_000);
+    // Overwrite in place.
+    fs::write(&src, "small").unwrap();
+    fs_.upload(&src, "/Drop/Photos/big.bin", &AtomicBool::new(false), &mut |_, _| {}).unwrap();
+    assert_eq!(fs::read_to_string(rw.join("Photos/big.bin")).unwrap(), "small");
+    fs_.rename("/Drop/Photos/big.bin", "/Drop/Photos/small.txt").unwrap();
+    assert_eq!(fs_.list("/Drop/Photos").unwrap().into_iter().map(|e| e.name).collect::<Vec<_>>(), ["small.txt"]);
+    // The connection still works after errors answered in-band.
+    assert!(fs_.mkdir("/Drop/Photos").is_err());
+    assert!(fs_.rename("/Drop/Photos/small.txt", "/Archive/small.txt").is_err());
+    assert!(fs_.remove("/Drop").is_err(), "share roots stay");
+    assert!(rw.join("Photos/small.txt").exists(), "and are not emptied first");
+    assert!(fs_.stat("/Drop/nope").is_err());
+    fs_.remove("/Drop/Photos").unwrap();
+    assert!(!rw.join("Photos").exists());
+
+    assert!(fs_.mkdir("/Archive/new").is_err());
+    assert!(fs_.upload(&src, "/Archive/keep.txt", &AtomicBool::new(false), &mut |_, _| {}).is_err());
+    assert!(fs_.remove("/Archive/keep.txt").is_err());
+    assert_eq!(fs::read_to_string(ro.join("keep.txt")).unwrap(), "keep");
+    assert_eq!(fs::read_dir(&rw).unwrap().count(), 0, "no partial files left");
 }

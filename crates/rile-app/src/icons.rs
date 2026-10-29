@@ -340,3 +340,45 @@ pub fn entry_icon<V: 'static>(entry: &Entry, size: f32, color: gpui_kit::Hsla, c
         None => icon(icon_for_entry(entry)).size(gpui_kit::px(size)).text_color(color).into_any_element(),
     }
 }
+
+/// Folders shared read-only with paired Nearby devices, published by
+/// `theme::apply` whenever settings change so views can badge them.
+#[derive(Default)]
+pub struct SharedFolders(pub std::collections::HashSet<std::path::PathBuf>);
+impl gpui_kit::Global for SharedFolders {}
+
+pub fn is_shared(entry: &Entry, cx: &gpui_kit::App) -> bool {
+    entry.is_dir && cx.try_global::<SharedFolders>().is_some_and(|s| s.0.contains(&entry.path))
+}
+
+/// Overlays the "shared" badge on a local folder's `icon` (`size` px box)
+/// when the folder is shared with Nearby devices; returns it unchanged else.
+pub fn with_shared_badge(icon: gpui_kit::AnyElement, entry: &Entry, size: f32, local: bool, cx: &gpui_kit::App) -> gpui_kit::AnyElement {
+    use gpui_kit::{IntoElement, ParentElement, Styled, div, px};
+    if !local || !is_shared(entry, cx) {
+        return icon;
+    }
+    let ch = crate::theme::chrome(cx);
+    let badge = (size * 0.5).max(10.);
+    let offset = px(-(badge * 0.2));
+    div()
+        .relative()
+        .flex_none()
+        .child(icon)
+        .child(
+            div()
+                .absolute()
+                .right(offset)
+                .bottom(offset)
+                .size(px(badge))
+                .rounded_full()
+                .bg(ch.accent)
+                .border_1()
+                .border_color(ch.browser)
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(self::icon(IconName::Share2).size(px(badge * 0.62)).text_color(gpui_kit::white())),
+        )
+        .into_any_element()
+}

@@ -64,7 +64,7 @@ pub fn render(pane: &mut Pane, _window: &mut Window, cx: &mut Context<Pane>) -> 
                         .when(!selected, |d| d.hover(|s| s.bg(ch.hover_strong)));
                     let _ = &theme;
                     let row = entry_interactions(row, ix, &entry, pane.conn(), cx)
-                        .child(entry_icon(&entry, 16., if entry.is_dir { ch.accent } else { ch.sidebar_icon }, cx))
+                        .child(crate::icons::with_shared_badge(entry_icon(&entry, 16., if entry.is_dir { ch.accent } else { ch.sidebar_icon }, cx), &entry, 16., pane.conn().is_none(), cx))
                         .child(div().flex_1().min_w_0().truncate().child(SharedString::from(entry.name.clone())))
                         .when(entry.is_dir, |d| d.child(crate::icons::icon(IconName::ChevronRight).size(px(10.)).text_color(ch.text_faint)));
                     div().h(px(row_h)).px(px(8.)).pt(px(2.)).child(row).into_any_element()

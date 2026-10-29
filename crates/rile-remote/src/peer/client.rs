@@ -255,7 +255,8 @@ pub fn send(
     }
 }
 
-/// Browsing a paired device's shared folders. Read-only.
+/// Browsing a paired device's shared folders. Changes are only sent for the
+/// shares it lists as writable.
 pub(crate) struct PeerBackend {
     conn: PeerConn,
 }
@@ -277,6 +278,33 @@ fn read_only() -> anyhow::Error {
     PeerError { kind: ErrorKind::Denied, message: "Shared folders on other devices are read-only".into() }.into()
 }
 
+impl PeerBackend {
+    /// `path`, normalized, if it lies in a share the other device lets us change.
+    fn writable(&self, path: &str) -> Result<String> {
+        let path = paths::normalize(path);
+        let mut parts = path.split('/').filter(|p| !p.is_empty());
+        let share = parts.next().unwrap_or_default();
+        if self.conn.info.writable.iter().any(|w| w == share) {
+            if parts.next().is_none() {
+                // Also keeps a recursive delete of a share from emptying it first.
+                bail!(PeerError { kind: ErrorKind::Denied, message: format!("The shared folder “{share}” itself can't be changed") });
+            }
+            Ok(path)
+        } else if share.is_empty() || !self.conn.info.writable.is_empty() {
+            Err(PeerError { kind: ErrorKind::Denied, message: format!("“{share}” on {} is read-only", self.conn.info.name) }.into())
+        } else {
+            Err(read_only())
+        }
+    }
+
+    fn change(&mut self, req: Request) -> Result<()> {
+        match self.conn.call(&req)? {
+            Response::Ok => Ok(()),
+            _ => bail!("unexpected answer"),
+        }
+    }
+}
+
 impl Backend for PeerBackend {
     fn login_dir(&mut self) -> Result<String> {
         Ok("/".into())
@@ -296,20 +324,24 @@ impl Backend for PeerBackend {
         }
     }
 
-    fn mkdir(&mut self, _path: &str) -> Result<()> {
-        Err(read_only())
+    fn mkdir(&mut self, path: &str) -> Result<()> {
+        let path = self.writable(path)?;
+        self.change(Request::Mkdir { path })
     }
 
-    fn remove_file(&mut self, _path: &str) -> Result<()> {
-        Err(read_only())
+    fn remove_file(&mut self, path: &str) -> Result<()> {
+        let path = self.writable(path)?;
+        self.change(Request::RemoveFile { path })
     }
 
-    fn remove_dir(&mut self, _path: &str) -> Result<()> {
-        Err(read_only())
+    fn remove_dir(&mut self, path: &str) -> Result<()> {
+        let path = self.writable(path)?;
+        self.change(Request::RemoveDir { path })
     }
 
-    fn rename(&mut self, _from: &str, _to: &str) -> Result<()> {
-        Err(read_only())
+    fn rename(&mut self, from: &str, to: &str) -> Result<()> {
+        let (from, to) = (self.writable(from)?, self.writable(to)?);
+        self.change(Request::Rename { from, to })
     }
 
     fn read_file(&mut self, path: &str, sink: &mut dyn FnMut(&[u8]) -> Result<bool>) -> Result<()> {
@@ -337,12 +369,59 @@ impl Backend for PeerBackend {
         }
     }
 
-    fn write_file(&mut self, _path: &str, _src: &mut dyn Read, _size: u64) -> Result<()> {
-        Err(read_only())
+    fn write_file(&mut self, path: &str, src: &mut dyn Read, size: u64) -> Result<()> {
+        let path = self.writable(path)?;
+        self.change(Request::Write { path, size })?;
+        let mut buf = vec![0u8; CHUNK];
+        loop {
+            let n = match src.read(&mut buf) {
+                Ok(n) => n,
+                Err(e) => {
+                    // Mid-file there is no way to stop in-band: drop the connection
+                    // (the other side discards the partial file).
+                    self.conn.alive = false;
+                    let _ = self.conn.tls.sock.shutdown(std::net::Shutdown::Both);
+                    return Err(match e.get_ref().is_some_and(|inner| inner.is::<Cancelled>()) {
+                        true => Cancelled.into(),
+                        false => e.into(),
+                    });
+                }
+            };
+            if n == 0 {
+                break;
+            }
+            if let Err(e) = wire::write_data(&mut self.conn.tls, &buf[..n]) {
+                self.conn.alive = false;
+                return Err(lost(e));
+            }
+        }
+        let finished = wire::write_data(&mut self.conn.tls, &[])
+            .and_then(|_| self.conn.tls.flush())
+            .map_err(lost)
+            .and_then(|_| wire::read_json::<Response>(&mut self.conn.tls).map_err(lost));
+        match finished {
+            Ok(Response::Done) => Ok(()),
+            Ok(Response::Error { kind, message }) => Err(PeerError { kind, message }.into()),
+            Ok(_) => bail!("unexpected answer"),
+            Err(e) => {
+                self.conn.alive = false;
+                Err(e)
+            }
+        }
     }
 
     fn is_alive(&self) -> bool {
         self.conn.alive
+    }
+
+    fn atomic_writes(&self) -> bool {
+        true
+    }
+
+    fn remove_all(&mut self, path: &str) -> Option<Result<()>> {
+        // Refuse up front: the generic removal would empty a share (or a
+        // read-only one up to the first refusal) before failing on its root.
+        self.writable(path).err().map(Err)
     }
 }
 

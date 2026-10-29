@@ -123,7 +123,7 @@ impl Workspace {
                                 move |_, _, cx| cx.open_url(&url)
                             }))
                             .child(if restart_pending {
-                                Button::new("upd-restart").cursor_pointer().primary().label("Restart Now").on_click(|_, _, cx| restart(cx))
+                                Button::new("upd-restart").cursor_pointer().primary().label("Restart Now").on_click(|_, window, cx| restart(window, cx))
                             } else {
                                 Button::new("upd-install").cursor_pointer().primary().label("Download & Install").disabled_if(!can_install).on_click(
                                     move |_, window, cx| {
@@ -179,7 +179,11 @@ impl DisabledIf for Button {
 /// Relaunches Rile. On macOS not through gpui's `cx.restart()`: it reopens
 /// the bundle with plain `open`, which LaunchServices hands to the backup
 /// menu helper (same bundle, still running) instead of starting the app.
-fn restart(cx: &mut gpui_kit::App) {
+///
+/// Quit goes through the window: `App::dispatch_action` updates the active
+/// window, which fails (only logged) while that window is handling the click.
+#[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
+fn restart(window: &mut Window, cx: &mut gpui_kit::App) {
     #[cfg(target_os = "macos")]
     if let Some(bundle) = std::env::current_exe().ok().and_then(|exe| exe.ancestors().nth(3).map(std::path::Path::to_path_buf))
         && bundle.extension().is_some_and(|e| e == "app")
@@ -194,7 +198,7 @@ fn restart(cx: &mut gpui_kit::App) {
             .process_group(0)
             .spawn();
         if spawned.is_ok() {
-            cx.dispatch_action(&Quit);
+            window.dispatch_action(Box::new(Quit), cx);
             return;
         }
     }

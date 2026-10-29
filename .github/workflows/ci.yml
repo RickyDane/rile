@@ -21,6 +21,15 @@ jobs:
       - run: cargo build --workspace --locked
       - run: cargo test --workspace --locked
 
+  # Rile Server is the only part built for Linux (the GUI targets macOS/Windows).
+  test-linux:
+    runs-on: avrea-ubuntu-latest-2-vcpu
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --locked -p rile-server -p rile-remote
+
   test-windows:
     runs-on: avrea-windows-latest-16-vcpu
     steps:

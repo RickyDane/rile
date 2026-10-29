@@ -33,6 +33,9 @@ pub fn apply(settings: &Settings, window: &mut Window, cx: &mut App) {
         thumbnails: settings.show_thumbnails,
         icon_size: settings.grid_icon_size,
     });
+    // Both spellings of each share, so symlinked paths (/tmp → /private/tmp) match too.
+    let shared = settings.nearby.shares.iter().flat_map(|s| [Some(s.path.clone()), std::fs::canonicalize(&s.path).ok()]).flatten().collect();
+    cx.set_global(crate::icons::SharedFolders(shared));
     window.refresh();
 }
 

@@ -8,6 +8,8 @@ name: Release
 #   Rile-<version>-<arch>.dmg  for manual installs
 #   rile-x86_64-pc-windows-msvc.zip   Windows rile.exe (used by the updater)
 #   Rile-<version>-x64-setup.exe      per-user Windows installer
+#   rile-server-<triple>.tar.gz       Rile Server for Linux (rile-server + rilectl, static musl)
+#   install.sh                        Rile Server installer (`curl … | sudo sh`)
 #   SHA256SUMS              checksums verified by the updater
 #
 # Optional secrets (without them the app is ad-hoc signed and not notarized):
@@ -162,8 +164,50 @@ jobs:
             dist/rile-x86_64-pc-windows-msvc.zip
             dist/Rile-*-x64-setup.exe
 
+  # Rile Server (headless Nearby device): static musl binaries + installer.
+  build-linux:
+    runs-on: avrea-ubuntu-latest-2-vcpu
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-unknown-linux-musl, aarch64-unknown-linux-musl]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Check tag matches Cargo version
+        run: |
+          VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -1)
+          [[ "v$VERSION" == "$TAG" ]] || { echo "::error::Tag $TAG != Cargo.toml version $VERSION"; exit 1; }
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - uses: mlugg/setup-zig@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild
+
+      - name: Build rile-server and rilectl
+        run: cargo zigbuild --release --locked --target ${{ matrix.target }} -p rile-server
+
+      - name: Package
+        run: |
+          mkdir -p out
+          tar -czf "out/rile-server-${{ matrix.target }}.tar.gz" -C "target/${{ matrix.target }}/release" rile-server rilectl
+          cp packaging/linux/install.sh out/install.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rile-server-${{ matrix.target }}
+          path: out/*
+
   release:
-    needs: [build, build-windows]
+    needs: [build, build-windows, build-linux]
     runs-on: avrea-ubuntu-latest-2-vcpu
     steps:
       - uses: actions/download-artifact@v4

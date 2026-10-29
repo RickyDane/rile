@@ -39,7 +39,7 @@ pub struct DeviceFacts {
 }
 
 fn run(cmd: &str, args: &[&str]) -> Option<String> {
-    let out = std::process::Command::new(cmd).args(args).output().ok()?;
+    let out = rile_services::no_window(std::process::Command::new(cmd).args(args)).output().ok()?;
     out.status.success().then(|| String::from_utf8_lossy(&out.stdout).trim().to_string()).filter(|s| !s.is_empty())
 }
 
@@ -204,7 +204,7 @@ pub fn local_device(settings: &Settings, facts: &DeviceFacts, volumes: &[rile_co
         .shares
         .iter()
         .filter(|s| s.path.is_dir())
-        .map(|s| Share { name: s.name.clone(), path: s.path.clone() })
+        .map(|s| Share { name: s.name.clone(), path: s.path.clone(), writable: false })
         .collect();
     let name = Some(settings.nearby.device_name.trim().to_string()).filter(|n| !n.is_empty()).unwrap_or_else(|| facts.name.clone());
     LocalDevice {
@@ -218,6 +218,7 @@ pub fn local_device(settings: &Settings, facts: &DeviceFacts, volumes: &[rile_co
             storage_used: boot.map(|v| v.total.saturating_sub(v.available)).unwrap_or(0),
             storage_total: boot.map(|v| v.total).unwrap_or(0),
             shares: shares.iter().map(|s| s.name.clone()).collect(),
+            writable: Vec::new(),
             version: env!("CARGO_PKG_VERSION").to_string(),
         },
         shares,
@@ -436,6 +437,8 @@ impl Workspace {
         let guard = Arc::new(Mutex::new(PairGuard(Some(pairing))));
         let weak = cx.entity().downgrade();
         let name = name_of(&device);
+        // Rile Server has no screen: its admin confirms with `rilectl pair`.
+        let server = device.kind == DeviceKind::Server;
         let on_pair = {
             let (guard, weak, peer_id, name) = (guard.clone(), weak.clone(), peer_id.clone(), name.clone());
             move |window: &mut Window, cx: &mut App| {
@@ -455,6 +458,9 @@ impl Workspace {
                                 }
                                 let msg = match result {
                                     Ok(true) => Notification::success(format!("Paired with {name}")),
+                                    Ok(false) if server => Notification::warning(format!(
+                                        "{name} didn't confirm the pairing. Run `sudo rilectl pair` on the server, then pair again."
+                                    )),
                                     Ok(false) => Notification::warning(format!("{name} didn't confirm the pairing")),
                                     Err(e) => Notification::error(format!("Pairing failed: {e:#}")),
                                 };
@@ -480,7 +486,13 @@ impl Workspace {
         };
         code_dialog(
             format!("Pair with {name}?"),
-            format!("Check that {name} shows the same code, then choose Pair. You'll only need to do this once."),
+            if server {
+                format!(
+                    "{name} is a Rile Server. Run `sudo rilectl pair` on it, check that it shows the same code and accept there, then choose Pair. You'll only need to do this once."
+                )
+            } else {
+                format!("Check that {name} shows the same code, then choose Pair. You'll only need to do this once.")
+            },
             code,
             "Pair",
             on_pair,

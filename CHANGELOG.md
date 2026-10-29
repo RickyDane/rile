@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## v0.8.0-beta.5
+
+### Rile Server (Linux)
+- New headless Nearby device for Linux servers. It runs as a systemd service and shows up under **Nearby** like any other Rile device.
+- Install with `curl -fsSL https://raw.githubusercontent.com/RickyDane/rile/master/packaging/linux/install.sh | sudo sh`. The interactive setup lets you share the whole machine, one folder or several. Folders can be picked from suggestions, typed with Tab completion, or browsed.
+- `rilectl` changes shares, access, name, inbox and port later, pairs devices (`rilectl pair` shows the code to confirm), lists and unpairs devices, follows the log, and uninstalls.
+- Files sent to the server are saved in its inbox automatically.
+- Releases include static `rile-server-<triple>.tar.gz` builds for x86_64 and aarch64 Linux.
+
+### Nearby Devices
+- Shared folders can now be read & write. On devices that allow it, you can create folders, upload, rename and delete in Rile. Older devices stay read-only.
+- Pairing with a Rile Server explains how to confirm the code on the server.
+- Folders you share with Nearby devices show a "shared" badge in the list, grid and column views.
+- Device details are more compact.
+
+### Updates
+- Fix "Restart Now" after an update sometimes not quitting the app.
+
 ## v0.8.0-beta.4
 
 ### Windows

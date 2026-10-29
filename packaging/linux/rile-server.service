@@ -1,0 +1,23 @@
+# Rile Server: shares this machine's folders with Rile apps on the local network.
+# Written by `rilectl setup`; changes here are overwritten by rilectl.
+[Unit]
+Description=Rile Server (Nearby Devices)
+Documentation=https://github.com/RickyDane/rile
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/rile-server run
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=3
+@USER@StateDirectory=rile-server
+StateDirectoryMode=0700
+RuntimeDirectory=rile-server
+RuntimeDirectoryMode=0700
+NoNewPrivileges=yes
+PrivateTmp=yes
+@PROTECT@
+[Install]
+WantedBy=multi-user.target

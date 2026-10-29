@@ -44,6 +44,9 @@ pub struct DeviceInfo {
     pub storage_total: u64,
     /// Names of the folders it shares (only sent to paired devices).
     pub shares: Vec<String>,
+    /// The shares paired devices may change (create, upload, rename, delete).
+    /// Older versions send none: everything is read-only.
+    pub writable: Vec<String>,
     pub version: String,
 }
 
@@ -98,6 +101,15 @@ pub(crate) enum Request {
     Read { path: String },
     /// Followed, once accepted, by the data of every file item in order.
     Offer { items: Vec<OfferItem>, total: u64 },
+    /// Changes inside a writable share. Only sent when the share is listed in
+    /// [`DeviceInfo::writable`], so older devices never see them.
+    Mkdir { path: String },
+    RemoveFile { path: String },
+    RemoveDir { path: String },
+    Rename { from: String, to: String },
+    /// Answered with `Ok`, then followed by the file's data frames (an empty
+    /// frame ends it) and answered again with `Done`.
+    Write { path: String, size: u64 },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -117,9 +129,10 @@ pub(crate) enum Response {
     Paired { ok: bool },
     Entries { entries: Vec<WireEntry> },
     Entry { entry: WireEntry },
-    /// `Read`: data frames follow. `Offer`: the receiver accepted; send data.
+    /// `Read`: data frames follow. `Offer`/`Write`: accepted; send data.
+    /// Also the answer to a successful change.
     Ok,
-    /// `Offer`: all files written.
+    /// `Offer`/`Write`: all files written.
     Done,
     Error { kind: ErrorKind, message: String },
 }

@@ -135,7 +135,7 @@ fn render_rows(pane: &mut Pane, range: Range<usize>, _window: &mut Window, cx: &
                         .flex_1()
                         .min_w_0()
                         .gap(px(10.))
-                        .child(entry_icon(&entry, 16., icon_color, cx))
+                        .child(crate::icons::with_shared_badge(entry_icon(&entry, 16., icon_color, cx), &entry, 16., pane.conn().is_none(), cx))
                         .child(div().flex_1().min_w_0().truncate().child(SharedString::from(entry.name.clone()))),
                 )
                 .when(searching, |d| {

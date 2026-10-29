@@ -1,5 +1,5 @@
 //! The side of a Rile device that other devices connect to: serves its shared
-//! folders (read-only) and receives files it accepts.
+//! folders (read-only unless a share allows changes) and receives files it accepts.
 
 use std::collections::HashMap;
 use std::fs;
@@ -27,11 +27,13 @@ pub const PROMPT_TIMEOUT: Duration = Duration::from_secs(120);
 const IDLE_TIMEOUT: Duration = Duration::from_secs(300);
 const CHUNK: usize = 256 * 1024;
 
-/// A folder this device shares with paired devices (read-only).
+/// A folder this device shares with paired devices.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Share {
     pub name: String,
     pub path: PathBuf,
+    /// Paired devices may create, upload, rename and delete inside it.
+    pub writable: bool,
 }
 
 /// What this device publishes. The app replaces it when settings change.
@@ -225,10 +227,16 @@ fn serve(sock: TcpStream, ctx: &Ctx) -> Result<()> {
     if trusted {
         let _ = ctx.store.refresh(&info);
     }
-    let mut ours = ctx.local.read().unwrap_or_else(|e| e.into_inner()).info.clone();
+    let mut ours = {
+        let local = ctx.local.read().unwrap_or_else(|e| e.into_inner());
+        let mut info = local.info.clone();
+        info.writable = local.shares.iter().filter(|s| s.writable).map(|s| s.name.clone()).collect();
+        info
+    };
     ours.id = ctx.store.id().to_string();
     if !trusted {
         ours.shares.clear();
+        ours.writable.clear();
     }
     wire::write_json(&mut tls, &Response::Hello { version: PROTOCOL_VERSION, info: ours, trusted })?;
     tls.sock.set_read_timeout(Some(IDLE_TIMEOUT))?;
@@ -254,24 +262,48 @@ fn serve(sock: TcpStream, ctx: &Ctx) -> Result<()> {
                 // A failed transfer leaves the stream mid-file: close it.
                 receive(&mut tls, ctx, &info, items, total)?;
             }
+            req @ (Request::Mkdir { .. }
+            | Request::RemoveFile { .. }
+            | Request::RemoveDir { .. }
+            | Request::Rename { .. }
+            | Request::Write { .. }) => {
+                let shares = ctx.local.read().unwrap_or_else(|e| e.into_inner()).shares.clone();
+                // Errors are answered in-band; only a broken upload closes the connection.
+                change(&mut tls, &shares, req)?;
+            }
             req => {
                 let shares = ctx.local.read().unwrap_or_else(|e| e.into_inner()).shares.clone();
                 if let Err(e) = browse(&mut tls, &shares, req) {
                     // Errors while streaming file data can't be recovered in-band.
-                    if e.downcast_ref::<std::io::Error>().is_some() {
+                    if e.downcast_ref::<StreamBroken>().is_some() {
                         return Err(e);
                     }
-                    let kind = if e.chain().any(|c| c.downcast_ref::<std::io::Error>().is_some_and(|io| io.kind() == std::io::ErrorKind::NotFound)) {
-                        ErrorKind::NotFound
-                    } else if e.downcast_ref::<PeerError>().is_some() {
-                        e.downcast_ref::<PeerError>().map(|p| p.kind).unwrap_or(ErrorKind::Other)
-                    } else {
-                        ErrorKind::Other
-                    };
-                    send_error(&mut tls, kind, &format!("{e:#}"))?;
+                    send_error(&mut tls, error_kind(&e), &format!("{e:#}"))?;
                 }
             }
         }
+    }
+}
+
+/// File data was being streamed when something failed: the connection is out of sync.
+#[derive(Debug)]
+struct StreamBroken(std::io::Error);
+
+impl std::fmt::Display for StreamBroken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "streaming file data: {}", self.0)
+    }
+}
+impl std::error::Error for StreamBroken {}
+
+fn error_kind(e: &anyhow::Error) -> ErrorKind {
+    if let Some(p) = e.chain().find_map(|c| c.downcast_ref::<PeerError>()) {
+        return p.kind;
+    }
+    match e.chain().find_map(|c| c.downcast_ref::<std::io::Error>()).map(|io| io.kind()) {
+        Some(std::io::ErrorKind::NotFound) => ErrorKind::NotFound,
+        Some(std::io::ErrorKind::PermissionDenied) => ErrorKind::Denied,
+        _ => ErrorKind::Other,
     }
 }
 
@@ -329,6 +361,131 @@ fn resolve(shares: &[Share], path: &str) -> Result<Resolved> {
         bail!(PeerError { kind: ErrorKind::Denied, message: "Outside the shared folder".into() });
     }
     Ok(Resolved::In { real, root })
+}
+
+fn denied(message: impl Into<String>) -> PeerError {
+    PeerError { kind: ErrorKind::Denied, message: message.into() }
+}
+
+fn bad_name(part: &str) -> bool {
+    part.is_empty()
+        || part == "."
+        || part == ".."
+        || part.contains('\\')
+        || part.contains('\0')
+        || (cfg!(windows) && part.contains(':'))
+}
+
+/// Something inside a writable share that a change applies to. Its last
+/// component is not followed (it may be a link, or not exist yet); everything
+/// above it is checked like [`resolve`].
+struct Target {
+    path: PathBuf,
+    share: String,
+}
+
+fn resolve_target(shares: &[Share], path: &str) -> Result<Target> {
+    let path = paths::normalize(&format!("/{path}"));
+    let parent = paths::parent(&path).unwrap_or_else(|| "/".into());
+    let name = paths::file_name(&path).to_string();
+    let Some(share_name) = path.split('/').find(|p| !p.is_empty()) else {
+        bail!(denied("The list of shared folders can't be changed"));
+    };
+    let share = shares
+        .iter()
+        .find(|s| s.name == share_name)
+        .ok_or_else(|| PeerError { kind: ErrorKind::NotFound, message: format!("No shared folder named “{share_name}”") })?;
+    if !share.writable {
+        bail!(denied(format!("“{}” is read-only", share.name)));
+    }
+    if parent == "/" {
+        bail!(denied("Shared folders themselves can't be changed"));
+    }
+    if bad_name(&name) {
+        bail!(denied("Invalid name"));
+    }
+    let Resolved::In { real, .. } = resolve(shares, &parent)? else { bail!(denied("Invalid path")) };
+    if !fs::metadata(&real)?.is_dir() {
+        bail!("{parent} is not a folder");
+    }
+    Ok(Target { path: real.join(name), share: share.name.clone() })
+}
+
+/// Applies a change to a writable share. Errors are answered in-band; the
+/// result is an error only when the connection can't continue (a broken upload).
+fn change(tls: &mut Tls, shares: &[Share], req: Request) -> Result<()> {
+    let prepared = (|| -> Result<Option<(Target, PathBuf, fs::File)>> {
+        match req {
+            Request::Mkdir { path } => fs::create_dir(resolve_target(shares, &path)?.path)?,
+            Request::RemoveFile { path } => {
+                let t = resolve_target(shares, &path)?;
+                if fs::symlink_metadata(&t.path)?.is_dir() {
+                    bail!("{path} is a folder");
+                }
+                fs::remove_file(&t.path)?;
+            }
+            Request::RemoveDir { path } => {
+                let t = resolve_target(shares, &path)?;
+                if !fs::symlink_metadata(&t.path)?.is_dir() {
+                    bail!("{path} is not a folder");
+                }
+                fs::remove_dir(&t.path)?;
+            }
+            Request::Rename { from, to } => {
+                let (a, b) = (resolve_target(shares, &from)?, resolve_target(shares, &to)?);
+                if a.share != b.share {
+                    bail!(denied("Items can't be moved between shared folders"));
+                }
+                fs::symlink_metadata(&a.path)?;
+                if fs::symlink_metadata(&b.path).is_ok() {
+                    bail!("{to} already exists");
+                }
+                fs::rename(&a.path, &b.path)?;
+            }
+            Request::Write { path, .. } => {
+                let t = resolve_target(shares, &path)?;
+                if fs::symlink_metadata(&t.path).is_ok_and(|m| m.is_dir()) {
+                    bail!("{path} is a folder");
+                }
+                let name = t.path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                let tmp = t.path.with_file_name(format!(".{name}.rile-part"));
+                let _ = fs::remove_file(&tmp);
+                // create_new: never write through a link someone left there.
+                let out = fs::OpenOptions::new().write(true).create_new(true).open(&tmp)?;
+                return Ok(Some((t, tmp, out)));
+            }
+            _ => bail!("unexpected request"),
+        }
+        Ok(None)
+    })();
+    let (target, tmp, mut out) = match prepared {
+        Ok(None) => return Ok(wire::write_json(tls, &Response::Ok)?),
+        Ok(Some(upload)) => upload,
+        Err(e) => return send_error(tls, error_kind(&e), &format!("{e:#}")),
+    };
+    wire::write_json(tls, &Response::Ok)?;
+    tls.sock.set_read_timeout(Some(crate::IO_TIMEOUT))?;
+    let received = (|| -> Result<()> {
+        while let Some(chunk) = wire::read_data(tls)? {
+            out.write_all(&chunk)?;
+        }
+        out.sync_all()?;
+        Ok(())
+    })();
+    drop(out);
+    tls.sock.set_read_timeout(Some(IDLE_TIMEOUT))?;
+    if let Err(e) = received {
+        // The client gave up (or the disk is full) mid-file: the stream can't be resynced.
+        let _ = fs::remove_file(&tmp);
+        let _ = send_error(tls, error_kind(&e), &format!("{e:#}"));
+        return Err(e);
+    }
+    if let Err(e) = fs::rename(&tmp, &target.path) {
+        let _ = fs::remove_file(&tmp);
+        return send_error(tls, error_kind(&e.into()), "Couldn't save the file");
+    }
+    wire::write_json(tls, &Response::Done)?;
+    Ok(())
 }
 
 fn dunce_canonical(p: &Path) -> Result<PathBuf> {
@@ -436,17 +593,17 @@ fn browse(tls: &mut Tls, shares: &[Share], req: Request) -> Result<()> {
             if file.metadata()?.is_dir() {
                 bail!("Is a folder");
             }
-            wire::write_json(tls, &Response::Ok)?;
+            wire::write_json(tls, &Response::Ok).map_err(StreamBroken)?;
             let mut buf = vec![0u8; CHUNK];
             loop {
-                let n = file.read(&mut buf).map_err(std::io::Error::other)?;
+                let n = file.read(&mut buf).map_err(StreamBroken)?;
                 if n == 0 {
                     break;
                 }
-                wire::write_data(tls, &buf[..n])?;
+                wire::write_data(tls, &buf[..n]).map_err(StreamBroken)?;
             }
-            wire::write_data(tls, &[])?;
-            tls.flush()?;
+            wire::write_data(tls, &[]).map_err(StreamBroken)?;
+            tls.flush().map_err(StreamBroken)?;
         }
         _ => bail!("unexpected request"),
     }
@@ -552,7 +709,7 @@ mod tests {
         let share = dir.path().join("pub");
         fs::create_dir_all(share.join("sub")).unwrap();
         fs::write(dir.path().join("secret.txt"), "x").unwrap();
-        let shares = vec![Share { name: "Pub".into(), path: share.clone() }];
+        let shares = vec![Share { name: "Pub".into(), path: share.clone(), writable: false }];
         assert!(matches!(resolve(&shares, "/").unwrap(), Resolved::Root));
         assert!(matches!(resolve(&shares, "/Pub/sub").unwrap(), Resolved::In { .. }));
         assert!(resolve(&shares, "/Pub/../secret.txt").is_err());
@@ -563,5 +720,25 @@ mod tests {
             std::os::unix::fs::symlink(dir.path().join("secret.txt"), share.join("link")).unwrap();
             assert!(resolve(&shares, "/Pub/link").is_err());
         }
+    }
+
+    #[test]
+    fn changes_need_a_writable_share_and_spare_its_root() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("ro")).unwrap();
+        fs::create_dir_all(dir.path().join("rw/sub")).unwrap();
+        let shares = vec![
+            Share { name: "RO".into(), path: dir.path().join("ro"), writable: false },
+            Share { name: "RW".into(), path: dir.path().join("rw"), writable: true },
+        ];
+        let kind = |p: &str| resolve_target(&shares, p).err().and_then(|e| e.downcast_ref::<PeerError>().map(|p| p.kind));
+        assert_eq!(kind("/RO/new"), Some(ErrorKind::Denied));
+        assert_eq!(kind("/RW"), Some(ErrorKind::Denied));
+        assert_eq!(kind("/"), Some(ErrorKind::Denied));
+        assert_eq!(kind("/Other/x"), Some(ErrorKind::NotFound));
+        assert!(resolve_target(&shares, "/RW/../ro/x").is_err());
+        let t = resolve_target(&shares, "/RW/sub/new.txt").unwrap();
+        assert_eq!(t.path, dir.path().join("rw/sub/new.txt"));
+        assert!(resolve_target(&shares, "/RW/missing/new.txt").is_err());
     }
 }
