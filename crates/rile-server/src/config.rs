@@ -153,6 +153,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(unix)] // uses Unix absolute paths
     fn round_trips_and_validates() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("etc/config.toml");
