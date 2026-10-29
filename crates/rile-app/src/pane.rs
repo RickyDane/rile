@@ -272,7 +272,8 @@ impl Pane {
         self._search_task = None;
         self._watcher = None;
         self._watch_task = None;
-        // Coming back up to a parent: preselect the folder we came from.
+        // Coming back up to a parent: preselect the folder we came from,
+        // unless the caller already asked for a selection (reveal).
         let prev_dir = match &previous {
             Location::Dir(p) => Some(p.clone()),
             Location::Remote { path, .. } => Some(PathBuf::from(path)),
@@ -280,6 +281,7 @@ impl Pane {
         };
         if let (Some(dir), Some(prev)) = (self.dir_path(), prev_dir)
             && prev.parent() == Some(dir.as_path())
+            && self.pending_select.is_none()
         {
             self.pending_select = Some(vec![prev]);
         }

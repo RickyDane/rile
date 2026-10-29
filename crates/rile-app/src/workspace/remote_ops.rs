@@ -27,6 +27,54 @@ use super::{Workspace, item_count};
 use crate::remote;
 
 impl Workspace {
+    pub fn is_connecting(&self, id: &str) -> bool {
+        !remote::is_connected(id)
+            && (self.auto_connecting.contains(id) || self.ops.iter().any(|op| op.connecting_to.as_deref() == Some(id)))
+    }
+
+    /// Initial readiness includes metadata, not just an authenticated session.
+    /// A cached `None` means capacity was checked but isn't available.
+    pub fn is_source_loading(&self, id: &str) -> bool {
+        if self.is_connecting(id) {
+            return true;
+        }
+        if let Some(peer) = rile_remote::peer::peer_of_conn(id) {
+            return self.nearby.is_loading(peer);
+        }
+        remote::is_connected(id) && !self.remote_capacity.contains_key(id)
+    }
+
+    /// Try each saved source once at startup, independently and without changing
+    /// panes or producing notifications for offline/unauthorized sources.
+    pub(crate) fn auto_connect_saved(&mut self, cx: &mut Context<Self>) {
+        if !self.settings.remote_enabled {
+            return;
+        }
+        for info in self.connections.clone() {
+            if info.protocol == Protocol::Peer || remote::is_connected(&info.id) || self.is_connecting(&info.id) {
+                continue;
+            }
+            self.auto_connecting.insert(info.id.clone());
+            cx.spawn(async move |this, cx| {
+                let id = info.id.clone();
+                cx.background_spawn(async move {
+                    match remote::auto_connect(&info) {
+                        Ok(connected) => connected,
+                        Err(e) => {
+                            eprintln!("Auto-connect to {} failed: {e:#}", info.name);
+                            false
+                        }
+                    }
+                }).await;
+                this.update(cx, |this, cx| {
+                    this.auto_connecting.remove(&id);
+                    cx.notify();
+                }).ok();
+            }).detach();
+        }
+        cx.notify();
+    }
+
     /// Copies or moves between any combination of local disk and servers.
     #[allow(clippy::too_many_arguments)]
     pub fn transfer_between(
@@ -210,6 +258,27 @@ impl Workspace {
 
     /// Connects (in the background) and shows the server in the active pane.
     pub fn connect(&mut self, info: ConnectionInfo, secret: Option<String>, remember: bool, window: &mut Window, cx: &mut Context<Self>) {
+        self.start_connect(info, secret, remember, true, window, cx);
+    }
+
+    /// Connects (in the background) to a saved connection without navigating to it.
+    pub fn connect_only(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(info) = self.connections.iter().find(|c| c.id == id).cloned() else { return };
+        self.start_connect(info, None, false, false, window, cx);
+    }
+
+    fn start_connect(
+        &mut self,
+        info: ConnectionInfo,
+        secret: Option<String>,
+        remember: bool,
+        navigate: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !remote::is_connected(&info.id) || remote::info(&info.id).as_ref() != Some(&info) || secret.is_some() {
+            self.remote_capacity.remove(&info.id);
+        }
         if let Some(s) = &secret
             && remember
             && let Err(e) = rile_remote::credentials::save(&info.id, s)
@@ -235,6 +304,7 @@ impl Workspace {
         let label = format!("Connecting to {}", remote::label(&id));
         // The user may switch panes or tabs while the connection is opening.
         let target_pane = self.pane().downgrade();
+        let connecting_to = info.id.clone();
         self.start_op_then(
             label,
             window,
@@ -246,6 +316,11 @@ impl Workspace {
                 Ok(Vec::new())
             },
             move |this, window, cx| {
+                if !navigate {
+                    window.push_notification(Notification::info(format!("Connected to {}", remote::label(&conn_id))), cx);
+                    cx.notify();
+                    return;
+                }
                 let path = start.lock().unwrap().clone();
                 this.editing_path = false;
                 _ = target_pane.update(cx, |pane, cx| {
@@ -255,6 +330,9 @@ impl Workspace {
                 cx.notify();
             },
         );
+        if let Some(op) = self.ops.last_mut() {
+            op.connecting_to = Some(connecting_to);
+        }
     }
 
     pub fn open_connect_dialog(&mut self, editing: Option<ConnectionInfo>, window: &mut Window, cx: &mut Context<Self>) {
@@ -293,6 +371,7 @@ impl Workspace {
             }
         }
         rile_remote::Pool::global().disconnect(id);
+        self.remote_capacity.remove(id);
         window.push_notification(Notification::info(format!("Disconnected from {}", remote::label(id))), cx);
         cx.notify();
     }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Writes the app icon artwork: assets/app-icons/<style>/<accent>.svg for every
 // style × accent, plus src/app_icon_table.rs. Rasterise with gen_app_icon.sh.
-// The designs come from mockups/app-icons/round-5 … round-7.
+// The designs come from mockups/app-icons/round-5 … round-7 and round-11 (27).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,6 +39,31 @@ const tile = fill => `
   <rect x="102" y="102" width="820" height="820" rx="182" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="3"/>`;
 const lift = `<filter id="lf" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dy="14" stdDeviation="14" flood-color="#081321" flood-opacity=".28"/></filter>`;
 
+// A shared glass-like finish, drawn LAST so the reflection covers the artwork
+// as well as the tile. Keep it inside the existing macOS icon safe area.
+const macFinish = `<defs>
+  <clipPath id="mac-surface"><rect x="100" y="100" width="824" height="824" rx="184"/></clipPath>
+  <linearGradient id="mac-reflection" x1=".15" y1="0" x2=".65" y2="1">
+    <stop stop-color="#fff" stop-opacity=".24"/><stop offset=".55" stop-color="#e9f6ff" stop-opacity=".07"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </linearGradient>
+  <radialGradient id="mac-glare" gradientUnits="userSpaceOnUse" cx="330" cy="100" r="600" gradientTransform="translate(0 45) scale(1 .55)">
+    <stop stop-color="#fff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="mac-bevel" x1=".3" y1="0" x2=".7" y2="1">
+    <stop stop-color="#fff" stop-opacity=".72"/><stop offset=".27" stop-color="#e4efff" stop-opacity=".25"/><stop offset=".6" stop-color="#fff" stop-opacity=".03"/><stop offset="1" stop-color="#04112c" stop-opacity=".32"/>
+  </linearGradient>
+  <linearGradient id="mac-base" x2="0" y2="1">
+    <stop offset=".65" stop-color="#06122b" stop-opacity="0"/><stop offset="1" stop-color="#06122b" stop-opacity=".09"/>
+  </linearGradient>
+  </defs>
+  <g clip-path="url(#mac-surface)">
+    <path d="M100 100H924V315C692 284 414 458 100 379Z" fill="url(#mac-reflection)"/>
+    <rect x="100" y="100" width="824" height="824" fill="url(#mac-glare)"/>
+    <rect x="100" y="100" width="824" height="824" fill="url(#mac-base)"/>
+    <rect x="103" y="103" width="818" height="818" rx="181" fill="none" stroke="url(#mac-bevel)" stroke-width="6"/>
+    <path d="M108 345V284C108 187 187 108 284 108H713" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="2" stroke-linecap="round"/>
+  </g>`;
+
 // Folio: an open folder with documents peeking out, on a light tile.
 const folioDefs = (extra = "") => `<defs>
   <linearGradient id="t" x2=".2" y2="1"><stop stop-color="#fdfdfe"/><stop offset="1" stop-color="#e4e7ee"/></linearGradient>
@@ -66,8 +91,6 @@ const drawerFolders = () => `
   <path d="M300 330h110q14 0 14 14v20h292V560H300z" fill="${A(80, .7)}"/>
   <path d="M560 288h124q14 0 14 14v26h44V560H330V328h216q14 0 14-14z" fill="#fbfcfe"/>
   <g fill="${A(55, .5, .3)}"><rect x="378" y="380" width="200" height="20" rx="10"/><rect x="378" y="420" width="300" height="20" rx="10"/></g>`;
-const handle = () => `<rect x="402" y="612" width="220" height="56" rx="28" fill="${A(26, .6, .55)}"/>
-  <rect x="418" y="622" width="188" height="16" rx="8" fill="#fff" fill-opacity=".25"/>`;
 const drawerFront = deco => `
   <g filter="url(#lf)"><rect x="214" y="500" width="596" height="290" rx="54" fill="url(#d)"/></g>
   <path d="M268 506h488" stroke="#fff" stroke-opacity=".45" stroke-width="6" stroke-linecap="round"/>${deco}`;
@@ -76,19 +99,39 @@ const BOLT = "M18-100-62 12h52l-20 88 82-118h-54z";
 const bolt = (cx, cy, k, fill, extra = "") =>
   `<path transform="translate(${cx} ${cy}) scale(${k})" d="${BOLT}" fill="${fill}" stroke="${fill}" stroke-width="10" stroke-linejoin="round" ${extra}/>`;
 
-const FLAME_OUT = "M-4-122C10-86 30-68 34-38C42-56 54-64 64-76C64-40 82-18 82 24C82 76 46 112 0 112C-46 112-82 78-82 30C-82-10-62-32-52-64C-44-42-36-32-26-22C-30-62-24-98-4-122Z";
-const FLAME_IN = "M-2-22C12 4 42 26 42 62C42 90 24 106 0 106C-24 106-42 90-42 64C-42 42-28 28-20 8C-14 22-8 30-2 34C-8 14-8-4-2-22Z";
-const flame = (cx, cy, k, outer, inner, extra = "") =>
-  `<g transform="translate(${cx} ${cy}) scale(${k})" ${extra}><path d="${FLAME_OUT}" fill="${outer}"/><path d="${FLAME_IN}" fill="${inner}"/></g>`;
-const emberDefs = `<linearGradient id="eo" x2=".2" y2="1"><stop stop-color="#ffc247"/><stop offset="1" stop-color="#f0491a"/></linearGradient>
-  <linearGradient id="ei" x2="0" y2="1"><stop stop-color="#fff2a8"/><stop offset="1" stop-color="#ffc93a"/></linearGradient>
-  <filter id="eg" x="-80%" y="-80%" width="260%" height="260%"><feDropShadow stdDeviation="24" flood-color="#ff7a1f" flood-opacity=".7"/></filter>`;
-const ember = (cx, cy, k) => flame(cx, cy, k, "url(#eo)", "url(#ei)", `filter="url(#eg)"`);
-// Hot-rod flame decal licking back from the right edge, clipped to the panel.
-const HOTROD = "M840 512C710 514 600 534 462 560C560 576 616 588 664 600C540 612 420 640 296 662C430 672 540 680 624 692C520 704 404 732 276 764L840 810Z";
-const hotrod = (clipShape, dy = 0) => `<defs><clipPath id="hc">${clipShape}</clipPath></defs>
-  <g clip-path="url(#hc)" transform="translate(0 ${dy})"><path d="${HOTROD}" fill="url(#eo)"/>
-  <path d="${HOTROD}" fill="url(#ei)" transform="translate(840 700) scale(.62 .5) translate(-840 -640)"/></g>`;
+// Nebula Dossier artwork is shared with the approved concept 27.
+// Its violet palette is preserved for Blue and shifted for the other accents.
+const nebulaDossier = () => {
+  const tint = hex => {
+    const rgb = hex.match(/\w\w/g).map(v => parseInt(v, 16) / 255);
+    const hi = Math.max(...rgb), lo = Math.min(...rgb), d = hi - lo;
+    const l = (hi + lo) / 2;
+    let h = hi === rgb[0] ? (rgb[1] - rgb[2]) / d : hi === rgb[1] ? (rgb[2] - rgb[0]) / d + 2 : (rgb[0] - rgb[1]) / d + 4;
+    h = (h * 60 + 360 + H - 212) % 360;
+    return hsl(h, d / (1 - Math.abs(2 * l - 1)) * S / .92, l * 100, 1);
+  };
+  return `<defs>
+    <clipPath id="nc"><rect x="8" y="8" width="240" height="240" rx="53"/></clipPath>
+    <radialGradient id="nn" cx=".75" cy=".3" r=".85">${stop(0, tint("b78be5"))}${stop(.35, tint("505697"))}${stop(1, tint("13233f"))}</radialGradient>
+    <linearGradient id="nv" x2=".7" y2="1">${stop(0, tint("e8c9ff"))}${stop(.45, tint("a48cdb"))}${stop(1, tint("4c4b91"))}</linearGradient>
+    <linearGradient id="ns" x2=".8" y2="1"><stop stop-color="#f4f9ff"/><stop offset=".45" stop-color="#becde3"/><stop offset="1" stop-color="#617998"/></linearGradient>
+    <radialGradient id="ng"><stop stop-color="#87d8ff" stop-opacity=".5"/><stop offset="1" stop-color="#87d8ff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="nt" cx=".25" cy="0" r="1.1"><stop stop-color="#fff" stop-opacity=".15"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></radialGradient>
+    ${tile("url(#nn)")}
+    <g transform="translate(72.533333 72.533333) scale(3.433333)"><g clip-path="url(#nc)">
+      <rect width="256" height="256" fill="url(#nn)"/>
+      <path d="M-10 53V11h83q12 0 19 11l15 22h159v222H-10Z" fill="url(#nv)"/>
+      <path d="M31 35h165l26 26v154H31Z" fill="#0a1833" opacity=".4" transform="rotate(9 128 128) translate(0 7)"/>
+      <path d="M31 35h165l26 26v154H31Z" fill="url(#ns)" transform="rotate(9 128 128)"/>
+      <path d="M22 55h163l26 26v161H22Z" fill="url(#nn)" transform="rotate(-6 128 128)"/>
+      <g transform="rotate(-6 128 128)"><path d="M185 55v26h26Z" fill="#b5bbeb"/><circle cx="141" cy="113" r="39" fill="url(#ng)"/><path d="m54 110 36-20 30 38 42-27" fill="none" stroke="#e1d6ff" stroke-opacity=".6" stroke-width="2"/><g fill="#f4eaff"><circle cx="54" cy="110" r="3"/><circle cx="90" cy="90" r="4"/><circle cx="120" cy="128" r="3"/><circle cx="162" cy="101" r="4"/></g></g>
+      <path d="M-10 150q0-12 12-12h71q10 0 17 8l15 20h161v100H-10Z" fill="#182343" opacity=".4" transform="translate(0 7)"/>
+      <path d="M-10 150q0-12 12-12h71q10 0 17 8l15 20h161v100H-10Z" fill="url(#nv)"/>
+      <path d="M8 140h65q9 0 16 8l15 20h145" fill="none" stroke="#f1dcff" stroke-opacity=".8" stroke-width="2"/>
+      <path d="M106 201h44" stroke="#4d457f" stroke-opacity=".5" stroke-width="7" stroke-linecap="round"/>
+      <rect x="8" y="8" width="240" height="240" rx="53" fill="url(#nt)"/><rect x="9" y="9" width="238" height="238" rx="52" fill="none" stroke="#d7eaff" stroke-opacity=".23"/>
+    </g></g>`;
+};
 
 // Order and slugs mirror rile_core::settings::AppIcon.
 const STYLES = [
@@ -96,15 +139,7 @@ const STYLES = [
   ["DrawerBolt", "drawer-bolt", () => drawerDefs() + drawerFolders() + drawerFront(`
     ${bolt(512, 646, .98, A(26, .6, .55))}
     <path transform="translate(512 640) scale(.98)" d="${BOLT}" fill="#fff" fill-opacity=".92" stroke="#fff" stroke-opacity=".92" stroke-width="10" stroke-linejoin="round"/>`)],
-  ["FolioFlame", "folio-flame", () => folioDefs() + folioBody(flame(512, 606, 1.1, "#fff", A(76, .7), `filter="url(#lf)"`))],
-  ["FolioEmber", "folio-ember", () => folioDefs(emberDefs) + folioBody(ember(512, 606, 1.1))],
-  ["FolioHotRod", "folio-hot-rod", () => folioDefs(emberDefs) + folioBody(hotrod(`<path d="${FOLIO_FRONT}"/>`))],
-  ["DrawerFlame", "drawer-flame", () => drawerDefs() + drawerFolders() + drawerFront(`
-    ${flame(512, 650, .98, A(26, .6, .5), A(26, .6, .5))}
-    ${flame(512, 644, .98, "#fff", A(76, .7))}`)],
-  ["DrawerEmber", "drawer-ember", () => drawerDefs(emberDefs) + drawerFolders() + drawerFront(ember(512, 644, .98))],
-  ["DrawerHotRod", "drawer-hot-rod", () => drawerDefs(emberDefs) + drawerFolders() +
-    drawerFront(hotrod(`<rect x="214" y="500" width="596" height="290" rx="54"/>`, 14) + handle())],
+  ["NebulaDossier", "nebula-dossier", nebulaDossier],
 ];
 
 const arms = [];
@@ -112,7 +147,7 @@ for (const [variant, slug, draw] of STYLES) {
   mkdirSync(join(root, "assets/app-icons", slug), { recursive: true });
   for (const [accent, h, s] of ACCENTS) {
     [H, S] = [h, s];
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">${draw()}\n</svg>\n`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">${draw()}${macFinish}\n</svg>\n`;
     const file = `${slug}/${accent.toLowerCase()}`;
     writeFileSync(join(root, `assets/app-icons/${file}.svg`), svg);
     arms.push(`        (AppIcon::${variant}, Accent::${accent}) => include_bytes!("../assets/app-icons/${file}.png"),`);

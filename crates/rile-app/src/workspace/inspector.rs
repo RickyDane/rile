@@ -128,7 +128,7 @@ impl Workspace {
         let Some(entry) = entry else {
             // Nothing selected: describe the current location.
             let (title, detail, art) = match &location {
-                Location::Home => ("Home".to_string(), "Select a file to see its details".to_string(), crate::art::Art::Computer),
+                Location::Home => ("Home".to_string(), "Select a file to see its details".to_string(), crate::art::this_computer()),
                 other => (crate::workspace::tab_title(other), item_count(total), crate::art::Art::Folder),
             };
             return v_flex()
@@ -179,7 +179,7 @@ impl Workspace {
                 let thumb = if entry.extension() == "svg" {
                     Some(gpui_kit::ImageSource::from(p.clone()))
                 } else {
-                    crate::art::thumbnail(p, entry.modified, entry.size, w, cx).map(Into::into)
+                    crate::art::preview_image(p, entry.modified, entry.size, w, cx).map(Into::into)
                 };
                 match thumb {
                     Some(source) => img(source).size_full().object_fit(ObjectFit::Cover).into_any_element(),

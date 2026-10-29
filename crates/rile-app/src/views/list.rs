@@ -26,7 +26,18 @@ const ROW_GAP: f32 = 2.;
 
 /// Distance between consecutive rows (row height plus gap).
 pub fn row_pitch(cx: &gpui_kit::App) -> f32 {
-    prefs(cx).row_height + 2. + ROW_GAP
+    let prefs = prefs(cx);
+    row_height(prefs.row_height, prefs.icon_size) + ROW_GAP
+}
+
+/// Scale list icons with the shared S–XL icon-size setting, keeping the
+/// default medium size at 16 px.
+fn list_icon_size(icon_size: f32) -> f32 {
+    icon_size.clamp(super::grid::MIN_ICON, super::grid::MAX_ICON) / 4.
+}
+
+fn row_height(density_height: f32, icon_size: f32) -> f32 {
+    (density_height + 2.).max(list_icon_size(icon_size) + 8.)
 }
 
 /// Optional columns that fit the pane's width: (modified, kind). Search
@@ -103,7 +114,9 @@ fn render_header(pane: &Pane, cx: &mut Context<Pane>) -> impl IntoElement {
 fn render_rows(pane: &mut Pane, range: Range<usize>, _window: &mut Window, cx: &mut Context<Pane>) -> Vec<AnyElement> {
     let ch = chrome(cx);
     let now = Local::now();
-    let row_height = prefs(cx).row_height + 2.;
+    let prefs = prefs(cx);
+    let icon_size = list_icon_size(prefs.icon_size);
+    let row_height = row_height(prefs.row_height, prefs.icon_size);
     let searching = pane.search.is_some();
     let (show_mod, show_kind) = visible_columns(pane);
     let entries: Vec<Entry> = range.clone().filter_map(|ix| pane.entries().get(ix).cloned()).collect();
@@ -135,7 +148,7 @@ fn render_rows(pane: &mut Pane, range: Range<usize>, _window: &mut Window, cx: &
                         .flex_1()
                         .min_w_0()
                         .gap(px(10.))
-                        .child(crate::icons::with_shared_badge(entry_icon(&entry, 16., icon_color, cx), &entry, 16., pane.conn().is_none(), cx))
+                        .child(crate::icons::with_shared_badge(entry_icon(&entry, icon_size, icon_color, cx), &entry, icon_size, pane.conn().is_none(), cx))
                         .child(div().flex_1().min_w_0().truncate().child(SharedString::from(entry.name.clone()))),
                 )
                 .when(searching, |d| {
@@ -167,5 +180,21 @@ pub fn format_time(t: Option<SystemTime>, now: &DateTime<Local>) -> String {
         format!("Yesterday, {}", dt.format("%H:%M"))
     } else {
         dt.format("%b %-d, %Y, %H:%M").to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{list_icon_size, row_height};
+
+    #[test]
+    fn list_icons_follow_size_and_fit_rows() {
+        for (setting, icon) in [(48., 12.), (64., 16.), (80., 20.), (96., 24.)] {
+            assert_eq!(list_icon_size(setting), icon);
+            assert!(row_height(20., setting) >= icon + 8.);
+        }
+        assert_eq!(list_icon_size(0.), 12.);
+        assert_eq!(list_icon_size(200.), 24.);
+        assert_eq!(row_height(34., 96.), 36.);
     }
 }

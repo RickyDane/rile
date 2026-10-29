@@ -7,6 +7,36 @@ use rile_core::settings::{Accent, Settings, ThemeMode};
 
 use crate::views::ViewPrefs;
 
+/// Capacity usage color: the normal color below 80%, amber at 80%, red at 95%.
+pub fn usage_color(used: f32, normal: Hsla) -> Hsla {
+    if used >= 0.95 {
+        rgba(0xf07178ff).into()
+    } else if used >= 0.8 {
+        rgba(0xe5a54bff).into()
+    } else {
+        normal
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn capacity_usage_colors_match_thresholds() {
+        let normal = hsla(0.6, 0.5, 0.5, 1.);
+        for used in [0., 0.77, 0.7999] {
+            assert_eq!(usage_color(used, normal), normal);
+        }
+        for used in [0.8, 0.9, 0.9499] {
+            assert_eq!(usage_color(used, normal), rgba(0xe5a54bff).into());
+        }
+        for used in [0.95, 0.98, 1.] {
+            assert_eq!(usage_color(used, normal), rgba(0xf07178ff).into());
+        }
+    }
+}
+
 pub fn apply(settings: &Settings, window: &mut Window, cx: &mut App) {
     match settings.theme {
         ThemeMode::System => Theme::sync_system_appearance(Some(window), cx),
@@ -16,6 +46,8 @@ pub fn apply(settings: &Settings, window: &mut Window, cx: &mut App) {
     apply_accent(settings.accent, cx);
     crate::app_icon::install(settings.app_icon, settings.accent);
     crate::icons::set_icon_set(settings.icon_set);
+    crate::art::set_symbol_style(settings.symbol_style);
+    crate::art::set_thumbnail_quality(settings.thumbnail_quality);
     let chrome = Chrome::new(settings, cx);
     cx.set_global(chrome);
     apply_native(&chrome, cx);

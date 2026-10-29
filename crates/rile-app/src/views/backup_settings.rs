@@ -4,14 +4,15 @@ use std::path::PathBuf;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{
-    ActiveTheme, Sizable, h_flex,
+    ActiveTheme, Sizable, Side, h_flex,
     button::{Button, ButtonVariants},
     input::{Input, InputEvent, InputState},
+    menu::{DropdownMenu, PopupMenuItem},
     switch::Switch,
     v_flex,
 };
 use gpui_kit::{
-    AnyElement, App, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render, SharedString,
+    AnyElement, App, AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ParentElement, Render, SharedString,
     StatefulInteractiveElement, Styled, Subscription, Window, div, prelude::FluentBuilder, px,
 };
 use rile_backup::{BackupJob, Destination, Schedule, Trigger};
@@ -20,6 +21,44 @@ use crate::icons::icon;
 use crate::theme::chrome;
 use crate::views::kit::{self, PointerUnless};
 use crate::workspace::Workspace;
+
+#[derive(Clone)]
+struct DestinationChoice {
+    id: String,
+    name: String,
+    detail: String,
+    icon: IconName,
+    protocol: rile_remote::Protocol,
+    group: &'static str,
+    online: Option<bool>,
+}
+
+impl DestinationChoice {
+    fn glyph(&self, size: f32, cx: &App) -> AnyElement {
+        let color = chrome(cx).text_strong;
+        if self.protocol.is_cloud() {
+            crate::icons::protocol_glyph(self.protocol, size, color)
+        } else {
+            icon(self.icon).size(px(size)).text_color(color).into_any_element()
+        }
+    }
+
+    fn render(&self, cx: &App) -> AnyElement {
+        let ch = chrome(cx);
+        h_flex().w_full().cursor_pointer().gap(px(10.)).py(px(6.))
+            .child(h_flex().flex_none().justify_center().size(px(36.)).rounded(px(8.)).bg(ch.text_strong.opacity(0.06))
+                .child(self.glyph(22., cx)))
+            .child(v_flex().flex_1().min_w_0().gap(px(2.))
+                .child(div().truncate().text_size(px(12.)).font_weight(FontWeight::MEDIUM).text_color(ch.text_strong).child(self.name.clone()))
+                .child(div().truncate().text_size(px(11.)).text_color(ch.text_muted).child(self.detail.clone())))
+            .when_some(self.online, |row, online| {
+                let color = if online { ch.success } else { ch.text_muted };
+                row.child(h_flex().flex_none().gap(px(5.)).px(px(7.)).py(px(3.)).rounded(px(5.)).bg(color.opacity(0.1))
+                    .child(div().size(px(5.)).rounded_full().bg(color))
+                    .child(div().text_size(px(10.)).text_color(color).child(if online { "Online" } else { "Offline" })))
+            }).into_any_element()
+    }
+}
 
 pub struct BackupSettingsView {
     ws: Entity<Workspace>,
@@ -149,7 +188,27 @@ impl Render for BackupSettingsView {
         let theme = cx.theme().clone();
         let ws = self.ws.read(cx);
         let jobs: Vec<(String, String)> = ws.backups.config.job.iter().map(|j| (j.id.clone(), j.name.clone())).collect();
-        let connections = ws.connections.clone();
+        let mut connections = ws.connections.clone();
+        for device in &ws.nearby.trusted {
+            connections.push(rile_remote::peer::connection_info(&device.id, &device.name, "", 0));
+        }
+        let choices: Vec<DestinationChoice> = connections.iter().map(|c| {
+            let peer = rile_remote::peer::peer_of_conn(&c.id)
+                .and_then(|id| ws.nearby.trusted.iter().find(|p| p.id == id));
+            let (group, glyph, detail, online) = if let Some(peer) = peer {
+                let online = ws.nearby.online.iter().any(|p| p.id == peer.id);
+                ("Nearby devices", super::devices::kind_icon(peer.kind),
+                    if peer.os.is_empty() { "Paired device · Local network".into() } else { format!("{} · Local network", peer.os) }, Some(online))
+            } else if c.protocol.is_cloud() {
+                ("Cloud drives", IconName::Cloud, c.protocol.label().to_string(), None)
+            } else {
+                ("Servers", IconName::Server, format!("{} · {}", c.protocol.label(), c.host), None)
+            };
+            DestinationChoice {
+                id: c.id.clone(), name: if c.name.is_empty() { c.display() } else { c.name.clone() },
+                detail, icon: glyph, protocol: c.protocol, group, online,
+            }
+        }).collect();
         let agent_error = ws.backups.agent_error.clone();
         let menu_bar = ws.backups.config.menu_bar;
         let running = self.selected.as_ref().is_some_and(|id| ws.backups.running.contains_key(id));
@@ -241,7 +300,7 @@ impl Render for BackupSettingsView {
         let kind = segmented(
             "bk-dest-kind",
             remote,
-            &[(false, "Folder or Drive".into()), (true, "Server".into())],
+            &[(false, "Folder or Drive".into()), (true, "Server or Device".into())],
             {
                 let (ws, id) = (self.ws.clone(), job.id.clone());
                 move |to_remote| {
@@ -283,26 +342,48 @@ impl Render for BackupSettingsView {
             }
             Destination::Remote { conn, .. } => {
                 let control = if connections.is_empty() {
-                    div().text_size(px(11.)).text_color(ch.text_faint).child("Add a server under Network in the sidebar first").into_any_element()
+                    div().text_size(px(11.)).text_color(ch.text_faint).child("Add a server under Network or pair a device under Nearby first").into_any_element()
                 } else {
-                    let options: Vec<(usize, String)> = connections.iter().enumerate().map(|(i, c)| (i, if c.name.is_empty() { c.display() } else { c.name.clone() })).collect();
-                    let current = connections.iter().position(|c| c.id == *conn).unwrap_or(usize::MAX);
-                    let ids: Vec<String> = connections.iter().map(|c| c.id.clone()).collect();
+                    let current = conn.clone();
+                    let selected = choices.iter().find(|c| c.id == current);
+                    let label = selected.map(|c| c.name.clone()).unwrap_or_else(|| "Choose destination…".into());
+                    let glyph = selected.map(|c| c.glyph(18., cx))
+                        .unwrap_or_else(|| icon(IconName::HardDrive).size(px(18.)).text_color(ch.text_strong).into_any_element());
                     let (ws, id) = (self.ws.clone(), job.id.clone());
-                    div().max_w(px(300.)).child(segmented("bk-conn", current, &options, move |i| {
-                        let (ws, id, conn) = (ws.clone(), id.clone(), ids[i].clone());
-                        Box::new(move |_, cx| {
-                            let conn = conn.clone();
-                            ws.update(cx, |ws, cx| ws.update_backup_job(&id, cx, move |j| {
-                                if let Destination::Remote { conn: c, .. } = &mut j.destination {
-                                    *c = conn;
+                    Button::new("bk-conn").cursor_pointer().small().outline().h(px(34.)).w(px(260.)).max_w_full()
+                        .dropdown_caret(true).child(glyph)
+                        .child(div().flex_1().min_w_0().truncate().text_left().child(label))
+                        .dropdown_menu_with_anchor(gpui_kit::Anchor::TopRight, move |mut menu, _, _| {
+                            menu = menu.min_w(px(340.)).max_w(px(400.)).check_side(Side::Right);
+                            let mut first = true;
+                            for group in ["Servers", "Cloud drives", "Nearby devices"] {
+                                if !choices.iter().any(|c| c.group == group) { continue; }
+                                if !first { menu = menu.separator(); }
+                                first = false;
+                                menu = menu.label(group);
+                                for c in choices.iter().filter(|c| c.group == group) {
+                                    let (ws, id, conn) = (ws.clone(), id.clone(), c.id.clone());
+                                    let choice = c.clone();
+                                    menu = menu.item(PopupMenuItem::element(move |_, cx| choice.render(cx)).checked(c.id == current).on_click(move |_, _, cx| {
+                                        let conn = conn.clone();
+                                        ws.update(cx, |ws, cx| ws.update_backup_job(&id, cx, move |j| {
+                                            if let Destination::Remote { conn: c, .. } = &mut j.destination {
+                                                *c = conn;
+                                            }
+                                        }));
+                                    }));
                                 }
-                            }))
-                        })
-                    }, cx)).into_any_element()
+                            }
+                            menu
+                        }).into_any_element()
                 };
-                dest_rows.push(r("Server", "A saved SFTP, FTP or SMB connection".into(), control));
-                dest_rows.push(r("Folder on server", "Created if it doesn't exist".into(), div().w(px(200.)).child(Input::new(&self.remote_path).small()).into_any_element()));
+                dest_rows.push(r("Server or device", "A saved server, cloud drive or paired Nearby device".into(), control));
+                let hint = if rile_remote::peer::peer_of_conn(conn).is_some() {
+                    "Use a subfolder of a writable share, e.g. /Shared/Backups. Enable writing in Settings → Nearby on the receiving device."
+                } else {
+                    "Created if it doesn't exist"
+                };
+                dest_rows.push(r("Destination folder", hint.into(), div().w(px(200.)).child(Input::new(&self.remote_path).small()).into_any_element()));
             }
         }
 

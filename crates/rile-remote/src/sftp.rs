@@ -582,6 +582,17 @@ impl Backend for SftpBackend {
         self.check(r).with_context(|| format!("writing {path}"))
     }
 
+    fn capacity(&mut self, path: &str) -> Result<Option<crate::Capacity>> {
+        let sftp = &self.sftp;
+        let fut = async move { sftp.fs_info(path).await.map_err(map_sftp) };
+        let r = runtime().block_on(fut);
+        let info = self.check(r).with_context(|| format!("reading free space of {path}"))?;
+        Ok(info.and_then(|s| {
+            let unit = if s.fragment_size > 0 { s.fragment_size } else { s.block_size };
+            crate::Capacity::from_free(s.blocks.saturating_mul(unit), s.blocks_avail.saturating_mul(unit))
+        }))
+    }
+
     fn is_alive(&self) -> bool {
         self.alive && !self.handle.is_closed()
     }

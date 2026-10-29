@@ -42,6 +42,10 @@ pub(crate) trait Backend: Send {
     fn remove_all(&mut self, _path: &str) -> Option<Result<()>> {
         None
     }
+    /// See [`crate::RemoteFs::capacity`].
+    fn capacity(&mut self, _path: &str) -> Result<Option<crate::Capacity>> {
+        Ok(None)
+    }
 }
 
 pub(crate) fn remove_recursive(b: &mut dyn Backend, path: &str) -> Result<()> {

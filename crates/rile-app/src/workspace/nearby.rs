@@ -139,7 +139,28 @@ pub struct NearbyState {
     _events: Option<Task<()>>,
 }
 
+#[test]
+fn nearby_loading_includes_initial_details_only() {
+    let mut state = NearbyState::default();
+    let id = "loading-test";
+    assert!(!state.is_loading(id));
+    state.probing.insert(id.into());
+    assert!(state.is_loading(id));
+    state.details.insert(id.into(), (DeviceInfo::default(), true, Instant::now()));
+    // A routine refresh with details already available shouldn't spin.
+    assert!(!state.is_loading(id));
+    state.details.remove(id);
+    state.probing.remove(id);
+    assert!(!state.is_loading(id)); // Failed probe: no endless spinner.
+    state.pairing.insert(id.into());
+    assert!(state.is_loading(id));
+}
+
 impl NearbyState {
+    pub fn is_loading(&self, id: &str) -> bool {
+        self.pairing.contains(id) || (self.probing.contains(id) && !self.details.contains_key(id))
+    }
+
     pub fn running(&self) -> bool {
         self.server.is_some()
     }
@@ -343,6 +364,7 @@ impl Workspace {
             let stale = self.nearby.details.get(&p.id).is_none_or(|d| d.2.elapsed() > PROBE_EVERY);
             if stale && self.nearby.probing.insert(p.id.clone()) {
                 self.probe_peer(p, store.clone(), cx);
+                cx.notify();
             }
         }
         if changed {

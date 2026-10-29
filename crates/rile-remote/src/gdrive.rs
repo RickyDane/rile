@@ -434,6 +434,27 @@ impl Backend for DriveBackend {
         Ok(())
     }
 
+    fn capacity(&mut self, _path: &str) -> Result<Option<crate::Capacity>> {
+        // Int64 values arrive as strings; `limit` is absent for unlimited accounts.
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Quota {
+            limit: Option<String>,
+            usage: Option<String>,
+        }
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct About {
+            storage_quota: Quota,
+        }
+        let about: About = self.api.json("GET", &format!("{API}/about?fields=storageQuota(limit,usage)"), None)?;
+        let num = |s: Option<String>| s.and_then(|v| v.parse::<u64>().ok());
+        Ok(match (num(about.storage_quota.limit), num(about.storage_quota.usage)) {
+            (Some(total), Some(used)) if total > 0 => Some(crate::Capacity { used, total }),
+            _ => None,
+        })
+    }
+
     fn is_alive(&self) -> bool {
         true
     }

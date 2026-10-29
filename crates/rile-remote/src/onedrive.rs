@@ -203,6 +203,23 @@ impl Backend for OneDriveBackend {
         Ok(())
     }
 
+    fn capacity(&mut self, _path: &str) -> Result<Option<crate::Capacity>> {
+        #[derive(Deserialize)]
+        struct Quota {
+            total: Option<u64>,
+            used: Option<u64>,
+        }
+        #[derive(Deserialize)]
+        struct Drive {
+            quota: Option<Quota>,
+        }
+        let drive: Drive = self.api.json("GET", &format!("{BASE}?$select=quota"), None)?;
+        Ok(drive.quota.and_then(|q| match (q.total, q.used) {
+            (Some(total), Some(used)) if total > 0 => Some(crate::Capacity { used, total }),
+            _ => None,
+        }))
+    }
+
     fn is_alive(&self) -> bool {
         true
     }

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rile icon suites — review</title>
+<style>
+  :root { --bg:#f6f6f7; --panel:#fff; --fg:#1d1d1f; --muted:#6e6e73; --line:#e3e3e6; --accent:#0a84ff; color-scheme: light; }
+  body.dark { --bg:#1c1c1e; --panel:#262628; --fg:#f2f2f4; --muted:#9a9aa0; --line:#38383b; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; background:var(--bg); color:var(--fg); }
+  header { position:sticky; top:0; z-index:5; display:flex; gap:16px; align-items:center; flex-wrap:wrap; padding:12px 20px; background:var(--panel); border-bottom:1px solid var(--line); }
+  header h1 { font-size:15px; margin:0 12px 0 0; }
+  .tabs { display:flex; gap:4px; background:var(--bg); padding:3px; border-radius:8px; }
+  .tabs button { border:0; background:none; color:var(--fg); padding:5px 12px; border-radius:6px; font:inherit; cursor:pointer; }
+  .tabs button.on { background:var(--panel); box-shadow:0 1px 2px #0002; font-weight:600; }
+  label { color:var(--muted); display:flex; gap:6px; align-items:center; }
+  input[type=search] { padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
+  main { padding:20px; }
+  .suite-head { display:flex; align-items:baseline; gap:12px; margin:0 0 4px; }
+  .suite-head h2 { margin:0; font-size:20px; }
+  .desc { color:var(--muted); margin:0 0 16px; max-width:780px; }
+  .layout { display:grid; grid-template-columns: 260px 1fr; gap:20px; align-items:start; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; }
+  /* sidebar preview */
+  .side { padding:10px 8px; position:sticky; top:72px; }
+  .side h4 { margin:10px 10px 4px; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .side .row { display:flex; gap:9px; align-items:center; padding:5px 10px; border-radius:6px; }
+  .side .row.sel { background:color-mix(in srgb, var(--accent) 18%, transparent); }
+  .side .row .ic { color:var(--accent); width:16px; height:16px; }
+  .toolbar { display:flex; gap:2px; padding:8px; border-top:1px solid var(--line); margin-top:8px; flex-wrap:wrap; }
+  .toolbar .ic { width:16px; height:16px; margin:6px; color:var(--muted); }
+  .ic { display:inline-block; background:currentColor; -webkit-mask: var(--src) center/contain no-repeat; mask: var(--src) center/contain no-repeat; flex:none; }
+  /* grid */
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(118px,1fr)); gap:0; padding:0; overflow:hidden; }
+  .cell { padding:14px 8px 10px; display:flex; flex-direction:column; align-items:center; gap:8px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); margin:0 -1px -1px 0; cursor:pointer; }
+  .cell:hover { background:var(--bg); }
+  .cell .sizes { display:flex; align-items:end; gap:10px; height:36px; }
+  .cell .n { font-size:10.5px; color:var(--muted); text-align:center; word-break:break-all; }
+  .cell.flag { outline:2px solid #ff453a; outline-offset:-2px; }
+  /* compare mode */
+  table.cmp { border-collapse:collapse; width:100%; }
+  table.cmp th, table.cmp td { border-bottom:1px solid var(--line); padding:8px 10px; text-align:center; }
+  table.cmp th { position:sticky; top:58px; background:var(--panel); font-size:12px; z-index:2; }
+  table.cmp td:first-child { text-align:left; color:var(--muted); font-size:11px; }
+  .note { margin-top:12px; color:var(--muted); font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Icon suites</h1>
+  <div class="tabs" id="tabs"></div>
+  <input type="search" id="q" placeholder="Filter icons…">
+  <label>Size <input type="range" id="size" min="12" max="64" value="24"><span id="sizev">24</span></label>
+  <label><input type="checkbox" id="dark"> Dark</label>
+  <label>Accent <input type="color" id="accent" value="#0a84ff"></label>
+</header>
+<main id="main"></main>
+<script src="suites.js"></script>
+<script>
+const SUITES = [
+  { id:'lucide', name:'Outline (current)', desc:'The current Lucide outline set, for reference.' },
+  { id:'bold',   name:'Bold',   desc:'Same geometry with a heavy 2.6 stroke — a confident, SF-Symbols-Bold-like weight that reads well at 14–16 px in the sidebar and toolbar.' },
+  { id:'sketch', name:'Sketch', desc:'Hand-drawn: every stroke is re-traced with a slight, seeded wobble and a double pass, like a fine felt-tip. Playful, still legible.' },
+  { id:'neon',   name:'Neon',   desc:'Hollow “tube” lines: a thick stroke with a hairline channel cut through it. Inline/engraved look, best at 20 px and up.' },
+  { id:'badge',  name:'Badge',  desc:'The glyph knocked out of a solid rounded tile, like small app badges. Very high contrast; good for colorful, tinted sidebars.' },
+  { id:'pixel',  name:'Pixel',  desc:'Each icon snapped to a 16×16 one-bit grid. Retro bitmap look; razor sharp at exactly 16/32/48 px.' },
+];
+let names = [];
+const state = { suite: new URLSearchParams(location.search).get('suite') || 'compare', q:'', size:24 };
+const uri = (suite, name) => 'data:image/svg+xml,' + encodeURIComponent((ICON_SUITES[suite][name] || '').replaceAll('currentColor', '#000'));
+const ic = (suite, name, px, cls='ic') => `<span class="${cls}" title="${name}" style="width:${px}px;height:${px}px;--src:url(&quot;${uri(suite, name)}&quot;)"></span>`;
+
+function tabs() {
+  const all = [{id:'compare', name:'Compare all'}, ...SUITES];
+  document.getElementById('tabs').innerHTML = all.map(s => `<button data-s="${s.id}" class="${s.id===state.suite?'on':''}">${s.name}</button>`).join('');
+}
+const SIDEBAR = [
+  ['Favorites', [['house','Home'],['monitor','Desktop'],['file-text','Documents'],['download','Downloads'],['image','Pictures'],['music','Music'],['clapperboard','Movies']]],
+  ['Locations', [['hard-drive','Macintosh HD'],['usb','USB Stick'],['server','NAS'],['cloud','iCloud Drive'],['trash','Trash']]],
+  ['Tools', [['layout-dashboard','Overview'],['gauge','Space Analyzer'],['database-backup','Backups'],['radar','Nearby Devices'],['settings','Settings']]],
+];
+const TOOLBAR = ['arrow-left','arrow-right','arrow-up','layout-list','layout-grid','columns-3','search','sparkles','folder-plus','copy','scissors','clipboard-paste','pencil','trash','eye','ellipsis'];
+function sidebar(suite) {
+  return `<div class="card side">${SIDEBAR.map(([h, rows]) => `<h4>${h}</h4>` + rows.map(([n, l], i) =>
+    `<div class="row ${h==='Favorites'&&i===3?'sel':''}">${ic(suite, n, 16)}<span>${l}</span></div>`).join('')).join('')}
+    <div class="toolbar">${TOOLBAR.map(n => ic(suite, n, 16)).join('')}</div></div>`;
+}
+function visible() { return names.filter(n => n.includes(state.q)); }
+function render() {
+  tabs();
+  const main = document.getElementById('main');
+  if (state.suite === 'compare') {
+    main.innerHTML = `<div class="card"><table class="cmp"><thead><tr><th>Icon</th>${SUITES.map(s => `<th>${s.name}</th>`).join('')}</tr></thead><tbody>` +
+      visible().map(n => `<tr><td>${n}</td>${SUITES.map(s => `<td>${ic(s.id, n, state.size)}</td>`).join('')}</tr>`).join('') +
+      `</tbody></table></div><p class="note">${names.length} icons per suite. Click a suite tab for a sidebar/toolbar preview and the full grid at 16 / 24 / 32 px.</p>`;
+    return;
+  }
+  const s = SUITES.find(x => x.id === state.suite);
+  main.innerHTML = `<div class="suite-head"><h2>${s.name}</h2><span class="desc">${names.length} icons</span></div><p class="desc">${s.desc}</p>
+    <div class="layout">${sidebar(s.id)}<div class="card grid">${visible().map(n =>
+      `<div class="cell" data-n="${n}"><div class="sizes">${ic(s.id,n,16)}${ic(s.id,n,24)}${ic(s.id,n,32)}</div><div class="n">${n}</div></div>`).join('')}</div></div>
+    <p class="note">Click an icon to flag it for rework (flags are kept per suite in this browser).</p>`;
+  const key = 'flags-' + s.id, flags = new Set(JSON.parse(localStorage[key] || '[]'));
+  main.querySelectorAll('.cell').forEach(c => {
+    c.classList.toggle('flag', flags.has(c.dataset.n));
+    c.onclick = () => { flags.has(c.dataset.n) ? flags.delete(c.dataset.n) : flags.add(c.dataset.n); localStorage[key] = JSON.stringify([...flags]); c.classList.toggle('flag'); };
+  });
+}
+document.getElementById('tabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; state.suite = b.dataset.s; history.replaceState(null, '', '?suite=' + state.suite); render(); window.scrollTo(0,0); };
+document.getElementById('q').oninput = e => { state.q = e.target.value.trim().toLowerCase(); render(); };
+document.getElementById('size').oninput = e => { state.size = +e.target.value; document.getElementById('sizev').textContent = state.size; render(); };
+document.getElementById('dark').onchange = e => document.body.classList.toggle('dark', e.target.checked);
+document.getElementById('accent').oninput = e => document.documentElement.style.setProperty('--accent', e.target.value);
+names = ICON_NAMES; render();
+</script>
+</body>
+</html>

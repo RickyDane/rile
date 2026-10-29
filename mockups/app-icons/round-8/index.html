@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rile — app icon concepts, round 8</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;background:#1d1e21;color:#f1f2f5;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif} header,main{max-width:1240px;margin:auto;padding:0 28px} header{padding-top:54px;padding-bottom:30px} .eyebrow{color:#8bbfff;font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase} h1{font-size:36px;letter-spacing:-.04em;line-height:1.1;margin:10px 0} header p{color:#aeb3bd;max-width:680px;margin:0;font-size:15px} main{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;padding-bottom:64px} article{background:#282a2e;border:1px solid #ffffff12;border-radius:14px;overflow:hidden} .art{padding:28px 24px 18px;background:radial-gradient(ellipse at 50% 35%,#41444b,#25272b 75%);display:grid;place-items:center} .art svg{width:min(100%,240px);height:auto;aspect-ratio:1;filter:drop-shadow(0 14px 15px #0007)} .copy{padding:18px 20px 20px;min-height:130px} .number{color:#8bbfff;font-size:11px;font-weight:700;letter-spacing:.08em} h2{font-size:16px;margin:3px 0 5px} .copy p{color:#a5aab4;margin:0;font-size:12px} .sizes{display:flex;align-items:end;gap:14px;margin-top:15px} .sizes svg{width:32px;height:32px;filter:drop-shadow(0 2px 3px #0007)} .sizes svg:nth-of-type(2){width:20px;height:20px} .sizes span{color:#858b96;font-size:10px;margin-left:auto} footer{max-width:1240px;margin:auto;padding:0 28px 35px;color:#858b96;font-size:12px}
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0" aria-hidden="true">
+<defs>
+  <linearGradient id="night" x2="1" y2="1"><stop stop-color="#34465e"/><stop offset="1" stop-color="#121b2a"/></linearGradient>
+  <linearGradient id="blue" x2=".8" y2="1"><stop stop-color="#a7ddff"/><stop offset=".5" stop-color="#5ca4e7"/><stop offset="1" stop-color="#25528b"/></linearGradient>
+  <linearGradient id="paper" x2="1" y2="1"><stop stop-color="#f6fbff"/><stop offset="1" stop-color="#83b5d9"/></linearGradient>
+  <linearGradient id="warm" x2="1" y2="1"><stop stop-color="#ffdc9a"/><stop offset="1" stop-color="#dc7953"/></linearGradient>
+  <linearGradient id="violet" x2="1" y2="1"><stop stop-color="#c4bbff"/><stop offset="1" stop-color="#6354a9"/></linearGradient>
+  <linearGradient id="mint" x2="1" y2="1"><stop stop-color="#c6f7e3"/><stop offset="1" stop-color="#58a99f"/></linearGradient>
+  <clipPath id="tile"><rect x="8" y="8" width="240" height="240" rx="53"/></clipPath>
+  <radialGradient id="gloss" cx=".25" cy="0" r="1"><stop stop-color="#fff" stop-opacity=".22"/><stop offset=".65" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></radialGradient>
+  <radialGradient id="planet" cx=".3" cy=".25" r=".8"><stop stop-color="#dcf6ff"/><stop offset=".4" stop-color="#75b9ec"/><stop offset="1" stop-color="#28537f"/></radialGradient>
+  <linearGradient id="fold" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#123b5f" stop-opacity="0"/><stop offset=".48" stop-color="#123b5f" stop-opacity=".4"/><stop offset=".5" stop-color="#fff" stop-opacity=".3"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <g id="finish"><rect x="8" y="8" width="240" height="240" rx="53" fill="url(#gloss)"/><rect x="9" y="9" width="238" height="238" rx="52" fill="none" stroke="#fff" stroke-opacity=".22"/></g>
+  <symbol id="atlas" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#paper)"/>
+      <path d="M0 0h85v256H0z" fill="#6da6bd"/><path d="M85 0h86v256H85z" fill="#9ed5d1"/><path d="M171 0h85v256h-85z" fill="#b7dbe7"/>
+      <path d="M-10 35C49 22 45 118 100 127S180 63 267 92V147C175 116 170 205 95 182S35 88-10 98Z" fill="#4b8bb7"/>
+      <path d="M-10 65C45 49 46 142 99 155S179 91 267 120" fill="none" stroke="#d6f2ff" stroke-width="3" opacity=".65"/>
+      <path d="m-5 215 59-35 44 13 49-53 43 13 71-43" fill="none" stroke="#294f65" stroke-opacity=".25" stroke-width="13" stroke-linejoin="round"/>
+      <path d="m-5 209 59-35 44 13 49-53 43 13 71-43" fill="none" stroke="#fff8dc" stroke-width="7" stroke-linejoin="round"/>
+      <rect x="65" width="40" height="256" fill="url(#fold)"/><rect x="151" width="40" height="256" fill="url(#fold)"/>
+      <path d="M159 84a23 23 0 1 1 46 0c0 19-23 41-23 41s-23-22-23-41Z" fill="#244f77"/><circle cx="182" cy="83" r="9" fill="#f0fbff"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="ribbon" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#night)"/>
+      <path d="M-25 247C84 247 45 91 145 91S247 49 275 10" fill="none" stroke="#050f20" stroke-opacity=".35" stroke-width="80"/>
+      <path d="M-25 228C84 228 45 72 145 72S247 30 275-9" fill="none" stroke="url(#blue)" stroke-width="78"/>
+      <path d="M-25 199C84 199 45 43 145 43S247 1 275-38" fill="none" stroke="#d2f3ff" stroke-opacity=".8" stroke-width="3"/>
+      <path d="M-25 246C84 246 45 90 145 90S247 48 275 9" fill="none" stroke="#316eaa" stroke-width="17" opacity=".4"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="prism" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#blue)"/>
+      <path d="M0 0h256L147 117Z" fill="#b5e2f6"/><path d="M256 0v256L147 117Z" fill="#4e91be"/><path d="M256 256H0l147-139Z" fill="#28668e"/><path d="M0 256V0l147 117Z" fill="#74b2d6"/>
+      <path d="m47 128 100-76 66 76-66 76Z" fill="url(#paper)"/><path d="m147 52 66 76h-66Z" fill="#eafaff"/><path d="m147 128 66 0-66 76Z" fill="#78b6db"/><path d="m47 128 100 0v76Z" fill="#a8d3eb"/>
+      <path d="m47 128 100-76 66 76" fill="none" stroke="#fff" stroke-opacity=".65" stroke-width="2"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="orbit" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#night)"/><circle cx="128" cy="128" r="145" fill="none" stroke="#8dc4e5" stroke-opacity=".12" stroke-width="30"/>
+      <ellipse cx="128" cy="128" rx="122" ry="47" transform="rotate(-37 128 128)" fill="none" stroke="#6ba7cd" stroke-width="11"/>
+      <circle cx="128" cy="128" r="72" fill="url(#planet)"/>
+      <path d="M30.6 201.4C46.2 222.1 102.5 206 156.3 165.5S241 75.4 225.4 54.6" fill="none" stroke="#d5f1ff" stroke-width="11" stroke-linecap="round"/>
+      <circle cx="216" cy="89" r="14" fill="#ffd19a"/><circle cx="212" cy="85" r="4" fill="#fff5d6" opacity=".7"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="stack" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#violet)"/>
+      <path d="M-20 84 102 24Q112 19 123 24L276 101V270H-20Z" fill="#302f5b" opacity=".4"/>
+      <path d="M-20 74 102 14Q112 9 123 14L276 91V270H-20Z" fill="url(#paper)"/>
+      <path d="M-20 127 102 67Q112 62 123 67L276 144V270H-20Z" fill="#265482" opacity=".35"/>
+      <path d="M-20 117 102 57Q112 52 123 57L276 134V270H-20Z" fill="url(#blue)"/>
+      <path d="M-20 170 102 110Q112 105 123 110L276 187V270H-20Z" fill="#153b62" opacity=".35"/>
+      <path d="M-20 160 102 100Q112 95 123 100L276 177V270H-20Z" fill="url(#violet)"/>
+      <path d="M-20 213 102 153Q112 148 123 153L276 230V270H-20Z" fill="#333252" opacity=".35"/>
+      <path d="M-20 203 102 143Q112 138 123 143L276 220V270H-20Z" fill="url(#paper)"/>
+      <path d="M-20 203 102 143Q112 138 123 143L276 220" fill="none" stroke="#fff" stroke-opacity=".65" stroke-width="2"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="portal" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#mint)"/>
+      <path d="M28 260V112a100 100 0 0 1 200 0v148Z" fill="#285b69"/>
+      <path d="M51 260V119a77 77 0 0 1 154 0v141Z" fill="url(#mint)"/>
+      <path d="M74 260V126a54 54 0 0 1 108 0v134Z" fill="#346573"/>
+      <path d="M97 260V133a31 31 0 0 1 62 0v127Z" fill="#d3f9e9"/>
+      <path d="m97 195 62-22v87H97Z" fill="#effff5"/><path d="m74 219 23-24v65H74ZM159 173l23 46v41h-23Z" fill="#143947" opacity=".4"/>
+      <path d="M28 172v-60a100 100 0 0 1 200 0v60M74 172v-46a54 54 0 0 1 108 0v46" fill="none" stroke="#082b3b" stroke-opacity=".22" stroke-width="3"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="spark" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#warm)"/><circle cx="128" cy="128" r="105" fill="none" stroke="#9a5149" stroke-opacity=".25" stroke-width="2"/>
+      <circle cx="128" cy="128" r="78" fill="none" stroke="#fff5d5" stroke-opacity=".4" stroke-width="2"/>
+      <path d="m128 20 28 80 80 28-80 28-28 80-28-80-80-28 80-28Z" fill="#a45648" opacity=".3" transform="translate(0 6)"/>
+      <path d="m128 20 28 80 80 28-80 28-28 80-28-80-80-28 80-28Z" fill="#fff1d0"/>
+      <path d="m128 20 28 80-28 28Zm108 108-80 28-28-28ZM128 236l-28-80 28-28ZM20 128l80-28 28 28Z" fill="#e4a05e"/>
+      <circle cx="128" cy="128" r="21" fill="#bb7151"/><circle cx="128" cy="128" r="13" fill="#fff1d0"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="weave" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#night)"/>
+      <path d="M-48 256 256-48 304 0 0 304Z" fill="url(#mint)"/>
+      <path d="M-48 0 0-48 304 256 256 304Z" fill="#0b2333" opacity=".4" transform="translate(0 10)"/>
+      <path d="M-48 0 0-48 304 256 256 304Z" fill="url(#blue)"/>
+      <path d="M-48 0 256 304M-48 256 80 128M176 32l80-80" fill="none" stroke="#e3ffff" stroke-opacity=".5" stroke-width="2"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+</defs>
+</svg>
+<header><div class="eyebrow">Rile · App icon studies / 08</div><h1>More than a folder.</h1><p>Eight full-canvas directions inspired by discovery, movement and the many layers of a workspace. These are visual concepts, not replacements for the shipping app icon.</p></header>
+<main>
+<article><div class="art"><svg viewBox="0 0 256 256" role="img" aria-label="Atlas icon"><use href="#atlas"/></svg></div><div class="copy"><span class="number">01 / DISCOVERY</span><h2>Atlas</h2><p>A folded landscape and a bright point of arrival. A map for everything you keep.</p><div class="sizes"><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#atlas"/></svg><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#atlas"/></svg><span>32 / 20 px</span></div></div></article>
+<article><div class="art"><svg viewBox="0 0 256 256" role="img" aria-label="Current icon"><use href="#ribbon"/></svg></div><div class="copy"><span class="number">02 / FLOW</span><h2>Current</h2><p>A luminous ribbon sweeps across the canvas, suggesting speed and an uninterrupted workflow.</p><div class="sizes"><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#ribbon"/></svg><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#ribbon"/></svg><span>32 / 20 px</span></div></div></article>
+<article><div class="art"><svg viewBox="0 0 256 256" role="img" aria-label="Facet icon"><use href="#prism"/></svg></div><div class="copy"><span class="number">03 / PERSPECTIVE</span><h2>Facet</h2><p>A refracted architectural plane: different views of the same collection.</p><div class="sizes"><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#prism"/></svg><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#prism"/></svg><span>32 / 20 px</span></div></div></article>
+<article><div class="art"><svg viewBox="0 0 256 256" role="img" aria-label="Orbit icon"><use href="#orbit"/></svg></div><div class="copy"><span class="number">04 / CONNECTION</span><h2>Orbit</h2><p>A small world with a sweeping path, bringing local and remote spaces together.</p><div class="sizes"><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#orbit"/></svg><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#orbit"/></svg><span>32 / 20 px</span></div></div></article>
+<article><div class="art"><svg viewBox="0 0 256 256" role="img" aria-label="Strata icon"><use href="#stack"/></svg></div><div class="copy"><span class="number">05 / ORGANIZATION</span><h2>Strata</h2><p>Edge-to-edge layers create a tactile, orderly stack without depicting a literal file.</p><div class="sizes"><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#stack"/></svg><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#stack"/></svg><span>32 / 20 px</span></div></div></article>
+<article><div class="art"><svg viewBox="0 0 256 256" role="img" aria-label="Threshold icon"><use href="#portal"/></svg></div><div class="copy"><span class="number">06 / EXPLORATION</span><h2>Threshold</h2><p>Nested doorways draw the eye inward: an invitation to go deeper.</p><div class="sizes"><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#portal"/></svg><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#portal"/></svg><span>32 / 20 px</span></div></div></article>
+<article><div class="art"><svg viewBox="0 0 256 256" role="img" aria-label="Beacon icon"><use href="#spark"/></svg></div><div class="copy"><span class="number">07 / FINDING</span><h2>Beacon</h2><p>A warm, radiating compass rose gives discovery a bold, unmistakable silhouette.</p><div class="sizes"><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#spark"/></svg><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#spark"/></svg><span>32 / 20 px</span></div></div></article>
+<article><div class="art"><svg viewBox="0 0 256 256" role="img" aria-label="Interlace icon"><use href="#weave"/></svg></div><div class="copy"><span class="number">08 / TOGETHER</span><h2>Interlace</h2><p>Two broad paths cross and weave, expressing the meeting of places and ideas.</p><div class="sizes"><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#weave"/></svg><svg viewBox="0 0 256 256" aria-hidden="true"><use href="#weave"/></svg><span>32 / 20 px</span></div></div></article>
+</main><footer>Vector concepts · Rendered at large, 32 px and 20 px · Rile</footer>
+</body></html>

@@ -255,6 +255,7 @@ impl Workspace {
         })
         .detach();
         self.ops.push(RunningOp {
+            connecting_to: None,
             id: op_id,
             label: SharedString::from(format!("Backing up “{}”", job.name)),
             progress: ops::Progress::default(),

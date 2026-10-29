@@ -330,20 +330,22 @@ pub fn render_transfer_window(ws: &mut Workspace, _window: &mut Window, cx: &mut
         .max_h(gpui_kit::relative(0.8))
         .overflow_hidden()
         .shadow_2xl()
-        .child(
-            h_flex()
-                .px(px(20.))
-                .pt(px(16.))
-                .pb(px(4.))
-                .child(
-                    div()
-                        .flex_1()
-                        .text_size(px(14.))
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(ch.text_strong)
-                        .child(if count == 1 { "Transferring".to_string() } else { format!("{count} transfers") }),
-                ),
-        )
+        .when(count > 1, |d| {
+            d.child(
+                h_flex()
+                    .px(px(20.))
+                    .pt(px(16.))
+                    .pb(px(4.))
+                    .child(
+                        div()
+                            .flex_1()
+                            .text_size(px(14.))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(ch.text_strong)
+                            .child(format!("{count} transfers")),
+                    ),
+            )
+        })
         .child(v_flex().id("transfer-list").overflow_y_scroll().children(rows))
         .child(
             h_flex()
@@ -357,6 +359,7 @@ pub fn render_transfer_window(ws: &mut Workspace, _window: &mut Window, cx: &mut
                     Button::new("transfer-cancel-all").cursor_pointer()
                         .outline()
                         .small()
+                        .icon(crate::icons::icon(IconName::X))
                         .label(if count == 1 { "Cancel" } else { "Cancel All" })
                         .on_click(cx.listener(|this, _, _, cx| {
                             let ids: Vec<usize> = this.ops.iter().filter(|o| o.in_transfer_window()).map(|o| o.id).collect();
@@ -370,6 +373,7 @@ pub fn render_transfer_window(ws: &mut Workspace, _window: &mut Window, cx: &mut
                     Button::new("transfer-background").cursor_pointer()
                         .primary()
                         .small()
+                        .icon(crate::icons::icon(IconName::Minimize))
                         .label("Run in Background")
                         .on_click(cx.listener(|this, _, _, cx| {
                             for op in this.ops.iter_mut().filter(|o| o.in_transfer_window()) {

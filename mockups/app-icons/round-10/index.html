@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rile — file explorer icon concepts</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#1d1e21;color:#f1f2f5;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header,main,footer{max-width:1240px;margin:auto;padding:0 28px}header{padding-top:48px;padding-bottom:28px}.eyebrow{color:#8bbfff;font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase}h1{font-size:36px;line-height:1.15;letter-spacing:-.04em;margin:10px 0}header p{max-width:720px;margin:0;color:#aeb3bd}a{color:#8bbfff;text-underline-offset:3px}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;padding-bottom:36px}article{border:1px solid #ffffff12;border-radius:14px;background:#282a2e;overflow:hidden}.art{display:grid;place-items:center;padding:26px 24px;background:radial-gradient(ellipse at 50% 35%,#41444b,#25272b 78%)}.art svg{display:block;width:min(100%,240px);height:auto;aspect-ratio:1;filter:drop-shadow(0 13px 14px #0006)}.copy{padding:18px 20px 20px;display:flex;flex-direction:column;min-height:186px}.number{font-size:11px;font-weight:700;color:#8bbfff;letter-spacing:.08em}h2{margin:3px 0 5px;font-size:16px}.copy p{font-size:12px;color:#a5aab4;margin:0 0 18px}.sizes{margin-top:auto;display:flex;gap:14px;align-items:end}.sizes svg{width:32px;height:32px;filter:drop-shadow(0 2px 3px #0006)}.sizes svg:nth-of-type(2){width:20px;height:20px}.sizes span{font-size:10px;color:#9299a4;margin-left:auto}footer{padding-bottom:32px;font-size:12px;color:#9299a4}@media(max-width:350px){header,main,footer{padding-left:16px;padding-right:16px}main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" style="position:absolute">
+<defs>
+  <clipPath id="tile"><rect x="8" y="8" width="240" height="240" rx="53"/></clipPath>
+  <linearGradient id="blue" x2=".8" y2="1"><stop stop-color="#b9e6ff"/><stop offset=".45" stop-color="#78b6e8"/><stop offset="1" stop-color="#356b9d"/></linearGradient>
+  <linearGradient id="deep" x2="1" y2="1"><stop stop-color="#57758c"/><stop offset="1" stop-color="#142b43"/></linearGradient>
+  <linearGradient id="paper" x2=".5" y2="1"><stop stop-color="#fffdf3"/><stop offset="1" stop-color="#c6dbdf"/></linearGradient>
+  <linearGradient id="metal" x2=".2" y2="1"><stop stop-color="#dae8ee"/><stop offset=".45" stop-color="#a1b7c4"/><stop offset="1" stop-color="#607a91"/></linearGradient>
+  <linearGradient id="mint" x2="1" y2="1"><stop stop-color="#d3f5df"/><stop offset="1" stop-color="#62abac"/></linearGradient>
+  <linearGradient id="purple" x2="1" y2="1"><stop stop-color="#e6dcff"/><stop offset="1" stop-color="#8e83bd"/></linearGradient>
+  <linearGradient id="amber" x2="1" y2="1"><stop stop-color="#ffe4af"/><stop offset="1" stop-color="#d39a60"/></linearGradient>
+  <radialGradient id="sheen" cx=".25" cy=".05" r="1.1"><stop stop-color="#fff" stop-opacity=".2"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></radialGradient>
+  <g id="finish"><rect x="8" y="8" width="240" height="240" rx="53" fill="url(#sheen)"/><rect x="9" y="9" width="238" height="238" rx="52" fill="none" stroke="#fff" stroke-opacity=".3"/></g>
+
+  <!-- The cabinet is the entire icon, not a symbol on a tile. -->
+  <symbol id="cabinet" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#deep)"/>
+      <rect x="16" y="14" width="224" height="103" rx="18" fill="url(#metal)"/>
+      <path d="M33 31h190" stroke="#fff" stroke-opacity=".35" stroke-width="2"/>
+      <rect x="91" y="43" width="74" height="38" rx="7" fill="#647e91"/>
+      <rect x="96" y="47" width="64" height="23" rx="3" fill="url(#paper)"/><path d="M110 58h36" stroke="#536f82" stroke-width="3" stroke-linecap="round"/>
+      <path d="M95 91h66" stroke="#eefaff" stroke-width="6" stroke-linecap="round"/>
+      <rect x="16" y="128" width="224" height="126" rx="18" fill="url(#blue)"/>
+      <path d="M31 140h194" stroke="#ecfaff" stroke-opacity=".5" stroke-width="2"/>
+      <rect x="91" y="155" width="74" height="38" rx="7" fill="#3a6588"/>
+      <rect x="96" y="159" width="64" height="23" rx="3" fill="url(#paper)"/><path d="M110 170h36" stroke="#536f82" stroke-width="3" stroke-linecap="round"/>
+      <path d="M95 211h66" stroke="#173f62" stroke-opacity=".5" stroke-width="10" stroke-linecap="round"/><path d="M95 207h66" stroke="#d4edff" stroke-width="6" stroke-linecap="round"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="folio" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#deep)"/>
+      <path d="M-10 63V18q0-12 12-12h83q10 0 16 10l14 22h151v228H-10Z" fill="url(#purple)"/>
+      <path d="M25 47h193v176H25Z" fill="#fff9e9" transform="rotate(8 122 135)"/>
+      <path d="M18 54h193v176H18Z" fill="url(#paper)" transform="rotate(-4 114 142)"/>
+      <path d="M43 78h112M43 93h83" stroke="#8ca5b1" stroke-width="5" stroke-linecap="round"/>
+      <path d="M-10 113q0-13 13-13h73q12 0 19 9l15 19h156v138H-10Z" fill="#153f61" opacity=".3" transform="translate(0 7)"/>
+      <path d="M-10 113q0-13 13-13h73q12 0 19 9l15 19h156v138H-10Z" fill="url(#blue)"/>
+      <path d="M8 102h68q11 0 18 9l15 19h143" fill="none" stroke="#e5f9ff" stroke-opacity=".7" stroke-width="2"/>
+      <path d="M101 167h54" stroke="#24537a" stroke-opacity=".35" stroke-width="7" stroke-linecap="round"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="columns" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#deep)"/>
+      <path d="M0 0h80v256H0Z" fill="url(#metal)"/><path d="M87 0h81v256H87Z" fill="url(#blue)"/><path d="M175 0h81v256h-81Z" fill="url(#paper)"/>
+      <g fill="#48677f"><rect x="23" y="61" width="34" height="6" rx="3"/><rect x="23" y="105" width="27" height="6" rx="3"/><rect x="23" y="149" width="32" height="6" rx="3"/><rect x="23" y="193" width="25" height="6" rx="3"/></g>
+      <rect x="8" y="87" width="64" height="40" rx="7" fill="#3e6584"/><path d="m51 100 8 8-8 8" fill="none" stroke="#eaf7ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <g fill="#f2fbff" opacity=".75"><rect x="103" y="61" width="47" height="6" rx="3"/><rect x="103" y="105" width="33" height="6" rx="3"/><rect x="103" y="149" width="42" height="6" rx="3"/><rect x="103" y="193" width="27" height="6" rx="3"/></g>
+      <rect x="95" y="131" width="65" height="40" rx="7" fill="#315c82"/><path d="m139 144 8 8-8 8" fill="none" stroke="#eaf7ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M191 79V49h19l8 8h21v22Z" fill="#6b9fc1"/><path d="M191 117h46M191 129h31M191 173h40M191 185h29" stroke="#86a0af" stroke-width="5" stroke-linecap="round"/>
+      <path d="M80 0v256M168 0v256" stroke="#e5f7ff" stroke-opacity=".5" stroke-width="2"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="breadcrumb" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#deep)"/>
+      <path d="M-20 64h135q23 0 23 23v73q0 23 23 23h115" fill="none" stroke="#0c263b" stroke-opacity=".4" stroke-width="35" transform="translate(0 7)"/>
+      <path d="M-20 64h135q23 0 23 23v73q0 23 23 23h115" fill="none" stroke="url(#blue)" stroke-width="32"/>
+      <path d="M36 39h26l10 10h24v47H36Z" fill="#0e2e47" opacity=".35" transform="translate(0 5)"/><path d="M36 39h26l10 10h24v47H36Z" fill="url(#amber)"/>
+      <path d="M164 157h25l10 10h24v47h-59Z" fill="#0e2e47" opacity=".35" transform="translate(0 5)"/><path d="M164 157h25l10 10h24v47h-59Z" fill="url(#mint)"/>
+      <path d="M36 55h60M164 173h59" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>
+      <path d="m130 117 8 8 8-8" fill="none" stroke="#effaff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M17 235h85M17 220h49M170 31h69M200 46h39" stroke="#b6d7ee" stroke-opacity=".13" stroke-width="3" stroke-linecap="round"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="transfer" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#deep)"/>
+      <path d="M-10 5h115l33 33v178H-10Z" fill="#0b263e" opacity=".4" transform="translate(6 8)"/>
+      <path d="M-10 5h115l33 33v178H-10Z" fill="url(#paper)"/><path d="M105 5v33h33Z" fill="#8faebb"/>
+      <path d="M118 56h116l33 33v177H118Z" fill="#0b263e" opacity=".4" transform="translate(-5 7)"/>
+      <path d="M118 56h116l33 33v177H118Z" fill="url(#blue)"/><path d="M234 56v33h33Z" fill="#497ba3"/>
+      <path d="M21 44h53M21 58h34M166 213h60M166 227h38" stroke="#6a90a8" stroke-opacity=".6" stroke-width="5" stroke-linecap="round"/>
+      <path d="M57 107h140l-21-21M197 107l-21 21" fill="none" stroke="#0b304c" stroke-opacity=".2" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 5)"/>
+      <path d="M57 107h140l-21-21M197 107l-21 21" fill="none" stroke="#37698e" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M197 162H57l21-21M57 162l21 21" fill="none" stroke="#effaff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="archive" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#amber)"/>
+      <path d="M0 99h256v157H0Z" fill="url(#blue)"/>
+      <path d="M0 96h256v21H0Z" fill="#1d4b72" opacity=".4"/>
+      <path d="M0 24h256v77H0Z" fill="url(#paper)"/>
+      <path d="M0 88h256v13H0Z" fill="#97b8cb"/><path d="M8 25h240" stroke="#fff" stroke-opacity=".6" stroke-width="2"/>
+      <rect x="83" y="138" width="90" height="55" rx="8" fill="#2b5575"/>
+      <rect x="88" y="142" width="80" height="42" rx="5" fill="url(#paper)"/>
+      <path d="M106 156h44M106 168h29" stroke="#6f8b9b" stroke-width="4" stroke-linecap="round"/>
+      <path d="M100 216h56" stroke="#183d5e" stroke-opacity=".55" stroke-width="10" stroke-linecap="round"/><path d="M100 212h56" stroke="#cbe8fb" stroke-width="5" stroke-linecap="round"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="inspect" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#purple)"/>
+      <path d="M32-10h205v273H32Z" fill="#4c4776" opacity=".35" transform="rotate(12 128 128)"/>
+      <path d="M27-20h179l28 28v258H27Z" fill="url(#paper)" transform="rotate(-8 128 128)"/>
+      <path d="M186-20V8h28" fill="#a8c4d0" transform="rotate(-8 128 128)"/>
+      <g transform="rotate(-8 128 128)" fill="#91b1c0"><rect x="50" y="31" width="103" height="7" rx="3"/><rect x="50" y="48" width="68" height="7" rx="3"/><rect x="50" y="200" width="110" height="7" rx="3"/><rect x="50" y="217" width="76" height="7" rx="3"/></g>
+      <path d="m167 174 85 85" stroke="#365b78" stroke-width="29" stroke-linecap="round"/>
+      <path d="m170 174 85 85" stroke="url(#blue)" stroke-width="19" stroke-linecap="round"/>
+      <circle cx="122" cy="127" r="65" fill="#274b65" opacity=".2" transform="translate(0 5)"/>
+      <circle cx="122" cy="127" r="64" fill="url(#deep)"/><circle cx="122" cy="127" r="51" fill="url(#blue)"/>
+      <path d="M91 104h23l8 8h32v39H91Z" fill="#e7f8ff"/><path d="M91 118h63" stroke="#85b3d2" stroke-width="2"/>
+      <path d="M81 118a42 42 0 0 1 40-33" fill="none" stroke="#fff" stroke-opacity=".65" stroke-width="4" stroke-linecap="round"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="dualpane" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#deep)"/>
+      <path d="M0 0h256v52H0Z" fill="url(#metal)"/>
+      <path d="M18 52V27q0-9 9-9h57q9 0 9 9v25Z" fill="#eaf6fa"/><path d="M103 52V32q0-8 8-8h51q8 0 8 8v20Z" fill="#7893a7"/>
+      <path d="M0 58h122v198H0Z" fill="url(#paper)"/><path d="M130 58h126v198H130Z" fill="url(#blue)"/>
+      <path d="M18 78h22l8 8h49v48H18Z" fill="#75a6c7"/><path d="M18 93h79" stroke="#c9e8f9" stroke-width="2"/>
+      <rect x="145" y="87" width="94" height="107" rx="7" fill="#e5f8ff" opacity=".8"/>
+      <path d="m145 171 25-31 22 20 20-32 27 43v16q0 7-7 7h-80q-7 0-7-7Z" fill="#619cae"/><circle cx="210" cy="112" r="9" fill="#e9c78e"/>
+      <path d="M23 160h70M23 179h52M23 198h64M23 217h42M151 216h77" stroke="#7695ac" stroke-width="5" stroke-linecap="round" opacity=".6"/>
+      <path d="M126 101v54" stroke="#c4def0" stroke-width="3" stroke-linecap="round"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+</defs>
+</svg>
+<header><div class="eyebrow">Rile · App icon studies / 10</div><h1>A place for everything.</h1><p>Eight file-management directions. Drawers, folders, documents and browsing views become the composition itself—not a small explorer glyph dropped onto a flat tile.</p></header>
+<main id="gallery"></main>
+<footer>Original vector mockups · <a href="../round-9/">Previous set</a> · No changes to the installed app</footer>
+<script>
+const concepts=[
+["cabinet","17 / ORGANIZE","File Cabinet","The entire icon is a pair of tactile drawers. Metal label holders and a blue lower drawer give file organization a physical identity."],
+["folio","18 / COLLECT","Open Folio","A full-bleed tabbed portfolio with papers peeking out. Familiar file-management cues, treated as a layered object."],
+["columns","19 / NAVIGATE","Column Trail","Three edge-to-edge browsing columns trace a selection from folder to folder to contents. A distinctly explorer-native direction."],
+["breadcrumb","20 / EXPLORE","Folder Route","Two folder waypoints sit on a raised, turning path. A visual breadcrumb trail through your files."],
+["transfer","21 / MANAGE","Exchange","Overlapping folded documents fill the canvas, connected by opposing arrows for moving, copying and syncing."],
+["archive","22 / STORE","Archive Box","A blue archive box becomes the app tile, with an ivory lid, inset index label and a recessed pull."],
+["inspect","23 / FIND","Close Look","A dimensional lens examines a folder on a large document stack. Search and inspection, not just a generic magnifying glass."],
+["dualpane","24 / BROWSE","Side by Side","A miniature two-pane workspace fills the icon, with tabs, a folder list and a photo preview. Rile's browsing tools made tangible."]
+];
+function icon(id,large=false,name=""){
+  const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");svg.setAttribute("viewBox","0 0 256 256");
+  if(large){svg.setAttribute("role","img");svg.setAttribute("aria-label",name+" app icon");}else svg.setAttribute("aria-hidden","true");
+  const use=document.createElementNS(svg.namespaceURI,"use");use.setAttribute("href","#"+id);svg.append(use);return svg;
+}
+for(const [id,number,name,description] of concepts){
+  const article=document.createElement("article"),art=document.createElement("div"),copy=document.createElement("div");
+  art.className="art";art.append(icon(id,true,name));copy.className="copy";
+  const label=document.createElement("span");label.className="number";label.textContent=number;
+  const heading=document.createElement("h2");heading.textContent=name;
+  const text=document.createElement("p");text.textContent=description;
+  const sizes=document.createElement("div");sizes.className="sizes";
+  const caption=document.createElement("span");caption.textContent="32 / 20 px";sizes.append(icon(id),icon(id),caption);
+  copy.append(label,heading,text,sizes);article.append(art,copy);document.querySelector("#gallery").append(article);
+}
+</script>
+</body></html>

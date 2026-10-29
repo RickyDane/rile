@@ -25,6 +25,7 @@ impl Workspace {
         self.next_op_id += 1;
         self.ops.push(RunningOp {
             id,
+            connecting_to: None,
             label: label.into(),
             progress: Progress::default(),
             cancel,
@@ -126,6 +127,7 @@ impl Workspace {
         });
         self.ops.push(RunningOp {
             id,
+            connecting_to: None,
             label: label.into(),
             progress: Progress::default(),
             cancel,

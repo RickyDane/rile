@@ -1140,6 +1140,82 @@ mod ftp_server {
     }
 }
 
+#[gpui_kit::test]
+async fn auto_connect_saved_sources_keeps_current_folder(cx: &mut TestAppContext) {
+    let server = tempfile::tempdir().unwrap();
+    let port = ftp_server::start(server.path().to_path_buf());
+    let local = tempfile::tempdir().unwrap();
+    let local_root = dunce::canonicalize(local.path()).unwrap();
+    let (window, ws) = setup(&local_root, cx);
+    let info = rile_remote::ConnectionInfo {
+        id: rile_remote::ConnectionInfo::new_id(),
+        name: "Auto-connect FTP".into(),
+        protocol: rile_remote::Protocol::Ftp,
+        host: "127.0.0.1".into(),
+        port,
+        username: ftp_server::USER.into(),
+        auth: rile_remote::Auth::Password,
+        initial_path: None,
+    };
+    // An already authorized credential, without touching the real keychain.
+    crate::remote::register(info.clone(), Some(ftp_server::PASS.into()));
+    cx.update(|cx| ws.update(cx, |ws, cx| {
+        ws.connections.push(info.clone());
+        ws.settings.remote_enabled = false;
+        ws.auto_connect_saved(cx);
+    }));
+    assert!(!crate::remote::is_connected(&info.id));
+    cx.update(|cx| ws.update(cx, |ws, cx| {
+        ws.settings.remote_enabled = true;
+        ws.auto_connect_saved(cx);
+        assert!(ws.auto_connecting.contains(&info.id));
+    }));
+    wait_until(cx, "automatic FTP connection", |_| crate::remote::is_connected(&info.id));
+    wait_until(cx, "automatic connection indicator cleared", |cx| ws.read(cx).auto_connecting.is_empty());
+    cx.update(|cx| {
+        let ws = ws.read(cx);
+        assert!(!ws.is_connecting(&info.id));
+        assert_eq!(ws.pane().read(cx).location, Location::Dir(local_root));
+        assert!(ws.ops.is_empty());
+    });
+    cx.update(|cx| ws.update(cx, |ws, _| {
+        // Authentication alone isn't readiness: keep spinning through metadata.
+        ws.remote_capacity.remove(&info.id);
+        assert!(ws.is_source_loading(&info.id));
+        ws.remote_capacity.insert(info.id.clone(), Some(rile_remote::Capacity { used: 10, total: 100 }));
+        assert!(!ws.is_source_loading(&info.id));
+        // Unsupported/unavailable capacity also completes the initial fetch.
+        ws.remote_capacity.insert(info.id.clone(), None);
+        assert!(!ws.is_source_loading(&info.id));
+    }));
+    cx.update_window(window, |_, window, cx| {
+        ws.update(cx, |ws, cx| ws.disconnect(&info.id, window, cx));
+    }).unwrap();
+    assert!(!crate::remote::is_connected(&info.id));
+    cx.update(|cx| {
+        let ws = ws.read(cx);
+        assert!(!ws.remote_capacity.contains_key(&info.id));
+        assert!(!ws.is_source_loading(&info.id));
+    });
+
+    // Both automatic and manual failures must clear their progress indicators.
+    crate::remote::register(info.clone(), Some("incorrect-password".into()));
+    cx.update(|cx| ws.update(cx, |ws, cx| {
+        ws.auto_connect_saved(cx);
+        assert!(ws.is_connecting(&info.id));
+    }));
+    wait_until(cx, "failed automatic connection indicator cleared", |cx| !ws.read(cx).is_connecting(&info.id));
+    assert!(!crate::remote::is_connected(&info.id));
+    cx.update_window(window, |_, window, cx| {
+        ws.update(cx, |ws, cx| {
+            ws.connect_only(&info.id, window, cx);
+            assert!(ws.is_connecting(&info.id));
+        });
+    }).unwrap();
+    wait_until(cx, "failed manual connection indicator cleared", |cx| !ws.read(cx).is_connecting(&info.id));
+    assert!(!crate::remote::is_connected(&info.id));
+}
+
 /// End to end over FTP: connect, browse, download, upload, rename, delete,
 /// and Quick Look of a remote file.
 #[gpui_kit::test]
@@ -1169,10 +1245,14 @@ async fn ftp_browse_transfer_and_edit(cx: &mut TestAppContext) {
     };
     let conn = info.id.clone();
     cx.update_window(window, |_, window, cx| {
-        ws.update(cx, |ws, cx| ws.connect(info, Some(ftp_server::PASS.into()), false, window, cx))
+        ws.update(cx, |ws, cx| {
+            ws.connect(info, Some(ftp_server::PASS.into()), false, window, cx);
+            assert!(ws.ops.iter().any(|op| op.connecting_to.as_deref() == Some(conn.as_str())));
+        })
     })
     .unwrap();
     wait_for_names(cx, window, &ws, &["docs", "hello.txt"]).await;
+    assert!(!cx.update(|cx| ws.read(cx).is_connecting(&conn)));
     let pane = cx.update(|cx| ws.read(cx).pane().clone());
     assert_eq!(cx.update(|cx| pane.read(cx).conn()), Some(conn.clone()));
 
@@ -1489,6 +1569,110 @@ async fn search_field_follows_active_pane(cx: &mut TestAppContext) {
     assert_eq!(field(cx), "app");
 }
 
+/// Avoid GPU minification dropping thin vents and aliasing the rack's corners.
+#[gpui_kit::test]
+fn network_share_rasterizes_at_display_resolution(cx: &mut TestAppContext) {
+    for edge in [46., 56.] {
+        let source = crate::art::image_for_size(crate::art::Art::NetworkShare, edge);
+        assert!(std::sync::Arc::ptr_eq(&source, &crate::art::image_for_size(crate::art::Art::NetworkShare, edge)));
+        let rendered = cx.update(|cx| cx.svg_renderer().render_single_frame(source.bytes(), 1.).unwrap());
+        let size = rendered.size(0);
+        assert_eq!((size.width.0, size.height.0), (edge as i32 * 2, edge as i32 * 2));
+    }
+}
+
+/// Centering the NAS rack must not change its rounded corners or row details.
+#[gpui_kit::test]
+fn network_share_preserves_server_rack(cx: &mut TestAppContext) {
+    let (nas, server) = cx.update(|cx| {
+        let renderer = cx.svg_renderer();
+        (
+            renderer.render_single_frame(crate::art::image(crate::art::Art::NetworkShare).bytes(), 1.).unwrap(),
+            renderer.render_single_frame(crate::art::image(crate::art::Art::NearbyServer).bytes(), 1.).unwrap(),
+        )
+    });
+    let size = nas.size(0);
+    assert_eq!(size, server.size(0));
+    let width = size.width.0 as usize;
+    let scale = width / 64;
+    let a = nas.as_bytes(0).unwrap();
+    let b = server.as_bytes(0).unwrap();
+    for y in 22 * scale..59 * scale {
+        for x in 8 * scale..48 * scale {
+            // The nearby badge overlaps the rack's upper-right corner.
+            if x >= 39 * scale && y < 25 * scale {
+                continue;
+            }
+            let src = (y * width + x) * 4;
+            let dst = ((y - 17 * scale / 2) * width + x + 4 * scale) * 4;
+            assert_eq!(&a[dst..dst + 4], &b[src..src + 4], "rack pixel at {x},{y}");
+        }
+    }
+}
+
+/// Every symbol style ships a desktop symbol that rasterizes.
+#[gpui_kit::test]
+fn desktop_symbol_exists_in_every_style(cx: &mut TestAppContext) {
+    use rile_core::settings::SymbolStyle;
+    let desktops: Vec<_> = SymbolStyle::ALL.iter().map(|style| crate::art::image_in(*style, crate::art::Art::Desktop)).collect();
+    cx.update(|cx| {
+        let renderer = cx.svg_renderer();
+        for (style, image) in SymbolStyle::ALL.iter().zip(&desktops) {
+            let frame = renderer.render_single_frame(image.bytes(), 1.).unwrap_or_else(|e| panic!("{style:?} desktop: {e}"));
+            assert_eq!(frame.size(0).width.0, 512, "{style:?}");
+            // Not an empty drawing, and not the laptop.
+            assert!(frame.as_bytes(0).unwrap().chunks(4).any(|p| p[3] > 200), "{style:?} desktop is blank");
+            let laptop = renderer.render_single_frame(crate::art::image_in(*style, crate::art::Art::Computer).bytes(), 1.).unwrap();
+            assert_ne!(frame.as_bytes(0).unwrap(), laptop.as_bytes(0).unwrap(), "{style:?} desktop equals the laptop");
+        }
+    });
+}
+
+/// This machine's symbol follows the startup check: desktops get the desktop,
+/// laptops (and an unfinished check) the laptop.
+#[test]
+fn this_machine_uses_its_form_factor_symbol() {
+    use crate::art::{Art, this_computer_for};
+    use rile_remote::peer::DeviceKind;
+    assert!(this_computer_for(Some(DeviceKind::Desktop)) == Art::Desktop);
+    assert!(this_computer_for(Some(DeviceKind::Laptop)) == Art::Computer);
+    assert!(this_computer_for(Some(DeviceKind::Server)) == Art::Computer);
+    assert!(this_computer_for(None) == Art::Computer);
+}
+
+#[gpui_kit::test]
+async fn thumbnail_layout_centers_images_with_padding(cx: &mut TestAppContext) {
+    use gpui_kit::{Context, InteractiveElement, IntoElement, Render, RenderImage, VisualTestContext, Window, px, rgba};
+    use std::sync::Arc;
+
+    struct ThumbnailView(Arc<RenderImage>, f32);
+    impl Render for ThumbnailView {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            crate::art::framed_thumbnail(self.0.clone().into(), self.1, rgba(0x3a3f4bff).into())
+                .debug_selector(|| "thumbnail-frame".into())
+        }
+    }
+
+    for edge in [66., 88., 132.] {
+        for (width, height) in [(256, 256), (128, 256), (256, 64)] {
+            let image = Arc::new(RenderImage::new([image::Frame::new(image::RgbaImage::new(width, height))]));
+            let window = cx.add_window(|_, _| ThumbnailView(image, edge));
+            let mut vcx = VisualTestContext::from_window(window.into(), cx);
+            vcx.run_until_parked();
+            let frame = vcx.debug_bounds("thumbnail-frame").unwrap();
+            let image = vcx.debug_bounds("thumbnail-image").unwrap();
+            let padding = (edge * 0.03).max(2.);
+            assert_eq!(frame.size.width, px(edge));
+            // GPUI rounds layout edges to physical pixels.
+            assert!((f32::from(frame.size.height) - edge * 0.8).abs() <= 1.);
+            assert!((f32::from(image.size.width) - (edge - 2. * padding)).abs() <= 1.);
+            assert!((f32::from(image.size.height) - (edge * 0.8 - 2. * padding)).abs() <= 1.);
+            assert!((f32::from(image.center().x - frame.center().x)).abs() <= 0.5);
+            assert!((f32::from(image.center().y - frame.center().y)).abs() <= 0.5);
+        }
+    }
+}
+
 /// Thumbnails are decoded downscaled (not kept at full resolution).
 #[test]
 fn thumbnails_are_bounded() {
@@ -1502,6 +1686,37 @@ fn thumbnails_are_bounded() {
     assert_eq!(&thumb.as_bytes(0).unwrap()[..4], &[30, 20, 10, 255]);
 }
 
+/// The thumbnail quality setting scales the decoded edge, clamped to 10–100%.
+#[test]
+fn thumbnail_quality_scales_edge() {
+    use crate::art::scaled_edge;
+    assert_eq!(scaled_edge(256, 100), 256);
+    assert_eq!(scaled_edge(256, 50), 128);
+    assert_eq!(scaled_edge(256, 0), scaled_edge(256, 10));
+    assert_eq!(scaled_edge(256, 255), 256);
+    assert_eq!(scaled_edge(128, 10), 16);
+}
+
+#[test]
+fn free_space_gauge_follows_capacity() {
+    use crate::art::FreeSpaceLevel::{self, *};
+    for (free, total, expected) in [
+        (0, 0, Unknown), (0, 100, Critical), (4, 100, Critical),
+        (5, 100, Low), (9, 100, Low), (10, 100, Moderate),
+        (24, 100, Moderate), (25, 100, Healthy), (100, 100, Healthy),
+        (u64::MAX, u64::MAX, Healthy),
+    ] {
+        assert_eq!(FreeSpaceLevel::from_capacity(free, total), expected, "{free}/{total}");
+    }
+    let images = [Unknown, Critical, Low, Moderate, Healthy].map(|level| crate::art::image(crate::art::Art::FreeSpace(level)));
+    for (ix, image) in images.iter().enumerate() {
+        for other in &images[ix + 1..] {
+            assert!(!std::sync::Arc::ptr_eq(image, other));
+        }
+    }
+    assert!(std::sync::Arc::ptr_eq(&images[4], &crate::art::image(crate::art::Art::FreeSpace(Healthy))));
+}
+
 /// Regression (P1): Overview and folder headers used window breakpoints, so
 /// a dual-pane slot beside the sidebar and inspector got the four-column
 /// layout and collapsed. Layout now follows the slot's own width.
@@ -1509,11 +1724,14 @@ fn thumbnails_are_bounded() {
 async fn overview_layout_follows_slot_width(cx: &mut TestAppContext) {
     use crate::views::home::overview_layout;
     assert_eq!(overview_layout(1300.).metric_cols, 5);
-    assert_eq!(overview_layout(1100.).metric_cols, 3);
+    assert_eq!(overview_layout(1100.).metric_cols, 5);
+    assert_eq!(overview_layout(960.).metric_cols, 5);
+    assert_eq!(overview_layout(899.).metric_cols, 3);
     assert_eq!(overview_layout(580.).metric_cols, 2);
     assert_eq!(overview_layout(380.).metric_cols, 1);
     assert!(overview_layout(580.).stacked && !overview_layout(1100.).stacked);
     assert_eq!((overview_layout(580.).storage_cols, overview_layout(700.).storage_cols), (1, 2));
+    assert_eq!([400., 500., 700., 960., 1300.].map(|w| overview_layout(w).device_cols), [1, 2, 3, 3, 3]);
 
     let tmp = tempfile::tempdir().unwrap();
     let root = dunce::canonicalize(tmp.path()).unwrap();
@@ -2422,6 +2640,38 @@ async fn nearby_device_browse_and_receive(cx: &mut TestAppContext) {
     });
     wait_for_names(cx, window, &ws, &["notes.txt"]).await;
 
+    // Backups use a dedicated peer connection and must respect share permissions.
+    let source = root.join("BackupSource");
+    fs::create_dir_all(&source).unwrap();
+    fs::write(source.join("backup.txt"), "nearby backup").unwrap();
+    let backup = rile_backup::BackupJob {
+        sources: vec![source],
+        destination: rile_backup::Destination::Remote { conn: peer::conn_id(&their_id), path: "/Shared/Backups".into() },
+        ..Default::default()
+    };
+    let run = || {
+        rile_backup::run_job_in(
+            &backup,
+            &root.join("backup-state"),
+            rile_backup::Trigger::Manual,
+            rile_backup::RunOptions { verify: true },
+            &crate::remote::connect_dedicated,
+            &std::sync::atomic::AtomicBool::new(false),
+            &rile_backup::Progress::default(),
+        ).unwrap()
+    };
+    assert!(matches!(run().outcome, rile_backup::Outcome::Failed(_)), "read-only shares reject backups");
+    assert!(!shared.join("Backups").exists());
+    server.update(LocalDevice {
+        info: DeviceInfo { name: "Studio".into(), ..Default::default() },
+        shares: vec![Share { name: "Shared".into(), path: shared.clone(), writable: true }],
+    });
+    let record = run();
+    assert_eq!(record.outcome, rile_backup::Outcome::Success);
+    assert_eq!(record.copied, 1);
+    assert_eq!(fs::read_to_string(shared.join("Backups/BackupSource/backup.txt")).unwrap(), "nearby backup");
+    assert_eq!(run().copied, 0, "unchanged files are not copied again");
+
     // The Devices page lists the paired device.
     cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.open_devices(window, cx))).unwrap();
     let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
@@ -2473,4 +2723,44 @@ async fn nearby_device_browse_and_receive(cx: &mut TestAppContext) {
     }
     drop(server);
     drop(our_server);
+}
+
+/// ⌘G opens the Go to Folder dialog prefilled with the current folder;
+/// typing a folder jumps there, a file reveals it in its parent, and an
+/// unknown path keeps the dialog open.
+#[gpui_kit::test]
+async fn go_to_path_dialog_jumps_and_reveals(cx: &mut TestAppContext) {
+    use gpui_kit::component::WindowExt;
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    fs::create_dir(root.join("sub")).unwrap();
+    fs::write(root.join("sub").join("inner.txt"), "").unwrap();
+    fs::write(root.join("a.txt"), "").unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["sub", "a.txt"]).await;
+    let has_dialog = |cx: &mut TestAppContext| cx.update_window(window, |_, window, cx| window.has_active_dialog(cx)).unwrap();
+
+    // Folder: the prefilled value is selected, so typing replaces it.
+    press(cx, window, &["cmd-g"]);
+    assert!(has_dialog(cx));
+    cx.simulate_input(window, &root.join("sub").display().to_string());
+    press(cx, window, &["enter"]);
+    assert!(!has_dialog(cx));
+    wait_for_names(cx, window, &ws, &["inner.txt"]).await;
+
+    // Unknown path: stays open.
+    press(cx, window, &["cmd-g"]);
+    cx.simulate_input(window, &root.join("nope").display().to_string());
+    press(cx, window, &["enter"]);
+    assert!(has_dialog(cx));
+    press(cx, window, &["escape"]);
+    assert!(!has_dialog(cx));
+
+    // File: opens the parent with the file selected.
+    press(cx, window, &["cmd-g"]);
+    cx.simulate_input(window, &root.join("a.txt").display().to_string());
+    press(cx, window, &["enter"]);
+    wait_for_names(cx, window, &ws, &["sub", "a.txt"]).await;
+    let sel = cx.update(|cx| ws.read(cx).selection(cx));
+    assert_eq!(sel, vec![root.join("a.txt")]);
 }

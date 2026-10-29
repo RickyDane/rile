@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rile symbol suites — review</title>
+<style>
+  :root { --bg:#1d1e21; --card:#282a2e; --fg:#f1f2f5; --muted:#969ba5; --line:#ffffff14; color-scheme:dark; }
+  body.light { --bg:#f4f5f7; --card:#ffffff; --fg:#1d1d1f; --muted:#6e6e73; --line:#00000012; color-scheme:light; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:13px/1.45 -apple-system, BlinkMacSystemFont, sans-serif; background:var(--bg); color:var(--fg); }
+  header { position:sticky; top:0; z-index:3; display:flex; gap:18px; align-items:center; flex-wrap:wrap; padding:14px 28px; background:var(--card); border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; margin:0 8px 0 0; }
+  label { color:var(--muted); display:flex; gap:6px; align-items:center; }
+  select { font:inherit; }
+  main { padding:24px 28px 60px; display:flex; flex-direction:column; gap:22px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px 22px; }
+  section.current { outline:1px dashed var(--muted); outline-offset:-1px; }
+  .head { display:flex; align-items:baseline; gap:12px; margin-bottom:4px; }
+  .head h2 { margin:0; font-size:19px; }
+  .head .tag { font-size:11px; color:var(--muted); border:1px solid var(--line); padding:1px 7px; border-radius:20px; }
+  .desc { color:var(--muted); margin:0 0 16px; max-width:820px; }
+  .row { display:grid; grid-template-columns:repeat(12, minmax(0,1fr)); gap:10px; }
+  .sym { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .sym img { width:var(--size); height:var(--size); }
+  .sym span { font-size:10.5px; color:var(--muted); text-align:center; }
+  .gauges { display:flex; gap:18px; margin-top:16px; padding-top:14px; border-top:1px solid var(--line); align-items:center; flex-wrap:wrap; }
+  .gauges .g { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:11px; }
+  .gauges img { width:46px; height:46px; }
+  .context { display:flex; gap:12px; margin-top:16px; flex-wrap:wrap; }
+  .tile { display:flex; gap:12px; align-items:center; padding:12px 14px; border-radius:12px; background:var(--bg); border:1px solid var(--line); min-width:210px; }
+  .tile img { width:46px; height:46px; }
+  .tile b { display:block; font-size:13px; }
+  .tile small { color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Overview symbol suites</h1>
+  <label>Size
+    <select id="size"><option>32</option><option selected>56</option><option>72</option><option>96</option><option>128</option></select>
+  </label>
+  <label><input type="checkbox" id="light"> Light background</label>
+  <label>Gauge level
+    <select id="level"><option value="4">Healthy</option><option value="3">Moderate</option><option value="2">Low</option><option value="1">Critical</option><option value="0">Unknown</option></select>
+  </label>
+</header>
+<main id="main"></main>
+<script>document.write('<script src="symbols.js?' + Date.now() + '"><\/script>')</script>
+<script>
+const NAMES = ['storage','files','folder','computer','external-drive','discovered','free-space','network-share','nearby-computer','nearby-server','cloud-drive','desktop'];
+const LABELS = { 'external-drive':'external drive', 'free-space':'free space', 'network-share':'network share', 'nearby-computer':'nearby computer', 'nearby-server':'nearby server', 'cloud-drive':'cloud drive' };
+const SUITES = [
+  { id:'current', name:'Current', tag:'reference', desc:'The symbols the app ships today (crates/rile-app/assets/overview).' },
+  { id:'glass', name:'Glass', tag:'frosted', desc:'Frosted glass panes floating over vivid color fields, with bright rims and soft colored shadows. Airy and modern, close to the newest macOS look.' },
+  { id:'clay', name:'Clay', tag:'soft 3D', desc:'Matte, chunky shapes with a visible thickness edge, a top-left sheen and a soft ground shadow. Friendly and toy-like.' },
+  { id:'line', name:'Line', tag:'hierarchical', desc:'One confident stroke color per symbol over a soft tint of itself, like hierarchical SF Symbols. Calm and very legible at small sizes.' },
+  { id:'neon', name:'Neon', tag:'glow', desc:'Dark glass bodies outlined in glowing neon tubes (cyan, magenta, lime). Strongest on the dark theme.' },
+  { id:'iso', name:'Isometric', tag:'3D models', desc:'Little isometric desk models with crisp three-face shading: stacked platters, an open laptop, a rack, a sheet stack.' },
+  { id:'tilt', name:'Tilt 3D', tag:'front, from above', desc:'Solid 3D objects facing you, with the camera slightly above: each shows its front plus a foreshortened top face receding to a vanishing point overhead. Stacked disks, a laptop on its deck, a dial puck.' },
+  { id:'paper', name:'Paper Cut', tag:'craft layers', desc:'Layered cut paper in warm craft colors (navy, terracotta, sand, sage). Every layer casts a short soft shadow: a vault, fanned sheets, a monitor with paper hills.' },
+  { id:'pixelart', name:'Pixel Art', tag:'16-bit', desc:'Hand-placed 16 × 16 sprites with a dark outline, like a retro game inventory. Crisp at multiples of 16 px.' },
+  { id:'riso', name:'Riso Print', tag:'2-ink overprint', desc:'Risograph look: fluorescent pink and blue inks overprinting each other, halftone dot shading and slight misregistration.' },
+  { id:'blueprint', name:'Blueprint', tag:'technical', desc:'White technical linework on a gridded blueprint tile, with hidden (dashed) lines, center axes, dimension marks and construction circles.' },
+  { id:'sticker', name:'Sticker', tag:'die-cut vinyl', desc:'Playful die-cut stickers: flat bold colors with ink outlines, a thick white border, a soft shadow and a slight tilt.' },
+  { id:'midnight', name:'Midnight', tag:'suggestion · from your screenshot', desc:'The screenshot language, extended to all 11 symbols: deep navy glass bodies with a hairline rim, one glowing royal-blue accent, a hex plate for storage, sparkles on folders and tiny LED dots.' },
+  { id:'aurora', name:'Aurora', tag:'suggestion · from your screenshot', desc:'Same navy bodies and rims, but the glow runs cyan to violet to pink. Storage becomes the screenshot’s database stack, and LEDs use the NAS colors (cyan, violet, magenta).' },
+  { id:'titanium', name:'Titanium', tag:'suggestion · from your screenshot', desc:'The Mac Studio side of the screenshot: brushed silver bodies with dark glass panels and a glowing blue accent. A silver drum for storage, status LEDs in green, blue and amber. Works on light backgrounds too.' },
+];
+// The same per-level rewrite art.rs applies to free-space.svg.
+const LEVELS = [['Unknown','#8194a9',0],['Critical','#ef8585',8],['Low','#eba565',22],['Moderate','#e3c66a',50],['Healthy','#65cba3',90]];
+function gauge(svg, level) {
+  const [, color, fill] = LEVELS[level];
+  const rot = fill === 0 ? -45 : fill * 2.7 - 180;
+  return svg.replaceAll('#5fd39a', color).replaceAll('#85c6fa', color).replaceAll('#2e80cc', color)
+    .replaceAll('M23.5 40.5a12 12 0 0 1 17-17', 'M23.5 40.5a12 12 0 1 1 17 0')
+    .replaceAll('stroke="url(#rile-free-arc)"', `stroke="url(#rile-free-arc)" stroke-opacity="${fill ? 1 : 0}" stroke-dasharray="${fill * 0.5655} 100"`)
+    .replaceAll('d="M32 32 38.5 25.5"', `d="M32 32 38.5 25.5" transform="rotate(${rot} 32 32)"`);
+}
+const uri = svg => 'data:image/svg+xml,' + encodeURIComponent(svg);
+function img(suite, name, level) {
+  const svg = SYMBOLS[suite][name];
+  return uri(name === 'free-space' ? gauge(svg, level) : svg);
+}
+function render() {
+  const level = +document.getElementById('level').value;
+  document.documentElement.style.setProperty('--size', document.getElementById('size').value + 'px');
+  document.getElementById('main').innerHTML = SUITES.map(s => `
+    <section class="${s.id === 'current' ? 'current' : ''}">
+      <div class="head"><h2>${s.name}</h2><span class="tag">${s.tag}</span></div>
+      <p class="desc">${s.desc}</p>
+      <div class="row">${NAMES.map(n => `<div class="sym"><img alt="${n}" src="${img(s.id, n, level)}"><span>${LABELS[n] || n}</span></div>`).join('')}</div>
+      <div class="gauges">${LEVELS.map((l, i) => `<div class="g"><img alt="" src="${img(s.id, 'free-space', i)}">${l[0]}</div>`).join('')}</div>
+      <div class="context">
+        <div class="tile"><img alt="" src="${img(s.id, 'storage', level)}"><div><b>Macintosh HD</b><small>412 GB free of 994 GB</small></div></div>
+        <div class="tile"><img alt="" src="${img(s.id, 'nearby-computer', level)}"><div><b>Ricky's MacBook Pro</b><small>Nearby · Rile 0.8</small></div></div>
+        <div class="tile"><img alt="" src="${img(s.id, 'cloud-drive', level)}"><div><b>Cloud Drive</b><small>Synced 2 min ago</small></div></div>
+        <div class="tile"><img alt="" src="${img(s.id, 'network-share', level)}"><div><b>NAS</b><small>smb://nas.local</small></div></div>
+      </div>
+    </section>`).join('');
+}
+['size','level'].forEach(id => document.getElementById(id).onchange = render);
+document.getElementById('light').onchange = e => document.body.classList.toggle('light', e.target.checked);
+render();
+</script>
+</body>
+</html>

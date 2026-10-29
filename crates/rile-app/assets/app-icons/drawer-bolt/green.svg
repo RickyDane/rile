@@ -15,5 +15,26 @@
   <g filter="url(#lf)"><rect x="214" y="500" width="596" height="290" rx="54" fill="url(#d)"/></g>
   <path d="M268 506h488" stroke="#fff" stroke-opacity=".45" stroke-width="6" stroke-linecap="round"/>
     <path transform="translate(512 646) scale(0.98)" d="M18-100-62 12h52l-20 88 82-118h-54z" fill="rgba(40,92,59,0.55)" stroke="rgba(40,92,59,0.55)" stroke-width="10" stroke-linejoin="round" />
-    <path transform="translate(512 640) scale(.98)" d="M18-100-62 12h52l-20 88 82-118h-54z" fill="#fff" fill-opacity=".92" stroke="#fff" stroke-opacity=".92" stroke-width="10" stroke-linejoin="round"/>
+    <path transform="translate(512 640) scale(.98)" d="M18-100-62 12h52l-20 88 82-118h-54z" fill="#fff" fill-opacity=".92" stroke="#fff" stroke-opacity=".92" stroke-width="10" stroke-linejoin="round"/><defs>
+  <clipPath id="mac-surface"><rect x="100" y="100" width="824" height="824" rx="184"/></clipPath>
+  <linearGradient id="mac-reflection" x1=".15" y1="0" x2=".65" y2="1">
+    <stop stop-color="#fff" stop-opacity=".24"/><stop offset=".55" stop-color="#e9f6ff" stop-opacity=".07"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </linearGradient>
+  <radialGradient id="mac-glare" gradientUnits="userSpaceOnUse" cx="330" cy="100" r="600" gradientTransform="translate(0 45) scale(1 .55)">
+    <stop stop-color="#fff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="mac-bevel" x1=".3" y1="0" x2=".7" y2="1">
+    <stop stop-color="#fff" stop-opacity=".72"/><stop offset=".27" stop-color="#e4efff" stop-opacity=".25"/><stop offset=".6" stop-color="#fff" stop-opacity=".03"/><stop offset="1" stop-color="#04112c" stop-opacity=".32"/>
+  </linearGradient>
+  <linearGradient id="mac-base" x2="0" y2="1">
+    <stop offset=".65" stop-color="#06122b" stop-opacity="0"/><stop offset="1" stop-color="#06122b" stop-opacity=".09"/>
+  </linearGradient>
+  </defs>
+  <g clip-path="url(#mac-surface)">
+    <path d="M100 100H924V315C692 284 414 458 100 379Z" fill="url(#mac-reflection)"/>
+    <rect x="100" y="100" width="824" height="824" fill="url(#mac-glare)"/>
+    <rect x="100" y="100" width="824" height="824" fill="url(#mac-base)"/>
+    <rect x="103" y="103" width="818" height="818" rx="181" fill="none" stroke="url(#mac-bevel)" stroke-width="6"/>
+    <path d="M108 345V284C108 187 187 108 284 108H713" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="2" stroke-linecap="round"/>
+  </g>
 </svg>

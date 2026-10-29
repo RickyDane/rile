@@ -92,17 +92,22 @@ fn storage_bar(used: u64, total: u64, ch: &Chrome) -> Div {
         .child(div().h_full().w(gpui_kit::relative(frac)).rounded_full().bg(color))
 }
 
-fn fact(label: &str, value: String, ch: &Chrome) -> AnyElement {
-    v_flex().flex_1().min_w_0().px(px(10.)).py(px(6.)).rounded(px(6.)).bg(ch.hover)
-        .gap(px(2.)).child(text(label.to_uppercase(), 9., ch.text_faint))
-        .child(text(value, 12.5, ch.text_strong).truncate()).into_any_element()
+/// One "LABEL value" pair of the card's detail grid.
+fn kv(label: &str, value: String, ch: &Chrome) -> AnyElement {
+    h_flex()
+        .flex_1()
+        .min_w_0()
+        .gap(px(8.))
+        .justify_between()
+        .child(text(label.to_uppercase(), 9., ch.text_faint).flex_none())
+        .child(text(value, 11., ch.text_strong).min_w_0().truncate())
+        .into_any_element()
 }
 
 fn node_symbol(symbol: IconName, ch: &Chrome) -> Div {
-    div().relative().size(px(52.)).flex_none().flex().items_center().justify_center()
-        .rounded_full().border_1().border_color(ch.accent.opacity(0.15)).bg(ch.accent.opacity(0.04))
-        .child(div().absolute().size(px(40.)).rounded_full().border_1().border_color(ch.accent.opacity(0.3)))
-        .child(icon(symbol).size(px(20.)).text_color(ch.accent))
+    div().size(px(34.)).flex_none().flex().items_center().justify_center()
+        .rounded_full().border_1().border_color(ch.accent.opacity(0.3)).bg(ch.accent.opacity(0.06))
+        .child(icon(symbol).size(px(16.)).text_color(ch.accent))
 }
 
 struct CardData {
@@ -111,7 +116,7 @@ struct CardData {
     name: String,
     /// Operating system, shown under the name.
     os: String,
-    /// Hardware specs (label, value), shown below the info rows.
+    /// Hardware specs (label, value), shown in the detail grid.
     specs: Vec<(&'static str, String)>,
     pill: Option<(&'static str, Hsla, bool)>,
     storage: Option<(u64, u64)>,
@@ -127,28 +132,72 @@ struct CardData {
 
 fn device_card(data: CardData, ch: &Chrome) -> gpui_kit::Stateful<Div> {
     let (used, free, load) = storage_stats(data.storage);
-    let storage = match data.storage {
-        Some((used, total)) if total > 0 => v_flex()
-            .gap(px(6.))
-            .child(
-                h_flex()
-                    .justify_between()
-                    .child(text(if data.cached { "STORAGE / LAST KNOWN" } else { "STORAGE / CAPACITY" }, 10., ch.text_muted))
-                    .child(text(size(total), 11., ch.text_muted)),
-            )
-            .child(storage_bar(used, total, ch)),
-        _ => v_flex()
-            .gap(px(7.))
-            .child(h_flex().justify_between().child(text("Storage", 11., ch.text_muted)).child(text("—", 11., ch.text_faint)))
-            .child(storage_bar(0, 0, ch)),
-    };
+    let known = matches!(data.storage, Some((_, total)) if total > 0);
+    let (bar_used, bar_total) = data.storage.filter(|_| known).unwrap_or((0, 0));
+    let storage = v_flex()
+        .gap(px(5.))
+        .child(
+            h_flex()
+                .gap_2()
+                .justify_between()
+                .child(
+                    h_flex()
+                        .min_w_0()
+                        .gap(px(6.))
+                        .items_baseline()
+                        .child(text(if data.cached { "LAST KNOWN" } else { "STORAGE" }, 9., ch.text_faint).flex_none())
+                        .child(text(if known { format!("{used} used · {free} free") } else { "—".into() }, 11., ch.text_muted).truncate()),
+                )
+                .when(known, |d| {
+                    d.child(
+                        h_flex()
+                            .flex_none()
+                            .gap(px(4.))
+                            .items_baseline()
+                            .child(text(load, 11., ch.text_strong).font_weight(FontWeight::MEDIUM))
+                            .child(text(format!("of {}", size(bar_total)), 11., ch.text_faint)),
+                    )
+                }),
+        )
+        .child(storage_bar(bar_used, bar_total, ch));
+
+    // Connection on the left, hardware on the right.
+    let connection = v_flex().flex_1().min_w_0().gap(px(4.))
+        .child(kv("Endpoint", data.endpoint, ch))
+        .child(kv("Version", data.version, ch))
+        .child(kv("Access", data.trust.to_string(), ch));
+    let hardware = v_flex().flex_1().min_w_0().gap(px(4.))
+        .children(data.specs.iter().map(|(l, v)| kv(l, v.clone(), ch)));
+
     let more = data.shares.len().saturating_sub(MAX_CHIPS);
-    let chips = h_flex()
-        .flex_wrap()
-        .gap(px(6.))
-        .min_h(px(22.))
-        .children(data.shares.iter().take(MAX_CHIPS).map(|s| chip(s.clone(), Some(IconName::Folder), ch)))
-        .when(more > 0, |d| d.child(chip(format!("+{more} more"), None, ch)));
+    let shares_count = if data.shares_known { format!("{:02}", data.shares.len()) } else { "—".into() };
+    let footer = h_flex()
+        .gap(px(8.))
+        .items_center()
+        .pt(px(8.))
+        .border_t_1()
+        .border_color(ch.hairline)
+        .child(
+            h_flex()
+                .flex_none()
+                .gap(px(5.))
+                .child(icon(IconName::Folder).size(px(11.)).text_color(ch.text_faint))
+                .child(text("SHARED", 9., ch.text_faint))
+                .child(text(shares_count, 10.5, ch.text_muted)),
+        )
+        .child(if data.shares.is_empty() {
+            text(data.note, 10.5, ch.text_faint).flex_1().min_w_0().truncate().into_any_element()
+        } else {
+            h_flex()
+                .flex_1()
+                .min_w_0()
+                .flex_wrap()
+                .gap(px(4.))
+                .children(data.shares.iter().take(MAX_CHIPS).map(|s| chip(s.clone(), Some(IconName::Folder), ch)))
+                .when(more > 0, |d| d.child(chip(format!("+{more} more"), None, ch)))
+                .into_any_element()
+        });
+
     card(ch)
         .id(SharedString::from(format!("device-{}", data.key)))
         .debug_selector({
@@ -157,59 +206,42 @@ fn device_card(data: CardData, ch: &Chrome) -> gpui_kit::Stateful<Div> {
         })
         .flex_1()
         .min_w_0()
-        .p(px(16.))
+        .px(px(14.))
+        .py(px(12.))
         .flex()
         .flex_col()
-        .gap(px(12.))
+        .gap(px(10.))
         .cursor_pointer()
         .hover(|s| s.border_color(ch.accent.opacity(0.45)))
         .child(
             h_flex()
-                .flex_wrap()
-                .gap(px(12.))
-                .items_start()
+                .gap(px(10.))
                 .child(node_symbol(data.icon, ch))
                 .child(
                     v_flex()
                         .flex_1()
                         .min_w_0()
                         .gap(px(1.))
-                        .child(text("NODE / ".to_owned() + &data.key, 9., ch.text_faint).truncate())
-                        .child(text(data.name.clone(), 16., ch.text_strong).font_weight(FontWeight::SEMIBOLD).truncate())
-                        .child(text(if data.os.is_empty() { "—".to_string() } else { data.os.clone() }, 11., ch.text_muted).truncate()),
+                        .child(text(data.name.clone(), 14., ch.text_strong).font_weight(FontWeight::SEMIBOLD).truncate())
+                        .child(
+                            h_flex()
+                                .min_w_0()
+                                .gap(px(6.))
+                                .items_baseline()
+                                .child(text(if data.os.is_empty() { "—".to_string() } else { data.os.clone() }, 11., ch.text_muted).flex_none())
+                                .child(text("NODE / ".to_owned() + &data.key, 9., ch.text_faint).min_w_0().truncate()),
+                        ),
                 )
                 .children(data.pill.map(|(l, c, dot)| pill(l, c, dot))),
         )
         .child(storage)
-        .child(grid(vec![fact("Used", used, ch), fact("Available", free, ch), fact("Utilization", load, ch)], 3, 6.))
         .child(
-            v_flex().gap(px(4.))
-                .child(h_flex().justify_between().gap_2().child(text("ENDPOINT", 9., ch.text_faint)).child(text(data.endpoint, 11., ch.text_muted).truncate()))
-                .child(h_flex().justify_between().gap_2().child(text("RILE VERSION", 9., ch.text_faint)).child(text(data.version, 11., ch.text_muted)))
-                .child(h_flex().justify_between().gap_2().child(text("ACCESS", 9., ch.text_faint)).child(text(data.trust, 11., ch.text_muted))),
+            h_flex().items_start().gap(px(10.)).px(px(10.)).py(px(7.)).rounded(px(6.)).bg(ch.hover)
+                .child(connection)
+                .child(div().w(px(1.)).self_stretch().bg(ch.hairline))
+                .child(hardware),
         )
-        .when(!data.specs.is_empty(), |d| {
-            d.child(
-                v_flex().gap(px(6.)).pt(px(10.)).border_t_1().border_color(ch.hairline)
-                    .child(text("SPECIFICATIONS", 9., ch.text_faint))
-                    .child(h_flex().flex_wrap().gap(px(5.)).children(data.specs.iter().map(|(label, value)| {
-                        v_flex().flex_grow(1.).max_w_full().min_w_0().overflow_hidden().gap(px(1.)).px(px(8.)).py(px(4.)).rounded(px(6.)).bg(ch.hover)
-                            .child(text(label.to_uppercase(), 8.5, ch.text_faint))
-                            .child(text(value.clone(), 11., ch.text_strong).truncate())
-                    }))),
-            )
-        })
-        .child(if data.shares.is_empty() {
-            h_flex().gap(px(6.)).items_start()
-                .child(icon(IconName::Folder).size(px(12.)).flex_none().text_color(ch.text_faint))
-                .child(text(data.note, 10.5, ch.text_faint).flex_1().min_w_0())
-                .into_any_element()
-        } else {
-            v_flex().gap(px(6.)).pt(px(10.)).border_t_1().border_color(ch.hairline)
-                .child(h_flex().justify_between().child(text("SHARED DIRECTORIES", 9., ch.text_faint))
-                    .child(text(if data.shares_known { format!("{:02}", data.shares.len()) } else { "—".into() }, 11., ch.text_muted)))
-                .child(chips).into_any_element()
-        })
+        .child(footer)
 }
 
 /// Widths of the list view's columns (wide layout only).
@@ -569,7 +601,7 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
         .justify_between()
         .gap_2()
         .flex_wrap()
-        .child(v_flex().gap(px(6.)).child(text("LOCAL NETWORK / DEVICE CONSOLE", 10., ch.accent)).child(page_title("Nearby", class, &ch)))
+        .child(page_title("Nearby", class, &ch))
         .child(
             kit::button("devices-settings", "Sharing Settings", kit::Tone::Secondary, true, cx).on_click(cx.listener(|ws, _, w, cx| {
                 crate::dialogs::open_nearby_settings(cx.entity(), ws.settings.clone(), w, cx)
@@ -601,7 +633,7 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
         10.,
     );
 
-    let card_cols = if content_width >= 880. { 2 } else { 1 };
+    let card_cols = if content_width >= 1180. { 3 } else if content_width >= 760. { 2 } else { 1 };
     let list_view = ws.settings.nearby.list_view;
     let layout = if list_view { Layout::List { wide: content_width >= 860. } } else { Layout::Cards };
     let discovery_active = ws.settings.nearby.enabled && ws.nearby.error.is_none();
@@ -666,7 +698,7 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
             );
         }
         page = page.child(match layout {
-            Layout::Cards => grid(cards, card_cols, 14.),
+            Layout::Cards => grid(cards, card_cols, 12.),
             Layout::List { wide } => v_flex().gap(px(6.)).child(list_header(wide, &ch)).children(cards).into_any_element(),
         });
     }

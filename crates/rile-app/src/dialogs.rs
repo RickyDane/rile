@@ -14,7 +14,7 @@ use gpui_kit::{
 };
 #[cfg(not(windows))]
 use rile_core::settings::AppIcon;
-use rile_core::settings::{Accent, Density, FileCategory, IconSet, Settings, StartLocation, ThemeMode, ViewKind};
+use rile_core::settings::{Accent, Density, FileCategory, IconSet, Settings, StartLocation, SymbolStyle, ThemeMode, ViewKind};
 
 use crate::views::kit::PointerUnless;
 use crate::theme::accent_color;
@@ -145,7 +145,8 @@ pub fn choose(title: String, detail: String, destructive: bool, choices: Vec<Cho
 /// Called from inside a workspace update, so the current settings are
 /// passed in rather than read from `ws` (which would panic).
 pub fn open_settings(ws: Entity<Workspace>, settings: Settings, window: &mut Window, cx: &mut App) {
-    open_settings_at(ws, settings, Tab::General, None, window, cx);
+    let tab = cx.try_global::<LastSettingsTab>().map_or(Tab::General, |last| last.0);
+    open_settings_at(ws, settings, tab, None, window, cx);
 }
 
 /// Opens Settings → Backups with the job `job` (or the first one) shown.
@@ -159,6 +160,7 @@ pub fn open_nearby_settings(ws: Entity<Workspace>, settings: Settings, window: &
 }
 
 fn open_settings_at(ws: Entity<Workspace>, settings: Settings, tab: Tab, job: Option<String>, window: &mut Window, cx: &mut App) {
+    cx.set_global(LastSettingsTab(tab));
     let view = cx.new(|cx| {
         let mut view = SettingsView::new(ws, settings, job, window, cx);
         view.tab = tab;
@@ -201,7 +203,8 @@ pub fn open_shortcuts(window: &mut Window, cx: &mut App) {
                     ("Backspace".into(), "Back in focused pane"),
                     (pick(&["mod-up"], &["alt-up"]), "Enclosing folder"),
                     (keys(&["shift-mod-h"]), "Home"),
-                    (pick(&["mod-l"], &["mod-l", "alt-d"]), "Go to path"),
+                    (pick(&["mod-l"], &["mod-l", "alt-d"]), "Edit path bar"),
+                    (keys(&["mod-g"]), "Go to folder…"),
                     (keys(&["mod-f", "shift-mod-f"]), "Filter, advanced search"),
                     (keys(&["mod-t", "mod-w"]), "New tab, close tab"),
                     (format!("{}  {}", if mac { "⌃Tab" } else { "Ctrl+Tab" }, keys(&["shift-mod-]", "shift-mod-["])), "Next, previous tab"),
@@ -268,6 +271,9 @@ enum Tab {
     About,
 }
 
+struct LastSettingsTab(Tab);
+impl gpui_kit::Global for LastSettingsTab {}
+
 /// Settings dialog content with tabs. Re-renders when the workspace changes.
 pub struct SettingsView {
     ws: Entity<Workspace>,
@@ -277,6 +283,7 @@ pub struct SettingsView {
     device_name_input: Entity<InputState>,
     glass_hue: Entity<SliderState>,
     glass_translucency: Entity<SliderState>,
+    thumbnail_quality: Entity<SliderState>,
     file_manager: rile_services::file_manager::Status,
     file_manager_busy: bool,
     file_manager_message: Option<String>,
@@ -302,6 +309,7 @@ impl SettingsView {
         });
         let glass_hue = cx.new(|_| SliderState::new().min(0.).max(360.).step(1.).default_value(s.glass_hue.min(360) as f32));
         let glass_translucency = cx.new(|_| SliderState::new().min(0.).max(100.).step(1.).default_value(s.glass_translucency.min(100) as f32));
+        let thumbnail_quality = cx.new(|_| SliderState::new().min(10.).max(100.).step(5.).default_value(s.thumbnail_quality.clamp(10, 100) as f32));
         let mut subs = vec![
             cx.observe(&ws, |_, _, cx| cx.notify()),
             cx.subscribe_in(&repo_input, window, |this: &mut Self, input, ev: &InputEvent, window, cx| {
@@ -345,8 +353,21 @@ impl SettingsView {
                 });
             }));
         }
+        // Thumbnails re-decode only on release, not on every drag step.
+        subs.push(cx.subscribe_in(&thumbnail_quality, window, |this: &mut Self, _, ev: &SliderEvent, window, cx| {
+            let (SliderEvent::Change(v) | SliderEvent::Release(v)) = ev;
+            let quality = v.start().round().clamp(10., 100.) as u8;
+            this.ws.update(cx, |ws, cx| {
+                ws.settings.thumbnail_quality = quality;
+                if matches!(ev, SliderEvent::Release(_)) {
+                    ws.settings_changed(window, cx);
+                } else {
+                    cx.notify();
+                }
+            });
+        }));
         Self {
-            ws, tab: Tab::General, repo_input, max_results_input, device_name_input, glass_hue, glass_translucency, _subs: subs,
+            ws, tab: Tab::General, repo_input, max_results_input, device_name_input, glass_hue, glass_translucency, thumbnail_quality, _subs: subs,
             file_manager: rile_services::file_manager::status(), file_manager_busy: false, file_manager_message: None, backups, ai,
         }
     }
@@ -633,6 +654,7 @@ impl Render for SettingsView {
                 .child(label)
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.tab = t;
+                    cx.set_global(LastSettingsTab(t));
                     cx.notify();
                 }))
         }));
@@ -866,7 +888,7 @@ impl Render for SettingsView {
                                     .text_size(px(10.))
                                     .text_center()
                                     .text_color(if selected { ch.text_strong } else { ch.text_muted })
-                                    .child(if style == AppIcon::DrawerHotRod { "Drawer\nHot Rod" } else { style.label() }),
+                                    .child(if style == AppIcon::NebulaDossier { "Nebula\nDossier" } else { style.label() }),
                             )
                             .on_click(move |_, window, cx| {
                                 ws.update(cx, |ws, cx| {
@@ -876,8 +898,45 @@ impl Render for SettingsView {
                             })
                     }))
                     .into_any_element();
+                let symbol_styles = h_flex()
+                    .flex_wrap()
+                    .w(px(336.))
+                    .gap(px(4.))
+                    .children(SymbolStyle::ALL.into_iter().map(|style| {
+                        use gpui_kit::StyledImage;
+                        let ws = self.ws.clone();
+                        let selected = s.symbol_style == style;
+                        let preview = [crate::art::Art::Folder, crate::art::Art::Storage, crate::art::Art::Computer].map(|art| {
+                            gpui_kit::img(crate::art::image_in(style, art)).size(px(24.)).flex_none().object_fit(gpui_kit::ObjectFit::Contain)
+                        });
+                        v_flex()
+                            .id(style.label())
+                            .w(px(108.))
+                            .items_center()
+                            .gap(px(4.))
+                            .py(px(7.))
+                            .rounded(px(8.))
+                            .cursor_pointer()
+                            .border_1()
+                            .border_color(if selected { ch.accent.opacity(0.6) } else { ch.hairline })
+                            .when(selected, |d| d.bg(ch.accent_soft))
+                            .hover(|d| d.bg(ch.hover_strong))
+                            .child(h_flex().gap(px(2.)).children(preview))
+                            .child(div().text_size(px(10.)).text_color(if selected { ch.text_strong } else { ch.text_muted }).child(style.label()))
+                            .on_click(move |_, window, cx| {
+                                ws.update(cx, |ws, cx| {
+                                    ws.settings.symbol_style = style;
+                                    ws.settings_changed(window, cx);
+                                })
+                            })
+                    }))
+                    .into_any_element();
                 let icon_card = kit::card(cx)
-                    .child(kit::row("Icon style", "Used across the sidebar, toolbar, menus and files", icon_sets, true, &ch));
+                    .child(kit::row("Icon style", "Used across the sidebar, toolbar, menus and files", icon_sets, true, &ch))
+                    .child(
+                        kit::row("Symbol style", "Full-color artwork on the Overview, devices and storage", symbol_styles, false, &ch)
+                            .items_start(),
+                    );
                 #[cfg(not(windows))]
                 let icon_card = icon_card.child(
                     kit::row("App icon", "Shown in the Dock and Finder; follows the accent color", app_icons, false, &ch).items_start(),
@@ -937,10 +996,18 @@ impl Render for SettingsView {
                             ),
                             r(
                                 "Icon size",
-                                "Icons and thumbnails in the icon view",
+                                "Icons in lists and icons and thumbnails in the icon view",
                                 self.choice("s-icon", s.grid_icon_size as u32, &[(48, "S"), (64, "M"), (80, "L"), (96, "XL")], |s, v| s.grid_icon_size = v as f32, cx),
                             ),
                             r("Image thumbnails", "Show image previews in the icon view", self.switch("s-thumbs", s.show_thumbnails, |s, v| s.show_thumbnails = v)),
+                            r(
+                                "Thumbnail quality",
+                                "Lower is faster and uses less memory; 100% is full Retina detail",
+                                h_flex().gap(px(8.))
+                                    .child(div().w(px(130.)).child(Slider::new(&self.thumbnail_quality).disabled(!s.show_thumbnails).accessibility_label("Thumbnail quality")))
+                                    .child(div().w(px(46.)).text_size(px(11.)).child(format!("{}%", s.thumbnail_quality.clamp(10, 100))))
+                                    .into_any_element(),
+                            ),
                         ],
                         cx,
                     ))

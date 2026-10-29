@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use gpui_kit::assets::IconName;
-use gpui_kit::component::{ActiveTheme, h_flex, menu::ContextMenuExt, v_flex};
+use gpui_kit::component::{ActiveTheme, Sizable, h_flex, menu::ContextMenuExt, spinner::Spinner, v_flex};
 use gpui_kit::{
     AnyElement, AppContext, Context, ElementId, Render, FontWeight, InteractiveElement, IntoElement, ParentElement, StatefulInteractiveElement,
     Styled, Window, div, linear_color_stop, linear_gradient, prelude::FluentBuilder, px,
@@ -13,9 +13,9 @@ use std::time::Duration;
 
 use gpui_kit::{Animation, AnimationExt, DragMoveEvent, ExternalPaths, pulsating_between};
 
-use crate::icons::icon_for_place;
+use crate::icons::{icon_for_place, menu_icon};
 use crate::pane::{DraggedFiles, Pane};
-use crate::theme::chrome;
+use crate::theme::{chrome, usage_color};
 use crate::views::chrome::{Width, icon_button, width_class, window_drag};
 use crate::workspace::{Workspace, display_name};
 
@@ -252,7 +252,7 @@ fn places(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>, 
             used * 100.
         );
         dev.push(
-            drop_into(drop_feedback(item(("vol", ix).into(), icon, vol.name.clone(), active, Some((used, usage_color(used, &ch)))), &path, ("vol-drop", ix)), path.clone(), cx)
+            drop_into(drop_feedback(item(("vol", ix).into(), icon, vol.name.clone(), active, Some((used, usage_color(used, ch.accent)))), &path, ("vol-drop", ix)), path.clone(), cx)
                 .when(!rail, |d| {
                     d.child(
                         div()
@@ -288,32 +288,46 @@ fn places(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>, 
         for (ix, conn) in ws.connections.clone().into_iter().enumerate() {
             let active = current_conn.as_deref() == Some(conn.id.as_str());
             let connected = crate::remote::is_connected(&conn.id);
+            let connecting = ws.is_source_loading(&conn.id);
             let label = if conn.name.is_empty() { conn.display() } else { conn.name.clone() };
             let id = conn.id.clone();
             let this = cx.entity().downgrade();
             net.push(
                 item(("conn", ix).into(), if connected { IconName::Globe } else { IconName::Server }, label, active, None)
-                    .when(connected && !rail, |d| d.child(div().size(px(5.)).rounded_full().bg(ch.success)))
+                    .when(connecting, |d| d.child(Spinner::new().xsmall()))
+                    .when(connected && !connecting && !rail, |d| d.child(div().size(px(5.)).rounded_full().bg(ch.success)))
                     .on_click(cx.listener({
                         let id = id.clone();
                         move |this, _, w, cx| this.open_connection(&id, w, cx)
                     }))
                     .context_menu(move |menu, _, _| {
-                        let item = |label: &'static str, f: fn(&mut Workspace, &str, &mut Window, &mut Context<Workspace>)| {
+                        let item = |label: &'static str, icon: IconName, f: fn(&mut Workspace, &str, &mut Window, &mut Context<Workspace>)| {
                             let this = this.clone();
                             let id = id.clone();
-                            gpui_kit::component::menu::PopupMenuItem::new(label).on_click(move |_, w, cx| {
+                            gpui_kit::component::menu::PopupMenuItem::element(move |_, _| {
+                                h_flex()
+                                    .id(label)
+                                    .flex_1()
+                                    .mx_neg_2()
+                                    .px_2()
+                                    .h(px(26.))
+                                    .gap_1()
+                                    .cursor_pointer()
+                                    .aria_label(label)
+                                    .child(menu_icon(icon).xsmall())
+                                    .child(label)
+                            }).on_click(move |_, w, cx| {
                                 this.update(cx, |ws, cx| f(ws, &id, w, cx)).ok();
                             })
                         };
-                        menu.item(item("Connect", |ws, id, w, cx| ws.open_connection(id, w, cx)))
-                            .item(item("Edit…", |ws, id, w, cx| {
+                        menu.item(item("Connect", IconName::Link, |ws, id, w, cx| ws.connect_only(id, w, cx)))
+                            .item(item("Edit…", IconName::Pencil, |ws, id, w, cx| {
                                 let info = ws.connections.iter().find(|c| c.id == id).cloned();
                                 ws.open_connect_dialog(info, w, cx)
                             }))
-                            .item(item("Disconnect", |ws, id, w, cx| ws.disconnect(id, w, cx)))
+                            .item(item("Disconnect", IconName::Eject, |ws, id, w, cx| ws.disconnect(id, w, cx)))
                             .separator()
-                            .item(item("Remove", |ws, id, w, cx| ws.remove_connection(id, w, cx)))
+                            .item(item("Remove", IconName::Trash, |ws, id, w, cx| ws.remove_connection(id, w, cx)))
                     })
                     .into_any_element(),
             );
@@ -333,13 +347,15 @@ fn places(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>, 
             let active = current_conn.as_deref() == Some(conn.as_str());
             let online = row.online.is_some();
             let ready = online && row.paired && !row.forgot_us;
+            let connecting = ws.is_source_loading(&conn);
             let (id, id_drop, id_ext, id_menu) = (row.id.clone(), row.id.clone(), row.id.clone(), row.id.clone());
             let paired = row.paired;
             let this = cx.entity().downgrade();
             let drop_bg = drop_hl_color(&ch);
             let mut el = item(("near", ix).into(), crate::views::devices::kind_icon(row.kind), row.name.clone(), active, None)
                 .when(!online, |d| d.opacity(0.55))
-                .when(ready && !rail, |d| d.child(div().size(px(5.)).rounded_full().bg(ch.success)))
+                .when(connecting, |d| d.child(Spinner::new().xsmall()))
+                .when(ready && !connecting && !rail, |d| d.child(div().size(px(5.)).rounded_full().bg(ch.success)))
                 .when(!row.paired && !rail, |d| {
                     d.child(div().flex_none().text_size(px(10.)).text_color(ch.text_muted).child(if ws.nearby.pairing.contains(&row.id) { "Pairing…" } else { "Pair" }))
                 })
@@ -750,17 +766,6 @@ impl Render for DraggedSection {
 
 fn drop_hl_color(ch: &crate::theme::Chrome) -> gpui_kit::Hsla {
     ch.accent.opacity(0.16)
-}
-
-/// Usage color: accent, amber above 80% and red above 95%.
-fn usage_color(used: f32, ch: &crate::theme::Chrome) -> gpui_kit::Hsla {
-    if used >= 0.95 {
-        gpui_kit::rgba(0xf07178ff).into()
-    } else if used >= 0.8 {
-        gpui_kit::rgba(0xe5a54bff).into()
-    } else {
-        ch.accent
-    }
 }
 
 #[cfg(test)]

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rile — Space to explore</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#1d1e21;color:#f1f2f5;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header,main,footer{max-width:1240px;margin:auto;padding:0 28px}header{padding-top:48px;padding-bottom:30px}.eyebrow{color:#8bbfff;font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase}h1{font-size:38px;line-height:1.15;letter-spacing:-.04em;margin:10px 0}header p{max-width:680px;margin:0;color:#aeb3bd}a{color:#8bbfff;text-underline-offset:3px}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;padding-bottom:36px}article{border:1px solid #ffffff12;border-radius:14px;background:#282a2e;overflow:hidden}.art{appearance:none;border:0;border-radius:0;cursor:zoom-in;display:grid;place-items:center;width:100%;padding:26px 24px;background:radial-gradient(ellipse at 50% 40%,#3a4050,#25272b 78%)}.art svg{display:block;width:min(100%,240px);height:auto;aspect-ratio:1;filter:drop-shadow(0 13px 14px #0007);transition:transform .18s}.art:hover svg{transform:translateY(-3px)}button:focus-visible{outline:2px solid #8bbfff;outline-offset:-4px}.copy{padding:18px 20px 20px;display:flex;flex-direction:column;min-height:184px}.number{font-size:11px;font-weight:700;color:#8bbfff;letter-spacing:.08em}h2{margin:3px 0 5px;font-size:16px}.copy p{font-size:12px;color:#a5aab4;margin:0 0 18px}.sizes{margin-top:auto;display:flex;gap:14px;align-items:end}.sizes svg{width:32px;height:32px;filter:drop-shadow(0 2px 3px #0006)}.sizes svg:nth-of-type(2){width:20px;height:20px}.sizes span{font-size:10px;color:#9299a4;margin-left:auto}footer{padding-bottom:32px;font-size:12px;color:#9299a4}dialog{background:#202125;color:#f1f2f5;border:1px solid #ffffff25;border-radius:20px;padding:24px;width:min(600px,calc(100vw - 32px))}dialog::backdrop{background:#080d18cc;backdrop-filter:blur(12px)}dialog svg{display:block;width:min(100%,420px);height:auto;margin:8px auto 20px;filter:drop-shadow(0 16px 20px #0007)}dialog p{color:#aeb3bd}dialog button{display:block;margin-left:auto;background:#383b41;color:#f1f2f5;border:1px solid #ffffff18;border-radius:8px;padding:8px 14px;cursor:pointer}@media(prefers-reduced-motion:reduce){.art svg{transition:none}}@media(max-width:350px){header,main,footer{padding-left:16px;padding-right:16px}main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" style="position:absolute">
+<defs>
+  <clipPath id="tile"><rect x="8" y="8" width="240" height="240" rx="53"/></clipPath>
+  <linearGradient id="space" x2=".7" y2="1"><stop stop-color="#283a64"/><stop offset=".55" stop-color="#14213e"/><stop offset="1" stop-color="#080f24"/></linearGradient>
+  <linearGradient id="blue" x2=".3" y2="1"><stop stop-color="#c1efff"/><stop offset=".4" stop-color="#6cafe8"/><stop offset="1" stop-color="#294f92"/></linearGradient>
+  <linearGradient id="silver" x2=".8" y2="1"><stop stop-color="#f4f9ff"/><stop offset=".45" stop-color="#becde3"/><stop offset="1" stop-color="#617998"/></linearGradient>
+  <linearGradient id="violet" x2=".7" y2="1"><stop stop-color="#e8c9ff"/><stop offset=".45" stop-color="#a48cdb"/><stop offset="1" stop-color="#4c4b91"/></linearGradient>
+  <linearGradient id="mint" x2="1" y2="1"><stop stop-color="#c7fff3"/><stop offset="1" stop-color="#51a3ba"/></linearGradient>
+  <linearGradient id="gold" x2=".8" y2="1"><stop stop-color="#fff5d7"/><stop offset=".4" stop-color="#f2cf97"/><stop offset="1" stop-color="#a9775e"/></linearGradient>
+  <radialGradient id="nebula" cx=".75" cy=".3" r=".85"><stop stop-color="#b78be5"/><stop offset=".35" stop-color="#505697"/><stop offset="1" stop-color="#13233f"/></radialGradient>
+  <radialGradient id="planet" cx=".3" cy=".2" r=".85"><stop stop-color="#d6f7ff"/><stop offset=".4" stop-color="#76bde7"/><stop offset="1" stop-color="#213f75"/></radialGradient>
+  <radialGradient id="glow"><stop stop-color="#87d8ff" stop-opacity=".5"/><stop offset="1" stop-color="#87d8ff" stop-opacity="0"/></radialGradient>
+  <radialGradient id="sheen" cx=".25" cy="0" r="1.1"><stop stop-color="#fff" stop-opacity=".15"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></radialGradient>
+  <g id="finish"><rect x="8" y="8" width="240" height="240" rx="53" fill="url(#sheen)"/><rect x="9" y="9" width="238" height="238" rx="52" fill="none" stroke="#d7eaff" stroke-opacity=".23"/></g>
+  <g id="stars" fill="#d7eaff"><circle cx="37" cy="34" r="1.5"/><circle cx="203" cy="38" r="1.5"/><circle cx="225" cy="102" r="1"/><circle cx="34" cy="210" r="1"/><circle cx="184" cy="224" r="1.5"/><circle cx="73" cy="23" r="1" opacity=".5"/><circle cx="219" cy="207" r="1" opacity=".5"/><path d="m176 25 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z" opacity=".9"/></g>
+  <path id="folder" d="M26 95V68q0-13 13-13h49q9 0 15 8l13 17h101q13 0 13 13v108q0 16-16 16H42q-16 0-16-16Z"/>
+  <path id="folder-edge" d="M27 95V68q0-12 12-12h49q9 0 15 8l13 17h101q12 0 12 12" fill="none" stroke="#effaff" stroke-opacity=".6" stroke-width="2"/>
+  <g id="file-lines" fill="none" stroke="#e6f5ff" stroke-opacity=".5" stroke-width="4" stroke-linecap="round"><path d="M61 128h57M61 144h40M61 160h48"/></g>
+
+  <symbol id="orbit" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#space)"/><circle cx="128" cy="132" r="128" fill="url(#glow)"/><use href="#stars"/>
+      <g transform="rotate(-24 128 136)"><ellipse cx="128" cy="136" rx="118" ry="44" fill="none" stroke="#8a9ed0" stroke-width="10"/></g>
+      <use href="#folder" fill="#09152e" transform="translate(0 7)"/><use href="#folder" fill="url(#blue)"/>
+      <path d="M27 104h202v97q0 16-16 16H42q-15 0-15-16Z" fill="url(#planet)"/><use href="#folder-edge"/>
+      <path d="M55 124h57" stroke="#e6faff" stroke-opacity=".55" stroke-width="5" stroke-linecap="round"/>
+      <g transform="rotate(-24 128 136)"><path d="M10 136c0 24.3 52.8 44 118 44s118-19.7 118-44" fill="none" stroke="url(#gold)" stroke-width="10" stroke-linecap="round"/></g>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="moon" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#space)"/><use href="#stars"/>
+      <circle cx="128" cy="120" r="107" fill="url(#silver)"/><circle cx="161" cy="90" r="85" fill="#182744"/>
+      <circle cx="48" cy="111" r="10" fill="#6c83a6" opacity=".28"/><circle cx="67" cy="67" r="6" fill="#6c83a6" opacity=".25"/>
+      <path d="M-8 150h89q10 0 16 8l15 18h153v88H-8Z" fill="#060f23" opacity=".4" transform="translate(0 6)"/>
+      <path d="M-8 144h89q10 0 16 8l15 18h153v94H-8Z" fill="url(#blue)"/>
+      <path d="M8 146h73q9 0 15 8l15 18h138" fill="none" stroke="#c9f0ff" stroke-width="2" opacity=".65"/>
+      <path d="M101 203h56" stroke="#193c69" stroke-opacity=".5" stroke-width="7" stroke-linecap="round"/>
+      <path d="M148 71h30l13 13v46h-43Z" fill="url(#silver)"/><path d="M178 71v13h13" fill="#7993b6"/><path d="M157 101h21M157 111h16" stroke="#7189a8" stroke-width="3" stroke-linecap="round"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="nebula-folio" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#nebula)"/>
+      <path d="M-10 53V11h83q12 0 19 11l15 22h159v222H-10Z" fill="url(#violet)"/>
+      <path d="M31 35h165l26 26v154H31Z" fill="#0a1833" opacity=".4" transform="rotate(9 128 128) translate(0 7)"/>
+      <path d="M31 35h165l26 26v154H31Z" fill="url(#silver)" transform="rotate(9 128 128)"/>
+      <path d="M22 55h163l26 26v161H22Z" fill="url(#nebula)" transform="rotate(-6 128 128)"/>
+      <g transform="rotate(-6 128 128)"><path d="M185 55v26h26Z" fill="#b5bbeb"/><circle cx="141" cy="113" r="39" fill="url(#glow)"/><path d="m54 110 36-20 30 38 42-27" fill="none" stroke="#e1d6ff" stroke-opacity=".6" stroke-width="2"/><g fill="#f4eaff"><circle cx="54" cy="110" r="3"/><circle cx="90" cy="90" r="4"/><circle cx="120" cy="128" r="3"/><circle cx="162" cy="101" r="4"/></g></g>
+      <path d="M-10 150q0-12 12-12h71q10 0 17 8l15 20h161v100H-10Z" fill="#182343" opacity=".4" transform="translate(0 7)"/>
+      <path d="M-10 150q0-12 12-12h71q10 0 17 8l15 20h161v100H-10Z" fill="url(#violet)"/>
+      <path d="M8 140h65q9 0 16 8l15 20h145" fill="none" stroke="#f1dcff" stroke-opacity=".8" stroke-width="2"/>
+      <path d="M106 201h44" stroke="#4d457f" stroke-opacity=".5" stroke-width="7" stroke-linecap="round"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="launch" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#space)"/><use href="#stars"/>
+      <path d="M-40 270 126 97l69 69L65 300Z" fill="url(#glow)"/><path d="M-20 270 112 155M14 270l118-98" stroke="#9acfff" stroke-width="11" stroke-linecap="round" opacity=".45"/><path d="M-20 240 100 136" stroke="#d5ebff" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+      <g transform="rotate(39 139 122)">
+        <path d="M81 209V49q0-12 12-12h67l34 34v138Z" fill="#08182f" opacity=".5" transform="translate(5 6)"/>
+        <path d="M81 209V49q0-12 12-12h67l34 34v138Z" fill="url(#silver)"/>
+        <path d="M160 37v34h34Z" fill="#7795be"/><path d="M103 91h66M103 107h46" stroke="#7a95b6" stroke-width="5" stroke-linecap="round"/>
+        <path d="M81 162h34l11 13h68v34H81Z" fill="url(#blue)"/>
+        <path d="M82 164h33l11 13h67" fill="none" stroke="#c8eeff" stroke-width="2"/>
+        <path d="M113 209h48l-24 25Z" fill="url(#gold)"/>
+      </g>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="starpath" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#space)"/><use href="#stars"/><circle cx="153" cy="128" r="140" fill="url(#glow)"/>
+      <path d="M-15 143V57q0-15 15-15h67q11 0 18 10l18 23h166v190H-15Z" fill="#314b7c" opacity=".7"/>
+      <path d="M-15 143V68q0-15 15-15h67q11 0 18 10l18 23h166v179H-15Z" fill="url(#nebula)"/>
+      <path d="M8 55h59q10 0 17 10l18 23h147" fill="none" stroke="#cbd7ff" stroke-opacity=".6" stroke-width="2"/>
+      <path d="m-8 218 67-74 63 28 70-59 72 12" fill="none" stroke="#8ac8ed" stroke-opacity=".3" stroke-width="12"/>
+      <path d="m-8 218 67-74 63 28 70-59 72 12" fill="none" stroke="#cdf5ff" stroke-opacity=".85" stroke-width="2"/>
+      <g fill="url(#silver)" stroke="#bad6ef" stroke-width="1"><path d="M40 130h16l6 7h18v25H40Z"/><path d="M104 158h15l6 7h18v25h-39Z"/></g>
+      <path d="M162 98h21l8 9h23v33h-52Z" fill="url(#gold)"/><path d="M162 112h52" stroke="#fff5d8" stroke-opacity=".7" stroke-width="2"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="portal" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#space)"/><use href="#stars"/>
+      <path d="M-12 271V77q0-15 15-15h75q12 0 19 10l18 22h153v177Z" fill="#28375c"/>
+      <path d="M11 270V99q0-14 14-14h51q10 0 16 9l16 20h136v156Z" fill="url(#blue)"/>
+      <path d="M34 269V121q0-12 12-12h29q9 0 15 8l14 18h116v134Z" fill="#25375c"/>
+      <path d="M57 268V143q0-11 11-11h7q8 0 14 8l12 16h95v112Z" fill="url(#violet)"/>
+      <path d="M80 267V166q0-10 10-10l13 21h69v90Z" fill="#192a4b"/>
+      <path d="M103 266v-67h46v67Z" fill="url(#nebula)"/>
+      <circle cx="126" cy="229" r="24" fill="url(#glow)"/><path d="m126 213 2 6 6 2-6 2-2 6-2-6-6-2 6-2Z" fill="#f6e5ff"/>
+      <path d="M12 99q0-14 14-14h50q10 0 16 9l16 20h136M58 143q0-11 11-11h6q8 0 14 8l12 16h95" fill="none" stroke="#e5ecff" stroke-opacity=".45" stroke-width="2"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="mission" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#space)"/>
+      <path d="M0 0h256v49H0Z" fill="url(#silver)"/>
+      <path d="M21 49V27q0-8 8-8h56q8 0 8 8v22Z" fill="#33486a"/><path d="M103 49V31q0-7 7-7h49q7 0 7 7v18Z" fill="#8096b4"/>
+      <path d="M0 55h91v201H0Z" fill="#38567c"/><path d="M97 55h159v201H97Z" fill="url(#space)"/>
+      <g fill="#bbdef3"><path d="M20 79h12l5 6h24v19H20Z"/><path d="M20 125h12l5 6h24v19H20Z"/><path d="M20 171h12l5 6h24v19H20Z"/></g>
+      <path d="M20 113h44M20 159h32M20 205h39" stroke="#a1c1de" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="176" cy="140" r="59" fill="url(#glow)"/><circle cx="176" cy="140" r="50" fill="none" stroke="#a0d8ed" stroke-opacity=".3"/><circle cx="176" cy="140" r="32" fill="none" stroke="#a0d8ed" stroke-opacity=".3"/>
+      <path d="M112 140h128M176 76v128" stroke="#a0d8ed" stroke-opacity=".18"/>
+      <circle cx="176" cy="140" r="20" fill="url(#planet)"/><circle cx="215" cy="109" r="6" fill="url(#gold)"/>
+      <path d="M116 222h115M116 232h70" stroke="#a1c1de" stroke-opacity=".45" stroke-width="3" stroke-linecap="round"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+  <symbol id="horizon" viewBox="0 0 256 256">
+    <g clip-path="url(#tile)">
+      <rect width="256" height="256" fill="url(#space)"/><use href="#stars"/>
+      <circle cx="168" cy="95" r="46" fill="url(#planet)"/><path d="M129 95q39 20 78 0M138 68q30 12 60 0" fill="none" stroke="#d3efff" stroke-opacity=".25" stroke-width="6"/>
+      <path d="M-10 114h62q11 0 18 10l12 16h184v126H-10Z" fill="#21436f" opacity=".4" transform="translate(0 -9)"/>
+      <path d="M-10 114h62q11 0 18 10l12 16h184v126H-10Z" fill="url(#violet)"/>
+      <path d="M-10 153h90q11 0 18 10l12 16h156v87H-10Z" fill="#153258" opacity=".4" transform="translate(0 -5)"/>
+      <path d="M-10 153h90q11 0 18 10l12 16h156v87H-10Z" fill="url(#blue)"/>
+      <path d="M-10 192h118q11 0 18 10l12 16h128v48H-10Z" fill="#173450" opacity=".4" transform="translate(0 -5)"/>
+      <path d="M-10 192h118q11 0 18 10l12 16h128v48H-10Z" fill="url(#mint)"/>
+      <path d="M8 116h44q10 0 17 10l12 16h168M8 155h72q10 0 17 10l12 16h140M8 194h100q10 0 17 10l12 16h112" fill="none" stroke="#effaff" stroke-opacity=".65" stroke-width="2"/>
+      <use href="#finish"/>
+    </g>
+  </symbol>
+</defs>
+</svg>
+<header><div class="eyebrow">Rile · App icon studies / 11</div><h1>Space to explore.</h1><p>Eight directions where space meets file management: orbital folders, lunar archives, cosmic documents and directory constellations. Click an icon for a closer look.</p></header>
+<main id="gallery"></main>
+<footer>Original vector concepts · Large, 32 px and 20 px previews · <a href="../round-10/">Previous file-explorer set</a></footer>
+<dialog aria-labelledby="detail-title"><button type="button" id="close">Close</button><div id="detail-art"></div><h2 id="detail-title"></h2><p id="detail-description"></p></dialog>
+<script>
+const concepts=[
+["orbit","25 / ORBITAL ORGANIZATION","Saturn Folio","A luminous blue folder becomes a ringed world. The orbit passes behind the tab and in front of the folder for real, readable depth."],
+["moon","26 / LUNAR ARCHIVE","Moon Pocket","A silver crescent cradles a document above a full-width folder pocket. Quiet, tactile and unmistakably about keeping files."],
+["nebula-folio","27 / COSMIC COLLECTIONS","Nebula Dossier","A lavender portfolio holds a star-chart document. The constellation lives inside the files, not just on a decorative background."],
+["launch","28 / FILES IN MOTION","Launch Sheet","A folded document and folder pocket become a small spacecraft, with a warm exhaust tab and a diagonal transfer trail."],
+["starpath","29 / DIRECTORY NAVIGATION","Constellation Path","Folders replace the stars along a navigable constellation. A warm destination stands out on a large, indigo folder surface."],
+["portal","30 / GO DEEPER","Directory Gate","Nested folder silhouettes form a portal into space. A dimensional file hierarchy, rather than an ordinary folder with a space sticker."],
+["mission","31 / EXPLORER WORKSPACE","Mission Control","A two-pane file browser becomes a spacecraft console: folder navigation on the left, an orbital discovery view on the right."],
+["horizon","32 / MANY PLACES, ONE SPACE","Orbital Layers","Oversized folder tabs form the horizon beneath a blue planet. A calm, layered identity for navigating collections."]
+];
+const dialog=document.querySelector("dialog");
+function icon(id,large=false,name=""){
+  const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");svg.setAttribute("viewBox","0 0 256 256");
+  if(large){svg.setAttribute("role","img");svg.setAttribute("aria-label",name+" app icon");}else svg.setAttribute("aria-hidden","true");
+  const use=document.createElementNS(svg.namespaceURI,"use");use.setAttribute("href","#"+id);svg.append(use);return svg;
+}
+for(const [id,number,name,description] of concepts){
+  const article=document.createElement("article"),art=document.createElement("button"),copy=document.createElement("div");
+  art.type="button";art.className="art";art.setAttribute("aria-label","Enlarge "+name);art.append(icon(id,true,name));
+  art.addEventListener("click",()=>{document.querySelector("#detail-art").replaceChildren(icon(id,true,name));document.querySelector("#detail-title").textContent=number+" · "+name;document.querySelector("#detail-description").textContent=description;dialog.showModal();});
+  copy.className="copy";const label=document.createElement("span");label.className="number";label.textContent=number;
+  const heading=document.createElement("h2");heading.textContent=name;
+  const text=document.createElement("p");text.textContent=description;
+  const sizes=document.createElement("div");sizes.className="sizes";const caption=document.createElement("span");caption.textContent="32 / 20 px";sizes.append(icon(id),icon(id),caption);
+  copy.append(label,heading,text,sizes);article.append(art,copy);document.querySelector("#gallery").append(article);
+}
+document.querySelector("#close").addEventListener("click",()=>dialog.close());
+</script>
+</body></html>

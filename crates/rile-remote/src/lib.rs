@@ -189,6 +189,20 @@ impl ConnectionInfo {
     }
 }
 
+/// Space on the volume (or account quota) behind a remote path, in bytes.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Capacity {
+    pub used: u64,
+    pub total: u64,
+}
+
+impl Capacity {
+    /// From total and free space; `None` when the total is unknown.
+    pub fn from_free(total: u64, free: u64) -> Option<Self> {
+        (total > 0).then(|| Self { used: total.saturating_sub(free), total })
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RemoteEntry {
     pub name: String,
@@ -238,6 +252,11 @@ pub trait RemoteFs: Send {
     ) -> Result<()>;
     /// Read up to `max` bytes from the start of a file (for previews).
     fn read_head(&mut self, path: &str, max: usize) -> Result<Vec<u8>>;
+    /// Used and total space behind `path`; `None` when the protocol or server
+    /// doesn't report it.
+    fn capacity(&mut self, _path: &str) -> Result<Option<Capacity>> {
+        Ok(None)
+    }
 }
 
 /// Connect and log in. `secret` is the password (Password auth / FTP) or the key

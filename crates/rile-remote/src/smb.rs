@@ -9,7 +9,7 @@ use anyhow::{Context, Result, bail};
 use futures_util::TryStreamExt;
 use smb::{
     Client, ClientConfig, CreateOptions, FileAccessMask, FileAttributes, FileCreateArgs,
-    FileDirectoryInformation, FileDispositionInformation, FileNetworkOpenInformation,
+    FileDirectoryInformation, FileDispositionInformation, FileFsFullSizeInformation, FileNetworkOpenInformation,
     FileRenameInformation, ReadAt, Resource, ResourceHandle, UncPath, WriteAt,
 };
 
@@ -375,6 +375,25 @@ impl Backend for SmbBackend {
                     }
                 }
                 Ok(())
+            },
+        )
+    }
+
+    fn capacity(&mut self, path: &str) -> Result<Option<crate::Capacity>> {
+        // The root lists shares; only a share has a volume behind it.
+        if paths::normalize(path) == "/" {
+            return Ok(None);
+        }
+        self.with_resource(
+            path,
+            FileCreateArgs::make_open_existing(FileAccessMask::new().with_file_read_attributes(true)),
+            |r| {
+                let info = self.run(handle(r).query_fs_info::<FileFsFullSizeInformation>())?;
+                let unit = info.sectors_per_allocation_unit as u64 * info.bytes_per_sector as u64;
+                Ok(crate::Capacity::from_free(
+                    info.total_allocation_units.saturating_mul(unit),
+                    info.caller_available_allocation_units.saturating_mul(unit),
+                ))
             },
         )
     }

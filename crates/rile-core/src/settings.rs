@@ -203,38 +203,79 @@ impl IconSet {
 #[serde(rename_all = "kebab-case")]
 pub enum AppIcon {
     #[default]
+    #[serde(alias = "folio-flame", alias = "folio-ember", alias = "folio-hot-rod")]
     FolioBolt,
+    #[serde(alias = "drawer-flame", alias = "drawer-ember", alias = "drawer-hot-rod")]
     DrawerBolt,
-    FolioFlame,
-    FolioEmber,
-    FolioHotRod,
-    DrawerFlame,
-    DrawerEmber,
-    DrawerHotRod,
+    NebulaDossier,
 }
 
 impl AppIcon {
-    pub const ALL: [AppIcon; 8] = [
+    pub const ALL: [AppIcon; 3] = [
         AppIcon::FolioBolt,
         AppIcon::DrawerBolt,
-        AppIcon::FolioFlame,
-        AppIcon::FolioEmber,
-        AppIcon::FolioHotRod,
-        AppIcon::DrawerFlame,
-        AppIcon::DrawerEmber,
-        AppIcon::DrawerHotRod,
+        AppIcon::NebulaDossier,
     ];
 
     pub fn label(self) -> &'static str {
         match self {
             AppIcon::FolioBolt => "Folio Bolt",
             AppIcon::DrawerBolt => "Drawer Bolt",
-            AppIcon::FolioFlame => "Folio Flame",
-            AppIcon::FolioEmber => "Folio Ember",
-            AppIcon::FolioHotRod => "Folio Hot Rod",
-            AppIcon::DrawerFlame => "Drawer Flame",
-            AppIcon::DrawerEmber => "Drawer Ember",
-            AppIcon::DrawerHotRod => "Drawer Hot Rod",
+            AppIcon::NebulaDossier => "Nebula Dossier",
+        }
+    }
+}
+
+/// Style of the full-color symbols (Overview, devices, storage gauges).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SymbolStyle {
+    /// The original gradient artwork.
+    Current,
+    Glass,
+    Clay,
+    Line,
+    Isometric,
+    Tilt3d,
+    PaperCut,
+    PixelArt,
+    Sticker,
+    Midnight,
+    #[default]
+    Titanium,
+}
+
+impl SymbolStyle {
+    /// What new installs (and settings files without the option) use.
+    pub const DEFAULT: SymbolStyle = SymbolStyle::Titanium;
+
+    pub const ALL: [SymbolStyle; 11] = [
+        SymbolStyle::Current,
+        SymbolStyle::Glass,
+        SymbolStyle::Clay,
+        SymbolStyle::Line,
+        SymbolStyle::Isometric,
+        SymbolStyle::Tilt3d,
+        SymbolStyle::PaperCut,
+        SymbolStyle::PixelArt,
+        SymbolStyle::Sticker,
+        SymbolStyle::Midnight,
+        SymbolStyle::Titanium,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            SymbolStyle::Current => "Classic",
+            SymbolStyle::Glass => "Glass",
+            SymbolStyle::Clay => "Clay",
+            SymbolStyle::Line => "Line",
+            SymbolStyle::Isometric => "Isometric",
+            SymbolStyle::Tilt3d => "Tilt 3D",
+            SymbolStyle::PaperCut => "Paper Cut",
+            SymbolStyle::PixelArt => "Pixel Art",
+            SymbolStyle::Sticker => "Sticker",
+            SymbolStyle::Midnight => "Midnight",
+            SymbolStyle::Titanium => "Titanium",
         }
     }
 }
@@ -318,6 +359,9 @@ pub struct Settings {
     pub default_view: ViewKind,
     pub grid_icon_size: f32,
     pub show_thumbnails: bool,
+    /// Thumbnail resolution as a percentage of the display's full detail
+    /// (10–100); lower values decode faster and use less memory.
+    pub thumbnail_quality: u8,
     pub dual_pane: bool,
     pub show_preview_panel: bool,
     pub start_location: StartLocation,
@@ -328,6 +372,8 @@ pub struct Settings {
     pub icon_set: IconSet,
     /// Dock icon artwork.
     pub app_icon: AppIcon,
+    /// Style of the full-color symbols.
+    pub symbol_style: SymbolStyle,
     /// Translucent, blurred sidebar and header (popups remain opaque).
     pub glass: bool,
     /// Glass tint hue in degrees; zero uses the theme's neutral frost.
@@ -443,6 +489,7 @@ impl Default for Settings {
             default_view: ViewKind::List,
             grid_icon_size: 64.,
             show_thumbnails: true,
+            thumbnail_quality: 100,
             dual_pane: false,
             show_preview_panel: true,
             start_location: StartLocation::Home,
@@ -450,6 +497,7 @@ impl Default for Settings {
             last_location: None,
             icon_set: IconSet::Outline,
             app_icon: AppIcon::FolioBolt,
+            symbol_style: SymbolStyle::DEFAULT,
             glass: false,
             glass_hue: 0,
             glass_translucency: 50,
@@ -627,12 +675,13 @@ mod tests {
 
     #[test]
     fn roundtrip_and_partial() {
-        let s = Settings { show_hidden: true, glass_hue: 215, glass_translucency: 72, sidebar_scroll_shadows: false,
+        let s = Settings { show_hidden: true, glass_hue: 215, glass_translucency: 72, sidebar_scroll_shadows: false, thumbnail_quality: 40,
             ai_model_path: Some(PathBuf::from("/models/chat.gguf")), ai_llama_server: "/opt/bin/llama-server".into(), ..Default::default() };
         let parsed: Settings = toml::from_str(&toml::to_string(&s).unwrap()).unwrap();
         assert!(parsed.show_hidden);
         assert_eq!(parsed.glass_hue, 215);
         assert_eq!(parsed.glass_translucency, 72);
+        assert_eq!(parsed.thumbnail_quality, 40);
         assert!(!parsed.sidebar_scroll_shadows);
         assert_eq!(parsed.ai_model_path, s.ai_model_path);
         assert_eq!(parsed.ai_llama_server, s.ai_llama_server);
@@ -640,6 +689,7 @@ mod tests {
         assert_eq!(partial.theme, ThemeMode::Dark);
         assert_eq!(partial.glass_hue, 0);
         assert_eq!(partial.glass_translucency, 50);
+        assert_eq!(partial.thumbnail_quality, 100);
         assert!(partial.sidebar_scroll_shadows);
         assert_eq!(partial.app_icon, AppIcon::FolioBolt);
         assert_eq!(partial.ai_model_path, None);
@@ -659,10 +709,44 @@ mod tests {
     }
 
     #[test]
+    fn symbol_style_uses_kebab_case() {
+        assert_eq!(Settings::default().symbol_style, SymbolStyle::Titanium);
+        assert_eq!(SymbolStyle::default(), SymbolStyle::DEFAULT);
+        // A saved choice of the original artwork is kept.
+        let kept: Settings = toml::from_str("symbol_style = \"current\"").unwrap();
+        assert_eq!(kept.symbol_style, SymbolStyle::Current);
+        // Old settings files without the option get the default.
+        assert_eq!(toml::from_str::<Settings>("").unwrap().symbol_style, SymbolStyle::Titanium);
+        let parsed: Settings = toml::from_str("symbol_style = \"tilt3d\"").unwrap();
+        assert_eq!(parsed.symbol_style, SymbolStyle::Tilt3d);
+        let parsed: Settings = toml::from_str("symbol_style = \"midnight\"").unwrap();
+        assert_eq!(parsed.symbol_style, SymbolStyle::Midnight);
+        let s = Settings { symbol_style: SymbolStyle::PaperCut, ..Default::default() };
+        assert!(toml::to_string(&s).unwrap().contains("symbol_style = \"paper-cut\""));
+    }
+
+    #[test]
     fn app_icon_uses_kebab_case() {
-        let parsed: Settings = toml::from_str("app_icon = \"drawer-hot-rod\"").unwrap();
-        assert_eq!(parsed.app_icon, AppIcon::DrawerHotRod);
-        let s = Settings { app_icon: AppIcon::FolioEmber, ..Default::default() };
-        assert!(toml::to_string(&s).unwrap().contains("app_icon = \"folio-ember\""));
+        for icon in AppIcon::ALL {
+            let s = Settings { app_icon: icon, ..Default::default() };
+            let encoded = toml::to_string(&s).unwrap();
+            assert_eq!(toml::from_str::<Settings>(&encoded).unwrap().app_icon, icon);
+        }
+        let s = Settings { app_icon: AppIcon::NebulaDossier, ..Default::default() };
+        assert!(toml::to_string(&s).unwrap().contains("app_icon = \"nebula-dossier\""));
+    }
+
+    #[test]
+    fn retired_app_icons_migrate_without_losing_other_preferences() {
+        for (prefix, expected) in [("folio", AppIcon::FolioBolt), ("drawer", AppIcon::DrawerBolt)] {
+            for suffix in ["flame", "ember", "hot-rod"] {
+                let parsed: Settings = toml::from_str(&format!(
+                    "app_icon = \"{prefix}-{suffix}\"\naccent = \"purple\""
+                )).unwrap();
+                assert_eq!(parsed.app_icon, expected);
+                assert_eq!(parsed.accent, Accent::Purple);
+            }
+        }
+        assert_eq!(AppIcon::ALL, [AppIcon::FolioBolt, AppIcon::DrawerBolt, AppIcon::NebulaDossier]);
     }
 }

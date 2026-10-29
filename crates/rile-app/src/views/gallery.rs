@@ -392,7 +392,7 @@ impl GalleryView {
         } else {
             self.zoom.last_frame = None;
         }
-        let image = crate::art::thumbnail(&photo.path, photo.modified, photo.size, 1024., cx);
+        let image = crate::art::preview_image(&photo.path, photo.modified, photo.size, 1024., cx);
         self.zoom.pan.image = image.as_ref().map(|image| {
             let size = image.size(0);
             gpui_kit::size(size.width.0 as f32, size.height.0 as f32)

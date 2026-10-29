@@ -57,6 +57,8 @@ pub use updates::UpdateState;
 /// A background file operation shown in the status bar.
 pub struct RunningOp {
     pub id: usize,
+    /// Source whose initial connection is being opened by this operation.
+    pub connecting_to: Option<String>,
     pub label: SharedString,
     pub progress: Progress,
     pub cancel: Arc<AtomicBool>,
@@ -116,8 +118,13 @@ pub struct Workspace {
     pub clipboard_conn: Option<String>,
     /// Saved FTP/SFTP connections.
     pub connections: Vec<rile_remote::ConnectionInfo>,
+    /// Automatic startup attempts, which aren't transfer jobs.
+    pub auto_connecting: std::collections::HashSet<String>,
     pub places: Vec<Place>,
     pub volumes: Vec<Volume>,
+    /// Used/total space of connected remote sources, by connection id, for
+    /// those read so far; `None` when the source doesn't report it.
+    pub remote_capacity: std::collections::HashMap<String, Option<rile_remote::Capacity>>,
     pub ops: Vec<RunningOp>,
     /// Most recent first, at most a handful.
     pub finished_jobs: Vec<FinishedJob>,
@@ -173,6 +180,7 @@ pub struct Workspace {
     _spring_task: Option<Task<()>>,
     _volumes_task: Option<Task<()>>,
     _volume_watch_task: Option<Task<()>>,
+    _remote_capacity_task: Option<Task<()>>,
     _index_task: Option<Task<()>>,
     _dialog_sub: Option<Subscription>,
     _pane_subs: std::collections::HashMap<gpui_kit::EntityId, [Subscription; 2]>,
@@ -232,8 +240,10 @@ impl Workspace {
             clipboard: FileClipboard::default(),
             clipboard_conn: None,
             connections: crate::remote::load_saved(),
+            auto_connecting: Default::default(),
             places: places::standard_places(),
             volumes: Vec::new(),
+            remote_capacity: Default::default(),
             ops: Vec::new(),
             finished_jobs: Vec::new(),
             jobs_open: false,
@@ -269,6 +279,7 @@ impl Workspace {
             _spring_task: None,
             _volumes_task: None,
             _volume_watch_task: None,
+            _remote_capacity_task: None,
             _index_task: None,
             _dialog_sub: None,
             _pane_subs: Default::default(),
@@ -284,6 +295,8 @@ impl Workspace {
         this.rewards.task = Some(Self::watch_rewards(cx));
         this.refresh_volumes(cx);
         this._volume_watch_task = Some(Self::watch_volumes(cx));
+        this._remote_capacity_task = Some(Self::watch_remote_capacity(cx));
+        this.auto_connect_saved(cx);
         this.load_plugins(cx);
         this.start_backups(window, cx);
         this.sync_nearby(window, cx);
@@ -567,6 +580,72 @@ impl Workspace {
         })
     }
 
+    /// Polls used/total space of connected remote sources: every 5s until a
+    /// newly connected source has been read once, then once a minute.
+    fn watch_remote_capacity(cx: &mut Context<Self>) -> Task<()> {
+        const REFRESH: std::time::Duration = std::time::Duration::from_secs(60);
+        cx.spawn(async move |this, cx| {
+            let mut last_read: std::collections::HashMap<String, std::time::Instant> = Default::default();
+            loop {
+                cx.background_executor().timer(std::time::Duration::from_secs(5)).await;
+                let Ok(ids) = this.read_with(cx, |this, _| {
+                    // A reconnect clears metadata: don't let the old refresh
+                    // timestamp delay the new session's initial read.
+                    last_read.retain(|id, _| this.remote_capacity.contains_key(id));
+                    if !this.settings.remote_enabled {
+                        return Vec::new();
+                    }
+                    this.connections
+                        .iter()
+                        .filter(|c| c.protocol != rile_remote::Protocol::Peer)
+                        .map(|c| c.id.clone())
+                        .collect::<Vec<_>>()
+                }) else {
+                    break;
+                };
+                let due: Vec<String> = ids
+                    .iter()
+                    .filter(|id| crate::remote::is_connected(id))
+                    .filter(|id| last_read.get(*id).is_none_or(|t| t.elapsed() >= REFRESH))
+                    .cloned()
+                    .collect();
+                let results = cx
+                    .background_spawn(async move {
+                        due.into_iter().map(|id| {
+                            let cap = crate::remote::capacity(&id);
+                            (id, cap)
+                        }).collect::<Vec<_>>()
+                    })
+                    .await;
+                let now = std::time::Instant::now();
+                let Ok(()) = this.update(cx, |this, cx| {
+                    let before = this.remote_capacity.clone();
+                    // Forget sources that were disconnected or removed.
+                    this.remote_capacity.retain(|id, _| ids.contains(id) && crate::remote::is_connected(id));
+                    last_read.retain(|id, _| this.remote_capacity.contains_key(id) || crate::remote::is_connected(id));
+                    for (id, cap) in results {
+                        match cap {
+                            // Busy (e.g. mid-transfer): try again on the next tick.
+                            Err(crate::remote::CapacityError::Busy) => continue,
+                            Ok(cap) => {
+                                this.remote_capacity.insert(id.clone(), cap);
+                            }
+                            Err(crate::remote::CapacityError::Failed) => {
+                                this.remote_capacity.insert(id.clone(), None);
+                            }
+                        }
+                        last_read.insert(id, now);
+                    }
+                    if this.remote_capacity != before {
+                        cx.notify();
+                    }
+                }) else {
+                    break;
+                };
+            }
+        })
+    }
+
     pub fn save_settings(&self, window: &mut Window, cx: &mut App) {
         if let Err(e) = self.settings.save() {
             window.push_notification(Notification::error(format!("Couldn't save settings: {e}")), cx);
@@ -576,10 +655,17 @@ impl Workspace {
     /// Applies appearance settings and persists everything.
     pub fn settings_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let defaults = Settings::default();
-        if self.settings.theme != defaults.theme || self.settings.accent != defaults.accent || self.settings.icon_set != defaults.icon_set {
+        if self.settings.theme != defaults.theme || self.settings.accent != defaults.accent || self.settings.icon_set != defaults.icon_set
+            || self.settings.symbol_style != defaults.symbol_style
+        {
             self.reward_event(rile_services::rewards::Event::Personalized, cx);
         }
+        let symbols_changed = crate::art::symbol_style() != self.settings.symbol_style;
         theme::apply(&self.settings, window, cx);
+        if symbols_changed {
+            // Symbols appear on the Overview, in the inspector and in dialogs.
+            cx.refresh_windows();
+        }
         // Panes cache their render; icons and colors may have changed.
         for pane in &self.all_panes() {
             pane.update(cx, |_, cx| cx.notify());
@@ -718,6 +804,77 @@ impl Workspace {
             input.select_all(window, cx);
         });
         cx.notify();
+    }
+
+    /// ⌘G / Ctrl+G: modal to type a path and jump there. Folders open in the
+    /// active pane, files are revealed (parent opened, file selected).
+    pub fn go_to_path(&mut self, _: &GoToPath, window: &mut Window, cx: &mut Context<Self>) {
+        let conn = self.pane().read(cx).conn();
+        let current = self.pane().read(cx).dir_path().map(|p| p.display().to_string()).unwrap_or_default();
+        let input = cx.new(|cx| InputState::new(window, cx).placeholder("~/Documents or /path/to/folder").default_value(current));
+        let ws = cx.entity().downgrade();
+        // Runs from the OK button and from the input's Enter subscription
+        // (inside a workspace update), so the workspace is only touched deferred.
+        let submit = {
+            let input = input.clone();
+            move |window: &mut Window, cx: &mut App| -> bool {
+                let raw = input.read(cx).value().trim().to_string();
+                if raw.is_empty() {
+                    return false;
+                }
+                let ws = ws.clone();
+                if let Some(conn) = conn.clone()
+                    && raw.starts_with('/')
+                {
+                    window.defer(cx, move |window, cx| {
+                        ws.update(cx, |ws, cx| ws.open_location(Location::Remote { conn, path: raw }, window, cx)).ok();
+                    });
+                    return true;
+                }
+                let path = expand_tilde(&raw);
+                if path.is_dir() {
+                    window.defer(cx, move |window, cx| {
+                        ws.update(cx, |ws, cx| ws.open_location(Location::Dir(path), window, cx)).ok();
+                    });
+                    true
+                } else if path.exists() {
+                    window.defer(cx, move |window, cx| {
+                        ws.update(cx, |ws, cx| ws.reveal_in_pane(path, window, cx)).ok();
+                    });
+                    true
+                } else {
+                    window.push_notification(Notification::error(format!("Nothing found at \"{raw}\"")), cx);
+                    false
+                }
+            }
+        };
+        self._dialog_sub = Some(cx.subscribe_in(&input, window, {
+            let submit = submit.clone();
+            move |_, _, event: &InputEvent, window, cx| {
+                if let InputEvent::PressEnter { .. } = event
+                    && submit(window, cx)
+                {
+                    window.close_dialog(cx);
+                }
+            }
+        }));
+        let first = std::cell::Cell::new(true);
+        let focus_pane = self.pane().read(cx).focus_handle.clone();
+        window.open_dialog(cx, move |dialog, window, cx| {
+            if first.replace(false) {
+                input.update(cx, |i, cx| {
+                    i.focus(window, cx);
+                    i.select_all(window, cx);
+                });
+            }
+            let submit = submit.clone();
+            let focus_pane = focus_pane.clone();
+            dialogs::input_dialog(dialog, "Go to Folder", &input, move |window, cx| submit(window, cx), cx)
+                // Return is handled by the input subscription; the dialog's own
+                // Confirm would close it even when the path doesn't exist.
+                .on_ok(|_, _, _| false)
+                .on_close(move |_, window, cx| focus_pane.focus(window, cx))
+        });
     }
 
     fn toggle_hidden(&mut self, _: &ToggleHidden, window: &mut Window, cx: &mut Context<Self>) {
@@ -1043,6 +1200,7 @@ impl Render for Workspace {
             .on_action(cx.listener(Self::extract))
             .on_action(cx.listener(Self::refresh))
             .on_action(cx.listener(Self::edit_path))
+            .on_action(cx.listener(Self::go_to_path))
             .on_action(cx.listener(Self::toggle_hidden))
             .on_action(cx.listener(Self::toggle_theme))
             .on_action(cx.listener(Self::open_settings))

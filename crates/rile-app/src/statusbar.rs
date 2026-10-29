@@ -65,6 +65,7 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
     });
 
     // Background jobs: the panel opens above the button, at the right edge.
+    const JOBS_INSET: f32 = (crate::views::chrome::FOOTER_HEIGHT - 22.) / 2.;
     let jobs = ws.ops.len();
     let jobs_active = ws.jobs_open || jobs > 0;
     let jobs_button = div()
@@ -76,6 +77,10 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
         .items_center()
         .justify_center()
         .rounded(px(6.))
+        // It sits in the window's bottom-right corner, inset by `JOBS_INSET` on
+        // both axes: round that corner concentric with the window's (macOS
+        // window radius ≈ 16 px) so the gap follows the curve.
+        .when(cfg!(target_os = "macos"), |d| d.rounded_br(px(16. - JOBS_INSET)))
         .cursor_pointer()
         .when(jobs_active, |d| d.bg(ch.sidebar_active))
         .hover(|s| s.bg(ch.hover_strong))
@@ -113,7 +118,7 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
     h_flex()
         .h(px(crate::views::chrome::FOOTER_HEIGHT))
         .pl(px(if width <= Width::Phone { 11. } else { 20. }))
-        .pr(px((crate::views::chrome::FOOTER_HEIGHT - 22.) / 2.))
+        .pr(px(JOBS_INSET))
         .gap(px(13.))
         .flex_none()
         .border_t_1()

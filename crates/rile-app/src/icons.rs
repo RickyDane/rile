@@ -107,15 +107,11 @@ pub fn intelligence_glyph(size: f32, color: gpui_kit::Hsla, view: gpui_kit::Enti
 pub fn protocol_glyph(protocol: rile_remote::Protocol, size: f32, color: gpui_kit::Hsla) -> gpui_kit::AnyElement {
     use gpui_kit::{IntoElement, Styled, StyledImage};
     use rile_remote::Protocol;
-    static LOGOS: std::sync::OnceLock<[std::sync::Arc<gpui_kit::Image>; 2]> = std::sync::OnceLock::new();
-    let logos = LOGOS.get_or_init(|| {
-        let svg = |bytes: &[u8]| std::sync::Arc::new(gpui_kit::Image::from_bytes(gpui_kit::ImageFormat::Svg, bytes.to_vec()));
-        [svg(include_bytes!("../assets/logos/google-drive.svg")), svg(include_bytes!("../assets/logos/onedrive.svg"))]
-    });
-    let logo = |i: usize| gpui_kit::img(logos[i].clone()).size(gpui_kit::px(size)).object_fit(gpui_kit::ObjectFit::Contain).into_any_element();
+    if let Some(image) = protocol_logo(protocol) {
+        return gpui_kit::img(image).size(gpui_kit::px(size)).object_fit(gpui_kit::ObjectFit::Contain).into_any_element();
+    }
     let name = match protocol {
-        Protocol::GoogleDrive => return logo(0),
-        Protocol::OneDrive => return logo(1),
+        Protocol::GoogleDrive | Protocol::OneDrive => unreachable!("cloud protocols have logos"),
         Protocol::Sftp => IconName::SquareTerminal,
         Protocol::Ftps => IconName::ShieldCheck,
         Protocol::Smb => IconName::Network,
@@ -123,6 +119,22 @@ pub fn protocol_glyph(protocol: rile_remote::Protocol, size: f32, color: gpui_ki
         Protocol::Peer => IconName::Laptop,
     };
     icon(name).size(gpui_kit::px(size)).text_color(color).into_any_element()
+}
+
+/// Shared full-color provider artwork for navigation and Overview cards.
+pub(crate) fn protocol_logo(protocol: rile_remote::Protocol) -> Option<std::sync::Arc<gpui_kit::Image>> {
+    use rile_remote::Protocol;
+    let index = match protocol {
+        Protocol::GoogleDrive => 0,
+        Protocol::OneDrive => 1,
+        _ => return None,
+    };
+    static LOGOS: std::sync::OnceLock<[std::sync::Arc<gpui_kit::Image>; 2]> = std::sync::OnceLock::new();
+    let logos = LOGOS.get_or_init(|| {
+        let svg = |bytes: &[u8]| std::sync::Arc::new(gpui_kit::Image::from_bytes(gpui_kit::ImageFormat::Svg, bytes.to_vec()));
+        [svg(include_bytes!("../assets/logos/google-drive.svg")), svg(include_bytes!("../assets/logos/onedrive.svg"))]
+    });
+    Some(logos[index].clone())
 }
 
 /// Asset path of the Apple Intelligence symbol as an SVG, see [`intelligence_svg`].

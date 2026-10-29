@@ -408,14 +408,10 @@ impl Render for SpeedTestView {
 }
 
 impl Workspace {
-    /// Opens the speed test popup for `volume` and starts the test.
+    /// Opens the speed test popup for `volume` without starting the test.
     pub fn open_speedtest(&mut self, volume: Volume, window: &mut Window, cx: &mut Context<Self>) {
         let subtitle: SharedString = volume.name.clone().into();
-        let view = cx.new(|cx| {
-            let mut v = SpeedTestView::new(volume);
-            v.start(cx);
-            v
-        });
+        let view = cx.new(|_| SpeedTestView::new(volume));
         window.open_dialog(cx, move |dialog, _, cx| {
             kit::dialog(dialog, IconName::Gauge, "Drive Speed Test", Some(subtitle.clone()), 520., cx).pb_0().child(view.clone())
         });

@@ -169,6 +169,11 @@ impl RemoteFs for Reconnecting {
         let path = paths::normalize(path);
         self.simple(|b| backend::read_head(b, &path, max))
     }
+
+    fn capacity(&mut self, path: &str) -> Result<Option<crate::Capacity>> {
+        let path = paths::normalize(path);
+        self.simple(|b| b.capacity(&path))
+    }
 }
 
 type Shared = Arc<Mutex<Box<dyn RemoteFs>>>;
@@ -219,6 +224,11 @@ impl Pool {
     pub fn disconnect(&self, id: &str) {
         let removed = self.map().remove(id);
         drop(removed);
+    }
+
+    /// The pooled connection for `id`, without connecting.
+    pub fn get(&self, id: &str) -> Option<Shared> {
+        self.map().get(id).map(|(_, conn)| conn.clone())
     }
 
     pub fn is_connected(&self, id: &str) -> bool {

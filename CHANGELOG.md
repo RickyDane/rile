@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.8.1
+
+- Back up to writable shared folders on paired Nearby devices, with a destination picker for saved servers and devices.
+- Show saved remote connections and Nearby devices in Overview, including connection progress and available capacity; reconnect saved sources in the background.
+- Refresh app icons and Overview artwork, and add selectable illustration styles and the Nebula Dossier app icon.
+- Refine device, sidebar, backup, status bar and file browsing interfaces, and improve remote connection and storage handling.
+- Add icon and illustration design explorations and generation scripts.
+
 ## v0.8.0
 
 First stable release of the 0.8 line; it rolls up v0.8.0-beta.1 to beta.5 (details below).

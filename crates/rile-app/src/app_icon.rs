@@ -117,6 +117,23 @@ mod tests {
     }
 
     #[test]
+    fn macos_gloss_stays_inside_the_tile() {
+        for style in AppIcon::ALL {
+            for accent in Accent::ALL {
+                let image = image::load_from_memory(png_bytes(style, accent)).unwrap().to_rgba8();
+                // The finish must not turn the transparent canvas into a square
+                // or change the common tile footprint between styles.
+                for (x, y) in [(0, 0), (511, 0), (0, 511), (511, 511), (256, 0)] {
+                    assert_eq!(image.get_pixel(x, y).0[3], 0, "{style:?} {accent:?}");
+                }
+                for (x, y) in [(256, 54), (54, 256), (256, 256)] {
+                    assert_eq!(image.get_pixel(x, y).0[3], 255, "{style:?} {accent:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
     fn ui_artwork_matches_the_platform() {
         for style in AppIcon::ALL {
             for accent in Accent::ALL {
@@ -213,8 +230,8 @@ mod tests {
             let mut icons = Vec::new();
             for (style, accent) in [
                 (AppIcon::FolioBolt, Accent::Blue),
-                (AppIcon::DrawerHotRod, Accent::Blue),
-                (AppIcon::DrawerHotRod, Accent::Pink),
+                (AppIcon::NebulaDossier, Accent::Blue),
+                (AppIcon::NebulaDossier, Accent::Pink),
             ] {
                 let data = NSData::with_bytes(png_bytes(style, accent));
                 let image = NSImage::initWithData(NSImage::alloc(), &data).unwrap();
