@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.8.0-beta.3
+
+### Nearby Devices
+- Switch between card and compact list views, with the selected view remembered.
+- Show device hardware specifications, including model or processor, memory and form factor, when available.
+
 ## v0.8.0-beta.2
 
 ### Windows

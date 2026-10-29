@@ -38,6 +38,8 @@ pub struct DeviceInfo {
     /// "macOS 26.1"
     pub os: String,
     pub kind: DeviceKind,
+    /// Installed RAM in bytes; 0 when unknown (older versions).
+    pub memory: u64,
     pub storage_used: u64,
     pub storage_total: u64,
     /// Names of the folders it shares (only sent to paired devices).

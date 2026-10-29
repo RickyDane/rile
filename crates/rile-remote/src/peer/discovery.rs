@@ -19,6 +19,8 @@ pub struct NearbyPeer {
     pub model: String,
     pub os: String,
     pub kind: DeviceKind,
+    /// Installed RAM in bytes; 0 when not advertised.
+    pub memory: u64,
     /// Address to connect to (an IPv4 address when advertised, else the host name).
     pub host: String,
     pub port: u16,
@@ -83,6 +85,7 @@ impl PeerDiscovery {
             ("model", truncate(&info.model, 80)),
             ("os", truncate(&info.os, 40)),
             ("kind", kind_str(info.kind).to_string()),
+            ("mem", info.memory.to_string()),
         ];
         let props: Vec<(&str, &str)> = props.iter().map(|(k, v)| (*k, v.as_str())).collect();
         let service = ServiceInfo::new(SERVICE_TYPE, &instance, &host, "", port, &props[..])?.enable_addr_auto();
@@ -131,6 +134,7 @@ fn apply_event(peers: &mut BTreeMap<String, NearbyPeer>, own_id: &str, event: Se
                     model: txt("model"),
                     os: txt("os"),
                     kind: parse_kind(&txt("kind")),
+                    memory: txt("mem").parse().unwrap_or(0),
                     host,
                     port: info.get_port(),
                 },

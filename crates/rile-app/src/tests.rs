@@ -2406,6 +2406,7 @@ async fn nearby_device_browse_and_receive(cx: &mut TestAppContext) {
                 model: String::new(),
                 os: String::new(),
                 kind: Default::default(),
+                memory: 0,
                 host: "127.0.0.1".into(),
                 port,
             }];

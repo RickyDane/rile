@@ -34,6 +34,8 @@ pub struct DeviceFacts {
     pub model: String,
     pub os: String,
     pub kind: DeviceKind,
+    /// Installed RAM in bytes; 0 when unknown.
+    pub memory: u64,
 }
 
 fn run(cmd: &str, args: &[&str]) -> Option<String> {
@@ -71,6 +73,7 @@ fn read_device_facts() -> DeviceFacts {
             },
             os: run("sw_vers", &["-productVersion"]).map(|v| format!("macOS {v}")).unwrap_or_else(|| "macOS".into()),
             kind,
+            memory: rile_services::local_model::system_memory().unwrap_or(0),
         }
     }
     #[cfg(not(target_os = "macos"))]
@@ -91,6 +94,7 @@ fn read_device_facts() -> DeviceFacts {
             model: cpu.unwrap_or_else(|| if cfg!(windows) { "Windows PC".into() } else { "PC".into() }),
             os,
             kind: if laptop { DeviceKind::Laptop } else { DeviceKind::Desktop },
+            memory: rile_services::local_model::system_memory().unwrap_or(0),
         }
     }
 }
@@ -104,6 +108,8 @@ pub struct DeviceRow {
     pub model: String,
     pub os: String,
     pub kind: DeviceKind,
+    /// Installed RAM in bytes; 0 when unknown.
+    pub memory: u64,
     pub paired: bool,
     /// Where it can be reached right now.
     pub online: Option<(String, u16)>,
@@ -154,6 +160,7 @@ impl NearbyState {
                 model: t.model.clone(),
                 os: t.os.clone(),
                 kind: t.kind,
+                memory: details.map(|d| d.0.memory).filter(|m| *m > 0).or(online.map(|p| p.memory).filter(|m| *m > 0)).unwrap_or(t.memory),
                 paired: true,
                 online: online.map(|p| (p.host.clone(), p.port)),
                 details: details.map(|d| d.0.clone()),
@@ -170,6 +177,7 @@ impl NearbyState {
                 model: p.model.clone(),
                 os: p.os.clone(),
                 kind: p.kind,
+                memory: p.memory,
                 paired: false,
                 online: Some((p.host.clone(), p.port)),
                 details: None,
@@ -206,6 +214,7 @@ pub fn local_device(settings: &Settings, facts: &DeviceFacts, volumes: &[rile_co
             model: facts.model.clone(),
             os: facts.os.clone(),
             kind: facts.kind,
+            memory: facts.memory,
             storage_used: boot.map(|v| v.total.saturating_sub(v.available)).unwrap_or(0),
             storage_total: boot.map(|v| v.total).unwrap_or(0),
             shares: shares.iter().map(|s| s.name.clone()).collect(),
@@ -506,6 +515,15 @@ impl Workspace {
             })
             .ok();
         });
+    }
+
+    /// Switches the Nearby page between cards and list rows (persisted).
+    pub fn set_nearby_list_view(&mut self, list: bool, window: &mut Window, cx: &mut Context<Self>) {
+        if self.settings.nearby.list_view != list {
+            self.settings.nearby.list_view = list;
+            self.save_settings(window, cx);
+            cx.notify();
+        }
     }
 
     /// Sends files or folders to a paired device; its user accepts first.

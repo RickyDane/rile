@@ -83,6 +83,9 @@ pub struct TrustedPeer {
     pub os: String,
     #[serde(default)]
     pub kind: DeviceKind,
+    /// Installed RAM in bytes; 0 when unknown.
+    #[serde(default)]
+    pub memory: u64,
     /// Unix seconds.
     #[serde(default)]
     pub paired_at: i64,
@@ -96,6 +99,7 @@ impl TrustedPeer {
             model: info.model.clone(),
             os: info.os.clone(),
             kind: info.kind,
+            memory: info.memory,
             paired_at: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0),
         }
     }

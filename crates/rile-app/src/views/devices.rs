@@ -109,7 +109,10 @@ struct CardData {
     key: String,
     icon: IconName,
     name: String,
-    subtitle: String,
+    /// Operating system, shown under the name.
+    os: String,
+    /// Hardware specs (label, value), shown below the info rows.
+    specs: Vec<(&'static str, String)>,
     pill: Option<(&'static str, Hsla, bool)>,
     storage: Option<(u64, u64)>,
     endpoint: String,
@@ -173,7 +176,7 @@ fn device_card(data: CardData, ch: &Chrome) -> gpui_kit::Stateful<Div> {
                         .gap(px(3.))
                         .child(text("NODE / ".to_owned() + &data.key, 9., ch.text_faint).truncate())
                         .child(text(data.name.clone(), 16., ch.text_strong).font_weight(FontWeight::SEMIBOLD).truncate())
-                        .child(text(data.subtitle.clone(), 11., ch.text_muted).truncate()),
+                        .child(text(if data.os.is_empty() { "—".to_string() } else { data.os.clone() }, 11., ch.text_muted).truncate()),
                 )
                 .children(data.pill.map(|(l, c, dot)| pill(l, c, dot))),
         )
@@ -185,6 +188,17 @@ fn device_card(data: CardData, ch: &Chrome) -> gpui_kit::Stateful<Div> {
                 .child(h_flex().justify_between().gap_2().child(text("RILE VERSION", 9., ch.text_faint)).child(text(data.version, 11., ch.text_muted)))
                 .child(h_flex().justify_between().gap_2().child(text("ACCESS", 9., ch.text_faint)).child(text(data.trust, 11., ch.text_muted))),
         )
+        .when(!data.specs.is_empty(), |d| {
+            d.child(
+                v_flex().gap(px(7.)).pt(px(10.)).border_t_1().border_color(ch.hairline)
+                    .child(text("SPECIFICATIONS", 9., ch.text_faint))
+                    .child(h_flex().flex_wrap().gap(px(5.)).children(data.specs.iter().map(|(label, value)| {
+                        v_flex().flex_grow(1.).max_w_full().min_w_0().overflow_hidden().gap(px(2.)).px(px(8.)).py(px(5.)).rounded(px(6.)).bg(ch.hover)
+                            .child(text(label.to_uppercase(), 8.5, ch.text_faint))
+                            .child(text(value.clone(), 11., ch.text_strong).truncate())
+                    }))),
+            )
+        })
         .child(if data.shares.is_empty() {
             h_flex().gap(px(6.)).items_start()
                 .child(icon(IconName::Folder).size(px(12.)).flex_none().text_color(ch.text_faint))
@@ -196,6 +210,78 @@ fn device_card(data: CardData, ch: &Chrome) -> gpui_kit::Stateful<Div> {
                     .child(text(if data.shares_known { format!("{:02}", data.shares.len()) } else { "—".into() }, 11., ch.text_muted)))
                 .child(chips).into_any_element()
         })
+}
+
+/// Widths of the list view's columns (wide layout only).
+const COL_SPECS: f32 = 190.;
+const COL_STORAGE: f32 = 150.;
+const COL_ENDPOINT: f32 = 140.;
+const COL_SHARES: f32 = 64.;
+const COL_STATUS: f32 = 104.;
+
+/// One device as a compact row of the list view. `wide` adds the specs and
+/// endpoint columns.
+fn device_row(data: CardData, wide: bool, ch: &Chrome) -> gpui_kit::Stateful<Div> {
+    let storage = match data.storage {
+        Some((used, total)) if total > 0 => v_flex().gap(px(5.))
+            .child(text(format!("{} / {}", size(used), size(total)), 10.5, ch.text_muted).truncate())
+            .child(storage_bar(used, total, ch)),
+        _ => v_flex().gap(px(5.)).child(text("—", 10.5, ch.text_faint)).child(storage_bar(0, 0, ch)),
+    };
+    let spec_line = data.specs.iter().filter(|(l, _)| *l != "Form factor").map(|(_, v)| v.as_str()).collect::<Vec<_>>().join(" · ");
+    let shares = if data.shares_known { data.shares.len().to_string() } else { "—".into() };
+    card(ch)
+        .id(SharedString::from(format!("device-{}", data.key)))
+        .debug_selector({
+            let key = data.key.clone();
+            move || format!("device-{key}")
+        })
+        .w_full()
+        .px(px(14.))
+        .py(px(10.))
+        .flex()
+        .items_center()
+        .gap(px(14.))
+        .cursor_pointer()
+        .hover(|s| s.border_color(ch.accent.opacity(0.45)))
+        .child(
+            div().size(px(36.)).flex_none().flex().items_center().justify_center().rounded_full()
+                .border_1().border_color(ch.accent.opacity(0.3)).bg(ch.accent.opacity(0.06))
+                .child(icon(data.icon).size(px(17.)).text_color(ch.accent)),
+        )
+        .child(
+            v_flex().flex_1().min_w_0().gap(px(2.))
+                .child(text(data.name.clone(), 13., ch.text_strong).font_weight(FontWeight::SEMIBOLD).truncate())
+                .child(text(if data.os.is_empty() { "—".to_string() } else { data.os.clone() }, 11., ch.text_muted).truncate()),
+        )
+        .when(wide, |d| {
+            d.child(text(if spec_line.is_empty() { "—".into() } else { spec_line }, 11., ch.text_muted).w(px(COL_SPECS)).flex_none().truncate())
+        })
+        .child(div().w(px(COL_STORAGE)).flex_none().child(storage))
+        .when(wide, |d| d.child(text(data.endpoint.clone(), 11., ch.text_muted).w(px(COL_ENDPOINT)).flex_none().truncate()))
+        .child(
+            h_flex().w(px(COL_SHARES)).flex_none().gap(px(5.))
+                .child(icon(IconName::Folder).size(px(12.)).text_color(ch.text_faint))
+                .child(text(shares, 11., ch.text_muted)),
+        )
+        .child(h_flex().w(px(COL_STATUS)).flex_none().justify_end().children(data.pill.map(|(l, c, dot)| pill(l, c, dot))))
+}
+
+/// Column captions above the list view.
+fn list_header(wide: bool, ch: &Chrome) -> AnyElement {
+    let cap = |label: &'static str| text(label, 9., ch.text_faint);
+    h_flex()
+        .w_full()
+        .px(px(15.))
+        .gap(px(14.))
+        .child(div().w(px(36.)).flex_none())
+        .child(cap("DEVICE").flex_1().min_w_0())
+        .when(wide, |d| d.child(cap("SPECIFICATIONS").w(px(COL_SPECS)).flex_none()))
+        .child(cap("STORAGE").w(px(COL_STORAGE)).flex_none())
+        .when(wide, |d| d.child(cap("ENDPOINT").w(px(COL_ENDPOINT)).flex_none()))
+        .child(cap("SHARES").w(px(COL_SHARES)).flex_none())
+        .child(cap("STATUS").w(px(COL_STATUS)).flex_none().flex().justify_end())
+        .into_any_element()
 }
 
 fn storage_stats(storage: Option<(u64, u64)>) -> (String, String, String) {
@@ -210,7 +296,21 @@ fn storage_stats(storage: Option<(u64, u64)>) -> (String, String, String) {
 
 #[cfg(test)]
 mod tests {
-    use super::{size, storage_stats};
+    use super::{size, specs, storage_stats};
+    use rile_remote::peer::DeviceKind;
+
+    #[test]
+    fn specs_split_mac_model_and_name_windows_cpu() {
+        assert_eq!(
+            specs("MacBook Pro, M3 Pro", "macOS 26.1", DeviceKind::Laptop, 16 << 30),
+            vec![("Model", "MacBook Pro".into()), ("Chip", "M3 Pro".into()), ("Memory", "16 GB".into()), ("Form factor", "Laptop".into())]
+        );
+        assert_eq!(
+            specs("Intel(R) Core(TM) i7-1065G7 CPU @ 1.30GHz", "Windows 11", DeviceKind::Laptop, 0)[0],
+            ("Processor", "Intel Core i7-1065G7 @ 1.30GHz".into())
+        );
+        assert_eq!(specs("Windows PC", "Windows 11", DeviceKind::Desktop, 0), vec![("Form factor", "Desktop".into())]);
+    }
 
     #[test]
     fn machine_storage_statistics_use_real_capacity() {
@@ -226,12 +326,47 @@ mod tests {
     }
 }
 
-fn subtitle(model: &str, os: &str) -> String {
-    match (model.is_empty(), os.is_empty()) {
-        (false, false) => format!("{model} · {os}"),
-        (false, true) => model.to_string(),
-        (true, false) => os.to_string(),
-        (true, true) => String::new(),
+/// Splits a device's model string into spec rows. Macs report
+/// "MacBook Pro, M3 Pro"; other systems report the CPU brand.
+fn specs(model: &str, os: &str, kind: DeviceKind, memory: u64) -> Vec<(&'static str, String)> {
+    let model = model.trim();
+    let mut out = Vec::new();
+    if os.starts_with("macOS") {
+        match model.split_once(", ") {
+            Some((name, chip)) => {
+                out.push(("Model", name.to_string()));
+                out.push(("Chip", chip.to_string()));
+            }
+            None if !model.is_empty() => out.push(("Model", model.to_string())),
+            None => {}
+        }
+    } else if !model.is_empty() && model != "PC" && model != "Windows PC" {
+        out.push(("Processor", cpu_name(model)));
+    }
+    if memory > 0 {
+        out.push(("Memory", memory_label(memory)));
+    }
+    out.push(("Form factor", kind_label(kind).to_string()));
+    out
+}
+
+/// "Intel(R) Core(TM) i7-1065G7 CPU @ 1.30GHz" → "Intel Core i7-1065G7 @ 1.30GHz".
+fn cpu_name(brand: &str) -> String {
+    let cleaned = brand.replace("(R)", "").replace("(TM)", "").replace("(tm)", "").replace(" CPU", "");
+    cleaned.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// RAM in whole binary gigabytes, as machines are marketed ("16 GB").
+fn memory_label(bytes: u64) -> String {
+    let gb = bytes as f64 / (1u64 << 30) as f64;
+    if gb >= 1. { format!("{} GB", gb.round() as u64) } else { format!("{} MB", (bytes >> 20).max(1)) }
+}
+
+fn kind_label(kind: DeviceKind) -> &'static str {
+    match kind {
+        DeviceKind::Laptop => "Laptop",
+        DeviceKind::Desktop => "Desktop",
+        DeviceKind::Server => "Server",
     }
 }
 
@@ -254,7 +389,21 @@ fn grid(cells: Vec<AnyElement>, per_row: usize, gap: f32) -> AnyElement {
     v_flex().gap(px(gap)).children(rows).into_any_element()
 }
 
-fn row_card(row: &DeviceRow, ws: &Workspace, ch: &Chrome, cx: &mut Context<Workspace>) -> AnyElement {
+/// How devices are laid out: cards, or list rows (`wide` = all columns).
+#[derive(Clone, Copy)]
+enum Layout {
+    Cards,
+    List { wide: bool },
+}
+
+fn present(data: CardData, layout: Layout, ch: &Chrome) -> gpui_kit::Stateful<Div> {
+    match layout {
+        Layout::Cards => device_card(data, ch),
+        Layout::List { wide } => device_row(data, wide, ch),
+    }
+}
+
+fn row_card(row: &DeviceRow, layout: Layout, ws: &Workspace, ch: &Chrome, cx: &mut Context<Workspace>) -> AnyElement {
     let warn: Hsla = gpui_kit::rgba(0xe5b567ff).into();
     let pairing = ws.nearby.pairing.contains(&row.id);
     let pill = if pairing {
@@ -273,7 +422,8 @@ fn row_card(row: &DeviceRow, ws: &Workspace, ch: &Chrome, cx: &mut Context<Works
         key: row.id.chars().take(12).collect(),
         icon: kind_icon(row.kind),
         name: row.name.clone(),
-        subtitle: subtitle(&row.model, &row.os),
+        os: row.os.clone(),
+        specs: specs(&row.model, &row.os, row.kind, row.memory),
         pill,
         storage: details.map(|d| (d.storage_used, d.storage_total)),
         endpoint: row.online.as_ref().map(|(host, port)| format!("{host}:{port}")).unwrap_or_else(|| "Offline".into()),
@@ -297,7 +447,7 @@ fn row_card(row: &DeviceRow, ws: &Workspace, ch: &Chrome, cx: &mut Context<Works
     let online = row.online.is_some();
     let weak = cx.entity().downgrade();
     let shares = row.details.as_ref().map(|d| d.shares.clone()).unwrap_or_default();
-    let mut el = device_card(data, ch)
+    let mut el = present(data, layout, ch)
         .when(!online, |d| d.opacity(0.6))
         .on_click(cx.listener(move |ws, _, w, cx| ws.open_device(&id, None, w, cx)));
     if online && paired {
@@ -346,7 +496,7 @@ fn row_card(row: &DeviceRow, ws: &Workspace, ch: &Chrome, cx: &mut Context<Works
     .into_any_element()
 }
 
-fn this_device_card(ws: &Workspace, ch: &Chrome, cx: &mut Context<Workspace>) -> AnyElement {
+fn this_device_card(layout: Layout, ws: &Workspace, ch: &Chrome, cx: &mut Context<Workspace>) -> AnyElement {
     let local = &ws.nearby.local.info;
     let facts = ws.nearby.facts.clone().unwrap_or_default();
     let name = if local.name.is_empty() { facts.name.clone() } else { local.name.clone() };
@@ -354,7 +504,8 @@ fn this_device_card(ws: &Workspace, ch: &Chrome, cx: &mut Context<Workspace>) ->
         key: "this".into(),
         icon: kind_icon(facts.kind),
         name: if name.is_empty() { "This computer".into() } else { name },
-        subtitle: subtitle(&facts.model, &facts.os),
+        os: facts.os.clone(),
+        specs: specs(&facts.model, &facts.os, facts.kind, facts.memory),
         pill: Some(("This device", ch.success, true)),
         storage: Some((local.storage_used, local.storage_total)),
         endpoint: "Local machine".into(),
@@ -365,7 +516,7 @@ fn this_device_card(ws: &Workspace, ch: &Chrome, cx: &mut Context<Workspace>) ->
         shares: ws.settings.nearby.shares.iter().map(|s| s.name.clone()).collect(),
         note: "Not sharing any folders · right-click a folder to share it".into(),
     };
-    device_card(data, ch)
+    present(data, layout, ch)
         .on_click(cx.listener(|ws, _, w, cx| {
             crate::dialogs::open_nearby_settings(cx.entity(), ws.settings.clone(), w, cx)
         }))
@@ -451,6 +602,8 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
     );
 
     let card_cols = if content_width >= 880. { 2 } else { 1 };
+    let list_view = ws.settings.nearby.list_view;
+    let layout = if list_view { Layout::List { wide: content_width >= 860. } } else { Layout::Cards };
     let discovery_active = ws.settings.nearby.enabled && ws.nearby.error.is_none();
     let network_status = if !ws.settings.nearby.enabled { "DISCOVERY OFF" } else if ws.nearby.error.is_some() { "DISCOVERY UNAVAILABLE" } else { "DISCOVERY ACTIVE" };
     let mut page = v_flex().gap(px(18.))
@@ -461,9 +614,15 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
                 .child(text("DIRECT LAN  /  ENCRYPTED TRANSPORT  /  NO CLOUD RELAY", 10., ch.text_muted)),
         )
         .child(div().w_full().mb(px(6.)).child(metrics))
-        .child(h_flex().justify_between().flex_wrap().gap_2()
+        .child(h_flex().justify_between().items_center().flex_wrap().gap_2()
             .child(text("MACHINE INVENTORY", 11., ch.text_muted).font_weight(FontWeight::SEMIBOLD))
-            .child(text(format!("{:02} NODES  /  {} REMOTE ONLINE", rows.len() + 1, rows.iter().filter(|r| r.online.is_some()).count()), 10., ch.text_faint)));
+            .child(h_flex().gap(px(12.)).items_center()
+                .child(text(format!("{:02} NODES  /  {} REMOTE ONLINE", rows.len() + 1, rows.iter().filter(|r| r.online.is_some()).count()), 10., ch.text_faint))
+                .child(kit::segmented(cx)
+                    .child(kit::segment_with_icon("devices-view-cards", IconName::LayoutGrid, "Cards", !list_view, cx)
+                        .on_click(cx.listener(|ws, _, w, cx| ws.set_nearby_list_view(false, w, cx))))
+                    .child(kit::segment_with_icon("devices-view-list", IconName::LayoutList, "List", list_view, cx)
+                        .on_click(cx.listener(|ws, _, w, cx| ws.set_nearby_list_view(true, w, cx)))))));
     if !ws.settings.nearby.enabled {
         page = page.child(empty_hint(
             "Nearby Devices is off",
@@ -473,11 +632,21 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
     } else if let Some(err) = &ws.nearby.error {
         page = page.child(empty_hint("Nearby Devices couldn't start", err, &ch));
     } else {
-        let mut cards = vec![this_device_card(ws, &ch, cx)];
+        let mut cards = vec![this_device_card(layout, ws, &ch, cx)];
         for row in &rows {
-            cards.push(row_card(row, ws, &ch, cx));
+            cards.push(row_card(row, layout, ws, &ch, cx));
         }
-        if rows.is_empty() {
+        if rows.is_empty() && list_view {
+            cards.push(
+                h_flex().gap(px(10.)).px(px(15.)).py(px(12.)).rounded(px(8.)).border_1().border_color(ch.hairline)
+                    .child(icon(IconName::Radar).size(px(16.)).flex_none().text_color(ch.text_faint))
+                    .child(text(
+                        "No remote nodes detected. Open Rile on another computer on your local network, then verify the pairing code on both screens.",
+                        11.5, ch.text_faint,
+                    ).flex_1().min_w_0())
+                    .into_any_element(),
+            );
+        } else if rows.is_empty() {
             cards.push(
                 v_flex()
                     .flex_1()
@@ -496,7 +665,10 @@ pub fn render(ws: &mut Workspace, slot: usize, window: &mut Window, cx: &mut Con
                     .into_any_element(),
             );
         }
-        page = page.child(grid(cards, card_cols, 14.));
+        page = page.child(match layout {
+            Layout::Cards => grid(cards, card_cols, 14.),
+            Layout::List { wide } => v_flex().gap(px(6.)).child(list_header(wide, &ch)).children(cards).into_any_element(),
+        });
     }
     page = page.child(
         h_flex()

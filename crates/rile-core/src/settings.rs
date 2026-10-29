@@ -394,11 +394,13 @@ pub struct NearbySettings {
     /// Where accepted files go; None uses the Downloads folder.
     pub inbox: Option<PathBuf>,
     pub shares: Vec<SharedFolder>,
+    /// The Nearby page shows devices as compact rows instead of cards.
+    pub list_view: bool,
 }
 
 impl Default for NearbySettings {
     fn default() -> Self {
-        Self { enabled: true, device_name: String::new(), inbox: None, shares: Vec::new() }
+        Self { enabled: true, device_name: String::new(), inbox: None, shares: Vec::new(), list_view: false }
     }
 }
 
