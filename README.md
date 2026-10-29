@@ -149,7 +149,7 @@ The installer:
 <details>
 <summary>Installer options and manual install</summary>
 
-Set these environment variables after `sudo` (for example `… | sudo RILE_VERSION=v0.8.0-beta.5 sh`):
+Set these environment variables after `sudo` (for example `… | sudo RILE_VERSION=v0.8.0 sh`):
 
 | Variable | Effect |
 | --- | --- |

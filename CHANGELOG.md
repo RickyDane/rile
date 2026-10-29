@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## v0.8.0
+
+First stable release of the 0.8 line; it rolls up v0.8.0-beta.1 to beta.5 (details below).
+
+### Highlights
+- **Nearby Devices**: find Rile on other computers on the local network, pair with a 6-digit code over mutual TLS, share folders (read-only or read & write) and send files between devices. Card and list views with device hardware specifications.
+- **Rile Server for Linux**: a headless Nearby device that runs as a systemd service, installed with `curl -fsSL https://raw.githubusercontent.com/RickyDane/rile/master/packaging/linux/install.sh | sudo sh` and managed with `rilectl`.
+- **Cloud storage**: Google Drive and OneDrive connections for browsing and transferring files.
+- **Interface**: refined sidebar, device views, backup menus and status bar; "shared" badges on folders shared with Nearby devices.
+
+### Fixes
+- Fix "Restart Now" after an update on macOS.
+- Fix WebAssembly plugins crashing under the macOS hardened runtime.
+- Use the transparent default icon consistently on Windows.
+- The workspace builds on Windows again (Rile Server is Linux/Unix only).
+
 ## v0.8.0-beta.5
 
 ### Rile Server (Linux)
