@@ -27,12 +27,13 @@
         </dict>
     </array>
     <key>NSHighResolutionCapable</key><true/>
-    <key>NSLocalNetworkUsageDescription</key><string>Rile discovers file servers and shared folders on your local network so you can connect to them.</string>
+    <key>NSLocalNetworkUsageDescription</key><string>Rile discovers file servers, shared folders and other computers running Rile on your local network so you can connect to them and exchange files.</string>
     <key>NSBonjourServices</key>
     <array>
         <string>_ftp._tcp</string>
         <string>_smb._tcp</string>
         <string>_sftp-ssh._tcp</string>
+        <string>_rile._tcp</string>
     </array>
 </dict>
 </plist>

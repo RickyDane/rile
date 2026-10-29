@@ -151,6 +151,11 @@ pub fn open_backup_settings(ws: Entity<Workspace>, settings: Settings, job: Opti
     open_settings_at(ws, settings, Tab::Backups, job, window, cx);
 }
 
+/// Opens Settings on the Nearby tab.
+pub fn open_nearby_settings(ws: Entity<Workspace>, settings: Settings, window: &mut Window, cx: &mut App) {
+    open_settings_at(ws, settings, Tab::Nearby, None, window, cx);
+}
+
 fn open_settings_at(ws: Entity<Workspace>, settings: Settings, tab: Tab, job: Option<String>, window: &mut Window, cx: &mut App) {
     let view = cx.new(|cx| {
         let mut view = SettingsView::new(ws, settings, job, window, cx);
@@ -256,6 +261,7 @@ enum Tab {
     Programs,
     Plugins,
     Backups,
+    Nearby,
     Ai,
     About,
 }
@@ -266,6 +272,7 @@ pub struct SettingsView {
     tab: Tab,
     repo_input: Entity<InputState>,
     max_results_input: Entity<InputState>,
+    device_name_input: Entity<InputState>,
     glass_hue: Entity<SliderState>,
     glass_translucency: Entity<SliderState>,
     file_manager: rile_services::file_manager::Status,
@@ -286,6 +293,11 @@ impl SettingsView {
         });
         let repo_input = cx.new(|cx| InputState::new(window, cx).default_value(s.update_repo.clone()).placeholder("owner/repo"));
         let max_results_input = cx.new(|cx| InputState::new(window, cx).default_value(s.search_max_results.to_string()));
+        // Built inside a workspace update: the workspace can't be read here.
+        let computer_name = crate::workspace::nearby::cached_facts().map(|f| f.name).unwrap_or_default();
+        let device_name_input = cx.new(|cx| {
+            InputState::new(window, cx).default_value(s.nearby.device_name.clone()).placeholder(if computer_name.is_empty() { "Computer name".to_string() } else { computer_name })
+        });
         let glass_hue = cx.new(|_| SliderState::new().min(0.).max(360.).step(1.).default_value(s.glass_hue.min(360) as f32));
         let glass_translucency = cx.new(|_| SliderState::new().min(0.).max(100.).step(1.).default_value(s.glass_translucency.min(100) as f32));
         let mut subs = vec![
@@ -294,6 +306,12 @@ impl SettingsView {
                 if matches!(ev, InputEvent::Blur | InputEvent::PressEnter { .. }) {
                     let v = input.read(cx).value().trim().to_string();
                     this.update(window, cx, move |s| s.update_repo = v);
+                }
+            }),
+            cx.subscribe_in(&device_name_input, window, |this: &mut Self, input, ev: &InputEvent, window, cx| {
+                if matches!(ev, InputEvent::Blur | InputEvent::PressEnter { .. }) {
+                    let v = input.read(cx).value().trim().to_string();
+                    this.update(window, cx, move |s| s.nearby.device_name = v);
                 }
             }),
             cx.subscribe_in(&max_results_input, window, |this: &mut Self, input, ev: &InputEvent, window, cx| {
@@ -326,7 +344,7 @@ impl SettingsView {
             }));
         }
         Self {
-            ws, tab: Tab::General, repo_input, max_results_input, glass_hue, glass_translucency, _subs: subs,
+            ws, tab: Tab::General, repo_input, max_results_input, device_name_input, glass_hue, glass_translucency, _subs: subs,
             file_manager: rile_services::file_manager::status(), file_manager_busy: false, file_manager_message: None, backups, ai,
         }
     }
@@ -394,6 +412,141 @@ impl SettingsView {
         });
     }
 
+    /// Settings → Nearby: discovery, this device's name, shared folders,
+    /// where received files go, and paired devices.
+    fn render_nearby(&self, s: &Settings, cx: &mut Context<Self>) -> AnyElement {
+        let ch = crate::theme::chrome(cx);
+        let ws = self.ws.read(cx);
+        let id = ws.nearby.store.as_ref().map(|st| rile_remote::peer::short_id(st.id())).unwrap_or_else(|| "—".into());
+        let port = ws.nearby.port();
+        let error = ws.nearby.error.clone();
+        let trusted = ws.nearby.trusted.clone();
+        let online: Vec<String> = ws.nearby.online.iter().map(|p| p.id.clone()).collect();
+        let r = |label: &'static str, hint: String, control: AnyElement| (SharedString::from(label), SharedString::from(hint), control);
+        let section = |title: &'static str, items: Vec<(SharedString, SharedString, AnyElement)>, cx: &App| {
+            v_flex().gap(px(8.)).child(kit::caption(title, cx)).child(kit::rows(items, cx))
+        };
+        let status = match (&error, port, s.nearby.enabled) {
+            (_, _, false) => "Off".to_string(),
+            (Some(e), _, _) => e.clone(),
+            (None, Some(port), _) => format!("Visible on your network · port {port} · id {id}"),
+            (None, None, _) => "Starting…".to_string(),
+        };
+
+        let shares: Vec<(SharedString, SharedString, AnyElement)> = s
+            .nearby
+            .shares
+            .iter()
+            .enumerate()
+            .map(|(ix, share)| {
+                let ws = self.ws.clone();
+                let path = share.path.clone();
+                let missing = !share.path.is_dir();
+                (
+                    SharedString::from(share.name.clone()),
+                    SharedString::from(format!("{}{}", share.path.display(), if missing { " · missing" } else { " · read-only" })),
+                    kit::button(("share-remove", ix), "Stop Sharing", kit::Tone::Secondary, true, cx)
+                        .on_click(move |_, window, cx| ws.update(cx, |ws, cx| ws.unshare_folder(&path, window, cx)))
+                        .into_any_element(),
+                )
+            })
+            .collect();
+        let ws_share = self.ws.clone();
+        let add_share = kit::button("share-add", "Share a Folder…", kit::Tone::Secondary, true, cx).on_click(move |_, window, cx| {
+            let picked = cx.prompt_for_paths(gpui_kit::PathPromptOptions { files: false, directories: true, multiple: true, prompt: Some("Share".into()) });
+            let ws = ws_share.clone();
+            window
+                .spawn(cx, async move |cx| {
+                    let Ok(Ok(Some(paths))) = picked.await else { return };
+                    cx.update(|window, cx| {
+                        ws.update(cx, |ws, cx| {
+                            for p in paths {
+                                ws.share_folder(p, window, cx);
+                            }
+                        })
+                    })
+                    .ok();
+                })
+                .detach();
+        });
+
+        let ws_inbox = self.ws.clone();
+        let inbox = s.nearby.inbox_dir();
+        let choose_inbox = kit::button("inbox-choose", "Choose…", kit::Tone::Secondary, true, cx).on_click(move |_, window, cx| {
+            let picked = cx.prompt_for_paths(gpui_kit::PathPromptOptions { files: false, directories: true, multiple: false, prompt: Some("Choose".into()) });
+            let ws = ws_inbox.clone();
+            window
+                .spawn(cx, async move |cx| {
+                    let Ok(Ok(Some(mut paths))) = picked.await else { return };
+                    let Some(dir) = paths.pop() else { return };
+                    cx.update(|window, cx| {
+                        ws.update(cx, |ws, cx| {
+                            ws.settings.nearby.inbox = Some(dir);
+                            ws.settings_changed(window, cx);
+                        })
+                    })
+                    .ok();
+                })
+                .detach();
+        });
+
+        let paired: Vec<(SharedString, SharedString, AnyElement)> = trusted
+            .iter()
+            .enumerate()
+            .map(|(ix, t)| {
+                let ws = self.ws.clone();
+                let id = t.id.clone();
+                let state = if online.contains(&t.id) { "Online" } else { "Offline" };
+                let model = if t.model.is_empty() { String::new() } else { format!("{} · ", t.model) };
+                (
+                    SharedString::from(t.name.clone()),
+                    SharedString::from(format!("{model}{state} · {}", rile_remote::peer::short_id(&t.id))),
+                    kit::button(("unpair", ix), "Unpair…", kit::Tone::Secondary, true, cx)
+                        .on_click(move |_, window, cx| ws.update(cx, |ws, cx| ws.unpair(&id, window, cx)))
+                        .into_any_element(),
+                )
+            })
+            .collect();
+        let has_paired = !paired.is_empty();
+        let has_shares = !shares.is_empty();
+
+        v_flex()
+            .gap(px(16.))
+            .child(section(
+                "NEARBY DEVICES",
+                vec![
+                    r("Find nearby devices", status, self.switch("s-nearby", s.nearby.enabled, |s, v| s.nearby.enabled = v)),
+                    r(
+                        "Device name",
+                        "How other devices see this computer".into(),
+                        div().w(px(220.)).child(gpui_kit::component::input::Input::new(&self.device_name_input).small()).into_any_element(),
+                    ),
+                ],
+                cx,
+            ))
+            .child(
+                v_flex()
+                    .gap(px(8.))
+                    .child(h_flex().justify_between().child(kit::caption("SHARED FOLDERS", cx)).child(add_share))
+                    .when(has_shares, |d| d.child(kit::rows(shares, cx)))
+                    .when(!has_shares, |d| {
+                        d.child(kit::hint("Nothing is shared. Paired devices can browse shared folders but never change them.", cx))
+                    }),
+            )
+            .child(section(
+                "RECEIVING",
+                vec![r("Save received files in", inbox.display().to_string(), choose_inbox.into_any_element())],
+                cx,
+            ))
+            .when(has_paired, |d| d.child(section("PAIRED DEVICES", paired, cx)))
+            .child(kit::hint(
+                "Devices find each other with Bonjour and talk directly over encrypted connections. Pair from the Nearby section in the sidebar: both screens show the same code.",
+                cx,
+            ))
+            .child(div().text_color(ch.text_faint))
+            .into_any_element()
+    }
+
     fn switch(&self, id: &'static str, value: bool, f: fn(&mut Settings, bool)) -> AnyElement {
         let ws = self.ws.clone();
         Switch::new(id).cursor_pointer()
@@ -451,6 +604,7 @@ impl Render for SettingsView {
             (Tab::Programs, "Programs", IconName::AppWindow),
             (Tab::Plugins, "Plugins", IconName::Puzzle),
             (Tab::Backups, "Backups", IconName::DatabaseBackup),
+            (Tab::Nearby, "Nearby", IconName::MonitorSmartphone),
             (Tab::Ai, "AI", IconName::Sparkles),
             (Tab::About, "About", IconName::Info),
         ];
@@ -931,6 +1085,7 @@ impl Render for SettingsView {
                     .into_any_element()
             }
             Tab::Backups => self.backups.clone().into_any_element(),
+            Tab::Nearby => self.render_nearby(&s, cx),
             Tab::Ai => self.ai.clone().into_any_element(),
             Tab::About => {
                 let repo = s.update_repo.trim().to_string();

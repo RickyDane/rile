@@ -22,6 +22,8 @@ pub enum Location {
     SpaceAnalyzer(Option<PathBuf>),
     /// Incremental backup jobs and their status.
     Backups,
+    /// Nearby Rile devices: paired and discovered ones, as cards.
+    Devices,
     /// A custom page contributed by a plugin.
     PluginPage { plugin: String, page: String, title: String },
 }

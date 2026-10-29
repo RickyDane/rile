@@ -143,10 +143,20 @@ pub fn join(base: &str, name: &str) -> String {
 
 /// Where remote files are downloaded for opening/previewing.
 pub fn temp_path(id: &str, remote: &str) -> PathBuf {
-    std::env::temp_dir().join("rile-remote").join(id).join(paths::file_name(remote))
+    // Device ids look like `peer:…`; `:` isn't allowed in Windows file names.
+    std::env::temp_dir().join("rile-remote").join(id.replace(':', "-")).join(paths::file_name(remote))
 }
 
 /// Lowercase "user@host" label for breadcrumbs and titles.
 pub fn label(id: &str) -> String {
     info(id).map(|i| if i.name.is_empty() { i.display() } else { i.name.clone() }).unwrap_or_else(|| id.to_string())
+}
+
+/// Icon of a connection: a computer for nearby Rile devices, else a globe.
+pub fn icon(id: &str) -> gpui_kit::assets::IconName {
+    if rile_remote::peer::peer_of_conn(id).is_some() {
+        gpui_kit::assets::IconName::Laptop
+    } else {
+        gpui_kit::assets::IconName::Globe
+    }
 }

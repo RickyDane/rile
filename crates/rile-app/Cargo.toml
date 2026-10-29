@@ -33,6 +33,7 @@ dirs.workspace = true
 gpui-kit.workspace = true
 anyhow.workspace = true
 smol.workspace = true
+sysinfo.workspace = true
 humansize.workspace = true
 chrono.workspace = true
 imagesize = "0.13"

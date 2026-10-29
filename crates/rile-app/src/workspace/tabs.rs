@@ -107,13 +107,17 @@ pub fn tab_title(location: &Location) -> String {
         Location::Home => "Home".to_string(),
         Location::Gallery => "Photos".to_string(),
         Location::Backups => "Backups".to_string(),
+        Location::Devices => "Nearby Devices".to_string(),
         Location::SpaceAnalyzer(_) => "Space Analyzer".to_string(),
         Location::PluginPage { title, .. } => title.clone(),
         // The startup disk's root reads as its volume name (as in the sidebar).
         Location::Dir(p) if p.parent().is_none() && cfg!(target_os = "macos") => "Macintosh HD".to_string(),
         Location::Dir(p) => super::display_name(p),
         Location::Remote { conn, path } => {
-            format!("{} — {}", rile_remote::paths::file_name(path), crate::remote::label(conn))
+            match rile_remote::paths::file_name(path) {
+                "" => crate::remote::label(conn),
+                name => format!("{name} — {}", crate::remote::label(conn)),
+            }
         }
     }
 }

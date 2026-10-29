@@ -238,7 +238,7 @@ impl Pane {
         match &self.location {
             Location::Dir(p) => Some(p.clone()),
             Location::Remote { path, .. } => Some(PathBuf::from(path)),
-            Location::Home | Location::Gallery | Location::SpaceAnalyzer(_) | Location::Backups | Location::PluginPage { .. } => None,
+            Location::Home | Location::Gallery | Location::SpaceAnalyzer(_) | Location::Backups | Location::Devices | Location::PluginPage { .. } => None,
         }
     }
 
@@ -276,7 +276,7 @@ impl Pane {
         let prev_dir = match &previous {
             Location::Dir(p) => Some(p.clone()),
             Location::Remote { path, .. } => Some(PathBuf::from(path)),
-            Location::Home | Location::Gallery | Location::SpaceAnalyzer(_) | Location::Backups | Location::PluginPage { .. } => None,
+            Location::Home | Location::Gallery | Location::SpaceAnalyzer(_) | Location::Backups | Location::Devices | Location::PluginPage { .. } => None,
         };
         if let (Some(dir), Some(prev)) = (self.dir_path(), prev_dir)
             && prev.parent() == Some(dir.as_path())

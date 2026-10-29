@@ -1629,9 +1629,9 @@ async fn sidebar_sections_reorder_and_persist(cx: &mut TestAppContext) {
     cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.move_sidebar_section(Favorites, Locations, window, cx)))
         .unwrap();
     cx.run_until_parked();
-    assert_eq!(cx.update(|cx| ws.read(cx).settings.sidebar_order()), [Library, Locations, Favorites, Devices, Network]);
+    assert_eq!(cx.update(|cx| ws.read(cx).settings.sidebar_order()), [Library, Locations, Favorites, Devices, Network, Nearby]);
     let saved = rile_core::settings::Settings::load();
-    assert_eq!(saved.sidebar_order(), [Library, Locations, Favorites, Devices, Network]);
+    assert_eq!(saved.sidebar_order(), [Library, Locations, Favorites, Devices, Network, Nearby]);
 }
 
 /// Folders the user opens are remembered, and a later search from a parent
@@ -2288,4 +2288,127 @@ async fn backups_page_restores_and_deletes_runs(cx: &mut TestAppContext) {
     }
     assert!(vcx.read(|cx| ws.read(cx).backups.config.job.is_empty()));
     assert!(!dest.join("Docs").exists());
+}
+
+/// Nearby Devices: a paired device's shared folders browse like a server,
+/// and an offer from it is accepted through the dialog into the inbox.
+#[gpui_kit::test]
+async fn nearby_device_browse_and_receive(cx: &mut TestAppContext) {
+    use rile_remote::peer::{self, DeviceInfo, LocalDevice, NearbyPeer, Pairing, PeerServer, PeerStore, Share};
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    let shared = root.join("Shared");
+    fs::create_dir_all(&shared).unwrap();
+    fs::write(shared.join("notes.txt"), "from the studio").unwrap();
+    let inbox = root.join("Inbox");
+    fs::create_dir_all(&inbox).unwrap();
+    let gift = root.join("gift.txt");
+    fs::write(&gift, "a present").unwrap();
+
+    let (window, ws) = setup(&inbox, cx);
+    let ours = PeerStore::open(root.join("our-peer")).unwrap();
+    PeerStore::set_app(ours.clone());
+
+    // The other device, sharing one folder.
+    let theirs = PeerStore::open(root.join("their-peer")).unwrap();
+    let (tx, their_events) = std::sync::mpsc::channel();
+    let tx = std::sync::Mutex::new(tx);
+    let local = LocalDevice {
+        info: DeviceInfo { name: "Studio".into(), ..Default::default() },
+        shares: vec![Share { name: "Shared".into(), path: shared.clone() }],
+    };
+    let server = PeerServer::start(theirs.clone(), local, 0, move |e| {
+        let _ = tx.lock().unwrap().send(e);
+    })
+    .unwrap();
+    let port = server.port();
+
+    // Pair (the other side's user confirms).
+    let pairing = Pairing::start(ours.clone(), "127.0.0.1", port, Some(theirs.id())).unwrap();
+    match their_events.recv_timeout(TIMEOUT).unwrap() {
+        peer::PeerEvent::PairRequest { code, reply, .. } => {
+            assert_eq!(code, pairing.code);
+            reply.send(true);
+        }
+        other => panic!("{other:?}"),
+    }
+    assert!(pairing.finish(true).unwrap());
+
+    let their_id = theirs.id().to_string();
+    cx.update_window(window, |_, window, cx| {
+        ws.update(cx, |ws, cx| {
+            ws.nearby.store = Some(ours.clone());
+            ws.nearby.trusted = ours.trusted();
+            ws.nearby.online = vec![NearbyPeer {
+                id: their_id.clone(),
+                name: "Studio".into(),
+                model: String::new(),
+                os: String::new(),
+                kind: Default::default(),
+                host: "127.0.0.1".into(),
+                port,
+            }];
+            assert!(ws.nearby.rows().iter().any(|r| r.paired && r.online.is_some()));
+            ws.open_device(&their_id, None, window, cx);
+        })
+    })
+    .unwrap();
+    wait_for_names(cx, window, &ws, &["Shared"]).await;
+    let pane = cx.update(|cx| ws.read(cx).pane().clone());
+    cx.update(|cx| {
+        pane.update(cx, |p, cx| p.navigate(Location::Remote { conn: peer::conn_id(&their_id), path: "/Shared".into() }, cx))
+    });
+    wait_for_names(cx, window, &ws, &["notes.txt"]).await;
+
+    // The Devices page lists the paired device.
+    cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.open_devices(window, cx))).unwrap();
+    let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
+    vcx.run_until_parked();
+    let key: String = their_id.chars().take(12).collect();
+    assert!(vcx.debug_bounds(Box::leak(format!("device-{key}").into_boxed_str())).is_some(), "device card shown");
+
+    // Receiving: the other device offers a file; accept it in the dialog.
+    let (tx, our_events) = std::sync::mpsc::channel();
+    let tx = std::sync::Mutex::new(tx);
+    let our_server = PeerServer::start(ours.clone(), LocalDevice::default(), 0, move |e| {
+        let _ = tx.lock().unwrap().send(e);
+    })
+    .unwrap();
+    let our_port = our_server.port();
+    let sender = {
+        let (theirs, gift) = (theirs.clone(), gift.clone());
+        std::thread::spawn(move || {
+            peer::send(&theirs, "127.0.0.1", our_port, None, &[gift], &std::sync::atomic::AtomicBool::new(false), &mut |_, _, _| {})
+        })
+    };
+    let offer = our_events.recv_timeout(TIMEOUT).unwrap();
+    vcx.update(|window, cx| {
+        ws.update(cx, |ws, cx| {
+            ws.settings.nearby.inbox = Some(inbox.clone());
+            ws.handle_peer_event(offer, window, cx);
+        })
+    });
+    click_selector(&mut vcx, "choose-0");
+    let start = std::time::Instant::now();
+    while !inbox.join("gift.txt").exists() {
+        vcx.run_until_parked();
+        assert!(start.elapsed() < TIMEOUT, "file not received");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    sender.join().unwrap().unwrap();
+    assert_eq!(fs::read_to_string(inbox.join("gift.txt")).unwrap(), "a present");
+    // The receive job finishes and the inbox pane shows the file.
+    let start = std::time::Instant::now();
+    loop {
+        vcx.executor().advance_clock(Duration::from_millis(300));
+        vcx.run_until_parked();
+        let done = vcx.read(|cx| ws.read(cx).finished_jobs.iter().any(|j| j.label.contains("Receiving from") && j.error.is_none()));
+        if done {
+            break;
+        }
+        assert!(start.elapsed() < TIMEOUT, "receive job didn't finish");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    drop(server);
+    drop(our_server);
 }

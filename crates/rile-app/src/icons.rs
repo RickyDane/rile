@@ -13,6 +13,8 @@ use rile_core::{Entry, EntryKind};
 gpui_kit::assets::icon_assets!(
     AppIcons,
     [
+        // Nearby Devices
+        Laptop, Radar, MonitorSmartphone, Send, Share2,
         Folder, FolderOpen, FolderPlus, FolderSymlink, FolderUp, File, FileText, FileCode,
         FileArchive, FileImage, FileMusic, FileVideoCamera, FileSpreadsheet, FileSymlink, House,
         Star, HardDrive, Usb, ArrowLeft, ArrowRight, ArrowUp, ChevronRight, LayoutList, Monitor,

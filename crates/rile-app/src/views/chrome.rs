@@ -416,6 +416,7 @@ pub fn crumbs(ws: &Workspace, location: &Location) -> Vec<(String, Option<Locati
         Location::Home => vec![("Home".into(), Some(Location::Home), IconName::House)],
         Location::Gallery => vec![("Photos".into(), Some(Location::Gallery), IconName::Images)],
         Location::Backups => vec![("Backups".into(), Some(Location::Backups), IconName::DatabaseBackup)],
+        Location::Devices => vec![("Nearby Devices".into(), Some(Location::Devices), IconName::MonitorSmartphone)],
         Location::SpaceAnalyzer(_) => vec![("Space Analyzer".into(), Some(Location::SpaceAnalyzer(None)), IconName::ChartPie)],
         Location::PluginPage { title, .. } => vec![(title.clone(), Some(location.clone()), IconName::Puzzle)],
         Location::Remote { conn, path } => {
@@ -425,7 +426,7 @@ pub fn crumbs(ws: &Workspace, location: &Location) -> Vec<(String, Option<Locati
                 .map(|p| {
                     let (name, icon) = match p.file_name() {
                         Some(n) => (n.to_string_lossy().into_owned(), IconName::Folder),
-                        None => (crate::remote::label(conn), IconName::Globe),
+                        None => (crate::remote::label(conn), crate::remote::icon(conn)),
                     };
                     (name, Some(Location::Remote { conn: conn.clone(), path: crate::remote::path_str(p) }), icon)
                 })
@@ -523,9 +524,10 @@ pub fn render_tab_strip(ws: &mut Workspace, window: &mut Window, cx: &mut Contex
             Location::Home => IconName::House,
             Location::Gallery => IconName::Images,
             Location::Backups => IconName::DatabaseBackup,
+            Location::Devices => IconName::MonitorSmartphone,
             Location::SpaceAnalyzer(_) => IconName::ChartPie,
             Location::PluginPage { .. } => IconName::Puzzle,
-            Location::Remote { .. } => IconName::Globe,
+            Location::Remote { conn, .. } => crate::remote::icon(conn),
             Location::Dir(_) => IconName::Folder,
         };
         let title = crate::workspace::tab_title(&location);
@@ -634,7 +636,7 @@ pub fn render_browser(ws: &mut Workspace, pane: Entity<Pane>, slot: usize, windo
     let focus = p.focus_handle.clone();
     let slot_active = slot == ws.active_pane || !ws.dual;
     let title = crate::workspace::tab_title(&location);
-    let heading_icon = if matches!(location, Location::Remote { .. }) { IconName::Globe } else { IconName::Folder };
+    let heading_icon = match &location { Location::Remote { conn, .. } => crate::remote::icon(conn), _ => IconName::Folder };
     let weak = pane.downgrade();
     let show_hidden = ws.settings.show_hidden;
     let dual = ws.dual;

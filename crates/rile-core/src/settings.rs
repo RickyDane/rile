@@ -131,10 +131,12 @@ pub enum SidebarSection {
     Locations,
     Devices,
     Network,
+    /// Other Rile devices on the local network.
+    Nearby,
 }
 
 impl SidebarSection {
-    pub const ALL: [Self; 5] = [Self::Library, Self::Favorites, Self::Locations, Self::Devices, Self::Network];
+    pub const ALL: [Self; 6] = [Self::Library, Self::Favorites, Self::Locations, Self::Devices, Self::Network, Self::Nearby];
 
     pub fn label(self) -> &'static str {
         match self {
@@ -143,6 +145,7 @@ impl SidebarSection {
             Self::Locations => "Locations",
             Self::Devices => "Devices",
             Self::Network => "Network",
+            Self::Nearby => "Nearby",
         }
     }
 }
@@ -365,6 +368,60 @@ pub struct Settings {
     /// Default program per file type (application bundle paths). Keys are
     /// a category, or a single extension as ".ext" which takes precedence.
     pub default_apps: std::collections::BTreeMap<String, PathBuf>,
+    /// Nearby Devices: other Rile installations on the local network.
+    pub nearby: NearbySettings,
+}
+
+/// A folder shared read-only with paired devices.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SharedFolder {
+    /// Name other devices see (unique among the shares).
+    pub name: String,
+    pub path: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct NearbySettings {
+    /// Find and be found by other Rile devices on the local network.
+    pub enabled: bool,
+    /// Name other devices see; empty uses the computer name.
+    pub device_name: String,
+    /// Where accepted files go; None uses the Downloads folder.
+    pub inbox: Option<PathBuf>,
+    pub shares: Vec<SharedFolder>,
+}
+
+impl Default for NearbySettings {
+    fn default() -> Self {
+        Self { enabled: true, device_name: String::new(), inbox: None, shares: Vec::new() }
+    }
+}
+
+impl NearbySettings {
+    pub fn inbox_dir(&self) -> PathBuf {
+        self.inbox
+            .clone()
+            .or_else(dirs::download_dir)
+            .or_else(dirs::home_dir)
+            .unwrap_or_else(std::env::temp_dir)
+    }
+
+    /// A share name for `path` that isn't taken yet.
+    pub fn share_name_for(&self, path: &std::path::Path) -> String {
+        let base = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .filter(|n| !n.is_empty())
+            .unwrap_or_else(|| "Shared".into());
+        let mut name = base.clone();
+        let mut n = 2;
+        while self.shares.iter().any(|s| s.name == name) {
+            name = format!("{base} {n}");
+            n += 1;
+        }
+        name
+    }
 }
 
 impl Default for Settings {
@@ -408,6 +465,7 @@ impl Default for Settings {
             disabled_plugins: Vec::new(),
             remote_enabled: true,
             sidebar_sections: SidebarSection::ALL.to_vec(),
+            nearby: NearbySettings::default(),
             default_apps: Default::default(),
             favorites: dirs::home_dir()
                 .into_iter()
@@ -520,15 +578,15 @@ mod tests {
         let mut s = Settings { sidebar_sections: vec![SidebarSection::Devices, SidebarSection::Devices], ..Default::default() };
         // Duplicates dropped, missing sections appended in their default order.
         use SidebarSection::*;
-        assert_eq!(s.sidebar_order(), [Devices, Library, Favorites, Locations, Network]);
+        assert_eq!(s.sidebar_order(), [Devices, Library, Favorites, Locations, Network, Nearby]);
         s.sidebar_sections = SidebarSection::ALL.to_vec();
         // Dragging down lands after the target, dragging up before it.
         s.move_sidebar_section(Favorites, Locations);
-        assert_eq!(s.sidebar_order(), [Library, Locations, Favorites, Devices, Network]);
+        assert_eq!(s.sidebar_order(), [Library, Locations, Favorites, Devices, Network, Nearby]);
         s.move_sidebar_section(Network, Library);
-        assert_eq!(s.sidebar_order(), [Network, Library, Locations, Favorites, Devices]);
+        assert_eq!(s.sidebar_order(), [Network, Library, Locations, Favorites, Devices, Nearby]);
         s.move_sidebar_section(Devices, Devices);
-        assert_eq!(s.sidebar_order(), [Network, Library, Locations, Favorites, Devices]);
+        assert_eq!(s.sidebar_order(), [Network, Library, Locations, Favorites, Devices, Nearby]);
     }
 
     #[test]

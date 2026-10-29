@@ -52,6 +52,7 @@ An interactive design prototype is also available in [`mockups/`](mockups/README
 - **Work with files:** copy, move, rename, duplicate, trash, or delete; drag and drop between folders, Finder, and remote servers. Transfers support progress, cancellation, and background execution.
 - **Inspect and preview:** use Quick Look, the inspector, or Properties for files and recursive folder totals. Preview PDFs, images, and syntax-highlighted text.
 - **Search on demand:** search recursively by name, glob, regex, content, size, date, and type, with `.gitignore` support and an optional Spotlight backend. A discovery index remembers visited folders for faster subsequent searches; it can be disabled or cleared in Settings.
+- **Nearby Devices:** other computers running Rile on your network show up automatically. Pair once with a 6-digit code, then browse the folders they share (read-only) and send each other files, which the receiver accepts first. Everything travels directly over the local network with mutual TLS.
 - **Connect to servers:** browse FTP, FTPS, SFTP, and SMB2/3 locations, transfer files, and manage remote entries. Choose nearby servers advertised over Bonjour/mDNS in the connection dialog, or enter a server manually. SMB connections show available disk shares; enter `smb://server/share` or set the start folder to `/share/folder` to connect directly. Credentials are stored in the Keychain.
 - **Explore storage and photos:** the Overview shows live disk usage and recent file activity; Photos groups images from your home folder and Photos library by month.
 - **Free up space:** the Space Analyzer measures a folder once, then lets you explore it as a bubble map, list its largest files, and review cleanup suggestions (caches, build output, installers, stale downloads) before moving them to the Trash.
@@ -144,7 +145,7 @@ cargo test --workspace --locked
 | `rile-core` | File listing, operations, settings, history, and watching |
 | `rile-backup` | Incremental backups, retained versions, restore, and background scheduling |
 | `rile-services` | Search, previews, archives, properties, and system services |
-| `rile-remote` | FTP/FTPS, SFTP, and SMB backends, local-network discovery, and credentials |
+| `rile-remote` | FTP/FTPS, SFTP, and SMB backends, Nearby Devices (Rile ↔ Rile), local-network discovery, and credentials |
 | `rile-plugins` | Wasmtime component host and plugin interface |
 
 The workspace declares the MIT license in [`Cargo.toml`](Cargo.toml).

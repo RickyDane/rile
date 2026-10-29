@@ -307,6 +307,64 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
         }
     }
 
+    // Nearby Rile devices: the Devices page, then paired and discovered ones.
+    let mut near: Vec<AnyElement> = Vec::new();
+    if ws.settings.nearby.enabled {
+        near.push(
+            item("side-devices".into(), IconName::Radar, "All Devices".into(), matches!(location, Location::Devices), None)
+                .on_click(cx.listener(|this, _, w, cx| this.open_devices(w, cx)))
+                .into_any_element(),
+        );
+        for (ix, row) in ws.nearby.rows().into_iter().enumerate() {
+            let conn = rile_remote::peer::conn_id(&row.id);
+            let active = current_conn.as_deref() == Some(conn.as_str());
+            let online = row.online.is_some();
+            let ready = online && row.paired && !row.forgot_us;
+            let (id, id_drop, id_ext, id_menu) = (row.id.clone(), row.id.clone(), row.id.clone(), row.id.clone());
+            let paired = row.paired;
+            let this = cx.entity().downgrade();
+            let drop_bg = drop_hl_color(&ch);
+            let mut el = item(("near", ix).into(), crate::views::devices::kind_icon(row.kind), row.name.clone(), active, None)
+                .when(!online, |d| d.opacity(0.55))
+                .when(ready && !rail, |d| d.child(div().size(px(5.)).rounded_full().bg(ch.success)))
+                .when(!row.paired && !rail, |d| {
+                    d.child(div().flex_none().text_size(px(10.)).text_color(ch.text_muted).child(if ws.nearby.pairing.contains(&row.id) { "Pairing…" } else { "Pair" }))
+                })
+                .on_click(cx.listener(move |this, _, w, cx| this.open_device(&id, None, w, cx)));
+            if ready {
+                el = el
+                    .drag_over::<DraggedFiles>(move |s, _, _, _| s.bg(drop_bg))
+                    .drag_over::<ExternalPaths>(move |s, _, _, _| s.bg(drop_bg))
+                    .on_drop(cx.listener(move |this, d: &DraggedFiles, w, cx| {
+                        if d.conn.is_none() {
+                            let paths = d.resolve(cx);
+                            this.send_to_device(&id_drop, paths, w, cx);
+                        }
+                    }))
+                    .on_drop(cx.listener(move |this, ext: &ExternalPaths, w, cx| this.send_to_device(&id_ext, ext.paths().to_vec(), w, cx)));
+            }
+            near.push(
+                el.context_menu(move |menu, _, _| {
+                    let item = |label: &'static str, f: fn(&mut Workspace, &str, &mut Window, &mut Context<Workspace>)| {
+                        let this = this.clone();
+                        let id = id_menu.clone();
+                        gpui_kit::component::menu::PopupMenuItem::new(label).on_click(move |_, w, cx| {
+                            this.update(cx, |ws, cx| f(ws, &id, w, cx)).ok();
+                        })
+                    };
+                    if !paired {
+                        return menu.item(item("Pair…", |ws, id, w, cx| ws.pair_with(id, w, cx)));
+                    }
+                    menu.item(item("Open", |ws, id, w, cx| ws.open_device(id, None, w, cx)))
+                        .item(item("Send Files…", |ws, id, w, cx| ws.pick_and_send(id, w, cx)))
+                        .separator()
+                        .item(item("Unpair…", |ws, id, w, cx| ws.unpair(id, w, cx)))
+                })
+                .into_any_element(),
+            );
+        }
+    }
+
     // Sections in the user's order. Each header can be dragged onto another
     // section to move it there; the whole section is the drop target.
     let drop_hl = theme.drop_target;
@@ -325,6 +383,8 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
             SidebarSection::Devices => std::mem::take(&mut dev),
             SidebarSection::Network if ws.settings.remote_enabled => std::mem::take(&mut net),
             SidebarSection::Network => continue,
+            SidebarSection::Nearby if ws.settings.nearby.enabled => std::mem::take(&mut near),
+            SidebarSection::Nearby => continue,
         };
         let mut head = h_flex()
             .id(("section-header", section as usize))
@@ -575,6 +635,10 @@ impl Render for DraggedSection {
             .text_color(ch.text_strong)
             .child(self.0.label())
     }
+}
+
+fn drop_hl_color(ch: &crate::theme::Chrome) -> gpui_kit::Hsla {
+    ch.accent.opacity(0.16)
 }
 
 /// Usage color: accent, amber above 80% and red above 95%.

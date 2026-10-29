@@ -15,6 +15,7 @@ fn open_backend(info: &ConnectionInfo, secret: Option<&str>) -> Result<Box<dyn B
         Protocol::Ftp | Protocol::Ftps => Box::new(crate::ftp::FtpBackend::connect(info, secret)?),
         Protocol::Sftp => Box::new(crate::sftp::SftpBackend::connect(info, secret)?),
         Protocol::Smb => Box::new(crate::smb::SmbBackend::connect(info, secret)?),
+        Protocol::Peer => Box::new(crate::peer::PeerBackend::connect(info)?),
     })
 }
 

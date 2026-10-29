@@ -1,4 +1,5 @@
-//! Remote file system access for Rile: FTP, FTPS (explicit TLS), SFTP and SMB2/3.
+//! Remote file system access for Rile: FTP, FTPS (explicit TLS), SFTP, SMB2/3
+//! and other Rile devices nearby ([`peer`]).
 //!
 //! The API is synchronous and blocking; callers are expected to run it on
 //! background threads. SFTP (`russh`/`russh-sftp`) and SMB use private tokio
@@ -13,6 +14,7 @@ pub mod discovery;
 mod ftp;
 pub mod known_hosts;
 pub mod paths;
+pub mod peer;
 mod pool;
 mod sftp;
 mod smb;
@@ -38,6 +40,8 @@ pub enum Protocol {
     Ftp,
     Ftps,
     Smb,
+    /// Another Rile on the local network (Nearby Devices); see [`peer`].
+    Peer,
 }
 
 impl Protocol {
@@ -46,6 +50,7 @@ impl Protocol {
             Protocol::Sftp => 22,
             Protocol::Ftp | Protocol::Ftps => 21,
             Protocol::Smb => 445,
+            Protocol::Peer => peer::DEFAULT_PORT,
         }
     }
 
@@ -55,6 +60,7 @@ impl Protocol {
             Protocol::Ftp => "FTP",
             Protocol::Ftps => "FTPS",
             Protocol::Smb => "SMB",
+            Protocol::Peer => "Rile",
         }
     }
 }

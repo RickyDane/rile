@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Nearby Devices
+- Find other computers running Rile on the local network (Bonjour `_rile._tcp`). They appear under **Nearby** in the sidebar and on the new **Nearby Devices** page, a card for each device with its model, system, storage and shared folders.
+- Pair two devices once by confirming the same 6-digit code on both screens. Devices talk over mutual TLS 1.3 with a key generated on each computer; the code comes from the encrypted session, so a device in the middle would show a different one.
+- Share folders read-only with paired devices (right-click a folder → Share with Nearby Devices, or Settings → Nearby). Paired devices browse, preview and copy from them like a server.
+- Send files and folders to a paired device by dropping them on it, with **Send to Device** in the context menu, or **Send Files…**. The other side accepts or declines; accepted files go to Downloads (configurable) and appear as a transfer job.
+
 ## v0.7.4
 
 ### macOS

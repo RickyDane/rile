@@ -32,6 +32,10 @@ ring = "0.17"
 russh = { version = "0.65", default-features = false, features = ["ring", "rsa"] }
 russh-sftp = "3.0"
 tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "io-util", "sync"] }
+# Nearby devices (Rile ↔ Rile): self-signed identity certificates, JSON frames
+rcgen = { version = "0.14", default-features = false, features = ["ring", "pem", "crypto"] }
+serde_json = "1"
+toml.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 keyring = { version = "3.6", features = ["apple-native"] }
@@ -46,5 +50,4 @@ async-trait = "0.1"
 libunftp = { version = "0.23", default-features = false, features = ["ring"] }
 unftp-sbe-fs = "0.4"
 unftp-core = "0.1"
-rcgen = { version = "0.14", default-features = false, features = ["ring", "pem", "crypto"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "fs", "io-util", "sync"] }

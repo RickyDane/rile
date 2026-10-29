@@ -1,5 +1,6 @@
 pub mod backup_settings;
 pub mod backups;
+pub mod devices;
 pub mod chrome;
 pub mod columns;
 pub mod grid;
@@ -364,6 +365,7 @@ fn build_context_menu(
         if archives {
             menu = menu.menu_with_icon("Extract Here", menu_icon(IconName::PackageOpen), Box::new(Extract));
         }
+        menu = nearby_items(menu, &selection, window, cx);
     }
     if ai && !remote {
         menu = menu
@@ -393,6 +395,56 @@ fn build_context_menu(
 
     menu.separator()
         .menu_with_icon("Properties", menu_icon(IconName::Info), Box::new(ShowProperties))
+}
+
+/// "Send to Device" (paired devices online) and "Share with Nearby Devices"
+/// for a single folder.
+fn nearby_items(mut menu: PopupMenu, selection: &[std::path::PathBuf], window: &mut Window, cx: &mut Context<PopupMenu>) -> PopupMenu {
+    use crate::icons::menu_icon;
+    let Some(ws) = cx.try_global::<WorkspaceHandle>().and_then(|h| h.0.upgrade()) else { return menu };
+    let (enabled, devices, shared) = {
+        let w = ws.read(cx);
+        let devices: Vec<(String, String)> = w
+            .nearby
+            .rows()
+            .into_iter()
+            .filter(|r| r.paired && r.online.is_some() && !r.forgot_us)
+            .map(|r| (r.id, r.name))
+            .collect();
+        let shared = match selection {
+            [one] if one.is_dir() => Some(w.is_shared(one)),
+            _ => None,
+        };
+        (w.settings.nearby.enabled, devices, shared)
+    };
+    if !enabled {
+        return menu;
+    }
+    if !devices.is_empty() {
+        let paths = std::sync::Arc::new(selection.to_vec());
+        let weak = ws.downgrade();
+        menu = menu.submenu_with_icon(Some(menu_icon(IconName::Send)), "Send to Device", window, cx, move |mut menu, _, _| {
+            for (id, name) in &devices {
+                let (id, paths, weak) = (id.clone(), paths.clone(), weak.clone());
+                menu = menu.item(PopupMenuItem::new(name.clone()).on_click(move |_, window, cx| {
+                    weak.update(cx, |ws, cx| ws.send_to_device(&id, (*paths).clone(), window, cx)).ok();
+                }));
+            }
+            menu
+        });
+    }
+    if let (Some(shared), Some(dir)) = (shared, selection.first().cloned()) {
+        let weak = ws.downgrade();
+        let label = if shared { "Stop Sharing with Nearby Devices" } else { "Share with Nearby Devices" };
+        menu = menu.item(PopupMenuItem::new(label).icon(menu_icon(IconName::Share2)).on_click(move |_, window, cx| {
+            let dir = dir.clone();
+            weak.update(cx, |ws, cx| {
+                if shared { ws.unshare_folder(&dir, window, cx) } else { ws.share_folder(dir, window, cx) }
+            })
+            .ok();
+        }));
+    }
+    menu
 }
 
 /// Shared mouse, drag and drop behaviour for an entry element (row/tile).

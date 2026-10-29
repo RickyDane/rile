@@ -8,6 +8,7 @@ pub mod archive;
 pub mod backups;
 mod file_ops;
 mod inspector;
+pub mod nearby;
 pub mod open_with;
 mod plugins;
 pub mod space;
@@ -136,6 +137,8 @@ pub struct Workspace {
     pub plugins: plugins::PluginState,
     pub space: space::SpaceState,
     pub backups: backups::BackupState,
+    /// Other Rile devices on the local network.
+    pub nearby: nearby::NearbyState,
     pub updates: UpdateState,
     pub search_form: Option<Entity<search::SearchForm>>,
     /// The ⌘K Ask palette, kept so reopening it continues the conversation.
@@ -241,6 +244,7 @@ impl Workspace {
             plugins: plugins::PluginState::default(),
             space: space::SpaceState::default(),
             backups: backups::BackupState::load(),
+            nearby: Default::default(),
             updates: UpdateState::default(),
             search_form: None,
             ask: None,
@@ -277,6 +281,7 @@ impl Workspace {
         this._volume_watch_task = Some(Self::watch_volumes(cx));
         this.load_plugins(cx);
         this.start_backups(window, cx);
+        this.sync_nearby(window, cx);
         this.sync_local_model();
         // Describe new photos in the background once the app has settled.
         cx.spawn_in(window, async move |this, cx| {
@@ -574,6 +579,7 @@ impl Workspace {
         }
         self.sync_preview(cx);
         self.sync_local_model();
+        self.sync_nearby(window, cx);
         self.save_settings(window, cx);
         cx.notify();
     }
@@ -762,6 +768,8 @@ impl Workspace {
             views::gallery::render(self, ix, window, cx)
         } else if location == Location::Backups {
             views::backups::render(self, ix, window, cx)
+        } else if location == Location::Devices {
+            views::devices::render(self, ix, window, cx)
         } else if let Location::SpaceAnalyzer(focus) = &location {
             views::space_analyzer::render(self, ix, focus.clone(), window, cx)
         } else if let Location::PluginPage { plugin, page, .. } = &location {
@@ -779,7 +787,7 @@ impl Workspace {
             .h_full()
             .bg(crate::theme::chrome(cx).browser)
             .when(self.dual && ix == 1, |d| d.border_l_1().border_color(hairline))
-            .when(self.dual && matches!(location, Location::Home | Location::Gallery | Location::SpaceAnalyzer(_) | Location::Backups | Location::PluginPage { .. }), |d| {
+            .when(self.dual && matches!(location, Location::Home | Location::Gallery | Location::SpaceAnalyzer(_) | Location::Backups | Location::Devices | Location::PluginPage { .. }), |d| {
                 d.child(h_flex().px(px(12.)).py(px(4.))
                     .when(ix == 1, |d| d.justify_end())
                     .child(self.render_drive_selector(ix, cx)))
@@ -896,7 +904,7 @@ impl Render for Workspace {
         let slots: Vec<_> =
             (0..if self.dual { 2 } else { 1 }).map(|i| self.render_pane_slot(i, window, cx).into_any_element()).collect();
         // The photo library and the Space Analyzer show their own details.
-        let in_gallery = matches!(self.pane().read(cx).location, Location::Gallery | Location::SpaceAnalyzer(_) | Location::Backups);
+        let in_gallery = matches!(self.pane().read(cx).location, Location::Gallery | Location::SpaceAnalyzer(_) | Location::Backups | Location::Devices);
         let inspector = (self.inspector_visible(window) && !in_gallery).then(|| self.render_inspector(window, cx));
         let (inline_inspector, overlay_inspector) =
             if width <= views::chrome::Width::Phone { (None, inspector) } else { (inspector, None) };

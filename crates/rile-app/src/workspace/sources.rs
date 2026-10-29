@@ -78,7 +78,7 @@ impl Workspace {
         let menu = self.drive_menu.as_ref().filter(|(ix, _)| *ix == slot).map(|(_, menu)| menu.clone());
         let ws = cx.entity().downgrade();
         let menu_focus = menu.as_ref().map(|menu| menu.focus_handle(cx));
-        let icon = if matches!(location, Location::Remote { .. }) { IconName::Globe } else { IconName::HardDrive };
+        let icon = match &location { Location::Remote { conn, .. } => crate::remote::icon(conn), _ => IconName::HardDrive };
         let tip = format!("{label} · Select drive ({}F{})", if cfg!(target_os = "macos") { "⌘" } else { "Ctrl+" }, slot + 1);
         gpui_kit::div().flex().flex_none().child(
             Popover::new(("drive-selector", slot)).open(menu.is_some())
