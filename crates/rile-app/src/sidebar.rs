@@ -401,30 +401,25 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
     }
 
     let mac = cfg!(target_os = "macos") && !window.is_fullscreen();
-    let brand = window_drag(
-        h_flex()
-            .id("sidebar-header")
-            .debug_selector(|| "sidebar-header".into())
-            .h(px(crate::views::chrome::TOOLBAR_HEIGHT))
-            .flex_none()
-            .when(rail, |d| d.justify_center())
-            .when(!rail, |d| {
-                d.justify_end()
-                    .pl(px(12.))
-                    .pr(px(if sidebar_width < 180. { 4. } else { 12. }))
-                    .gap(px(if sidebar_width < 180. { 2. } else { 8. }))
-            })
-            // The traffic lights sit in the header's left half on macOS.
-            .when(!rail && !mac, |d| d.justify_start())
-            .when(!rail, |d| {
-                d.child(
-                    icon_button("sidebar-toggle", IconName::PanelLeft, format!("Toggle sidebar ({})", crate::views::chrome::shortcut("shift-mod-s")), &ch)
-                        .debug_selector(|| "sidebar-toggle".into())
-                        .on_click(cx.listener(|this, _, w, cx| this.toggle_sidebar(&crate::actions::ToggleSidebar, w, cx))),
-                )
-            }),
-        cx,
-    );
+    // The drag area is a sibling of the toggle, not its parent: on Windows a
+    // caption hitbox containing the button turns its clicks into HTCAPTION.
+    let drag = window_drag(div().id("sidebar-header-drag").flex_1().h_full(), cx);
+    let toggle = (!rail).then(|| {
+        icon_button("sidebar-toggle", IconName::PanelLeft, format!("Toggle sidebar ({})", crate::views::chrome::shortcut("shift-mod-s")), &ch)
+            .debug_selector(|| "sidebar-toggle".into())
+            .on_click(cx.listener(|this, _, w, cx| this.toggle_sidebar(&crate::actions::ToggleSidebar, w, cx)))
+            // Margins rather than header padding, so the rest stays draggable.
+            .when(mac, |b| b.mr(px(if sidebar_width < 180. { 4. } else { 12. })))
+            .when(!mac, |b| b.ml(px(12.)))
+    });
+    let header = h_flex()
+        .id("sidebar-header")
+        .debug_selector(|| "sidebar-header".into())
+        .h(px(crate::views::chrome::TOOLBAR_HEIGHT))
+        .flex_none();
+    // The traffic lights sit in the header's left half on macOS, so the
+    // toggle goes right of the drag area there and left of it elsewhere.
+    let brand = if mac { header.child(drag).children(toggle) } else { header.children(toggle).child(drag) };
 
     // Settings and background jobs, at the bottom of the sidebar.
     let jobs = ws.ops.len();

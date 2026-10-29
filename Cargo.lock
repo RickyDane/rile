@@ -8075,7 +8075,7 @@ dependencies = [
 
 [[package]]
 name = "rile-app"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8096,6 +8096,7 @@ dependencies = [
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
+ "raw-window-handle",
  "rile-backup",
  "rile-core",
  "rile-plugins",
@@ -8117,7 +8118,7 @@ dependencies = [
 
 [[package]]
 name = "rile-backup"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8143,7 +8144,7 @@ dependencies = [
 
 [[package]]
 name = "rile-core"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "dirs 6.0.0",
@@ -8158,7 +8159,7 @@ dependencies = [
 
 [[package]]
 name = "rile-plugins"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "dirs 6.0.0",
@@ -8171,7 +8172,7 @@ dependencies = [
 
 [[package]]
 name = "rile-remote"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8207,7 +8208,7 @@ dependencies = [
 
 [[package]]
 name = "rile-services"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "block2 0.6.2",

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.7.3
+
+### Drag and drop
+- Fix Rile freezing and crashing on Windows when dragging files out to the desktop or another app. The native drag now runs outside GPUI's event handling, so the window keeps drawing during the drag.
+
+### Windows
+- Make the sidebar toggle button clickable on Windows; the header around it still drags the window.
+
 ## v0.7.2
 
 ### Drag and drop

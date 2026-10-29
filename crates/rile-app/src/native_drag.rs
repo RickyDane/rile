@@ -26,7 +26,29 @@ pub fn handoff(event: &DragMoveEvent<DraggedFiles>, window: &mut Window, cx: &mu
 }
 
 #[cfg(not(test))]
-fn start(paths: Vec<std::path::PathBuf>, window: &mut Window, _: &mut App) {
+fn start(paths: Vec<std::path::PathBuf>, window: &mut Window, cx: &mut App) {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = cx;
+        // AppKit's dragging session is asynchronous, so it can start in place.
+        start_session(paths, window);
+    }
+    // OLE's DoDragDrop runs a modal loop until the drop. Started here, inside
+    // GPUI's event dispatch, that loop would pump GPUI's own messages (frame
+    // requests, foreground tasks) while the app is borrowed: the reentrant
+    // borrow panics in the window procedure and aborts the process. Run it from
+    // a foreground task instead, where nothing is borrowed and GPUI can keep
+    // drawing and running tasks during the drag.
+    #[cfg(windows)]
+    {
+        use raw_window_handle::HasWindowHandle;
+        let Ok(handle) = window.window_handle().map(|handle| handle.as_raw()) else { return };
+        cx.spawn(async move |_| start_session(paths, &win::Handle(handle))).detach();
+    }
+}
+
+#[cfg(not(test))]
+fn start_session(paths: Vec<std::path::PathBuf>, window: &impl raw_window_handle::HasWindowHandle) {
     // GPUI captures the mouse on button-down. OLE must own capture during its
     // drag loop, and GPUI will not necessarily see the eventual button-up.
     #[cfg(windows)]
@@ -53,6 +75,21 @@ fn start(paths: Vec<std::path::PathBuf>, window: &mut Window, _: &mut App) {
         drag::Options::default(),
     ) {
         eprintln!("Could not start native file drag: {error}");
+    }
+}
+
+#[cfg(all(windows, not(test)))]
+mod win {
+    use raw_window_handle::{HandleError, HasWindowHandle, RawWindowHandle, WindowHandle};
+
+    /// The window's raw handle, detached from GPUI's `Window` borrow.
+    pub struct Handle(pub RawWindowHandle);
+
+    impl HasWindowHandle for Handle {
+        fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
+            // SAFETY: the HWND belongs to a live GPUI window for the drag's duration.
+            Ok(unsafe { WindowHandle::borrow_raw(self.0) })
+        }
     }
 }
 
