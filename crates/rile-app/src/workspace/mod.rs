@@ -972,6 +972,12 @@ impl Render for Workspace {
             .bg(ch.window)
             .text_color(fg)
             .key_context("Workspace")
+            .on_drag_move(cx.listener(|_this, _event: &gpui_kit::DragMoveEvent<crate::pane::DraggedFiles>, _window, _cx| {
+                #[cfg(any(target_os = "macos", windows))]
+                if crate::native_drag::handoff(_event, _window, _cx) {
+                    _this.clear_drop_hover(_cx);
+                }
+            }))
             .on_mouse_up(MouseButton::Left, cx.listener(|this, _, window, cx| {
                 this.clear_drop_hover(cx);
                 if std::mem::take(&mut this.resizing_sidebar) {

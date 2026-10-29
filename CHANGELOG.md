@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.7.2
+
+### Drag and drop
+- Restore dragging local files and folders from Rile onto the desktop and into other apps on macOS and Windows using native drag sessions.
+- Preserve multi-selection and internal folder drops, and clear drag previews and hover state when handing files to the operating system.
+- Add regression coverage for native handoff at all four window edges.
+
 ## v0.7.1
 
 ### Backups

@@ -933,6 +933,54 @@ async fn drag_file_onto_folder_in_same_pane(cx: &mut TestAppContext) {
     wait_until(cx, "a.txt moved into sub", |_| root.join("sub/a.txt").exists() && !root.join("a.txt").exists());
 }
 
+/// Exercise the real row -> workspace -> native boundary, not just the payload
+/// resolver. Internal moves must stay internal, and each edge hands off once.
+#[cfg(any(target_os = "macos", windows))]
+#[gpui_kit::test]
+async fn external_drag_handoff_at_every_window_edge(cx: &mut TestAppContext) {
+    use gpui_kit::{Modifiers, MouseButton, VisualTestContext, point, px};
+    use crate::native_drag::Requests;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    fs::create_dir(root.join("sub")).unwrap();
+    fs::write(root.join("a.txt"), "x").unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["sub", "a.txt"]).await;
+    press(cx, window, &["cmd-a"]);
+
+    let mut vcx = VisualTestContext::from_window(window, cx);
+    vcx.run_until_parked();
+    let from = vcx.debug_bounds("entry-a.txt").unwrap().center();
+    let size = vcx.update(|window, _| window.viewport_size());
+    for (index, outside) in [
+        point(px(-10.), from.y),
+        point(size.width + px(10.), from.y),
+        point(from.x, px(-10.)),
+        point(from.x, size.height + px(10.)),
+    ].into_iter().enumerate() {
+        vcx.simulate_mouse_down(from, MouseButton::Left, Modifiers::none());
+        vcx.simulate_mouse_move(from + point(px(15.), px(0.)), MouseButton::Left, Modifiers::none());
+        vcx.run_until_parked();
+        assert!(vcx.update(|_, cx| cx.has_active_drag()));
+        assert_eq!(vcx.update(|_, cx| cx.default_global::<Requests>().0.len()), index);
+
+        vcx.simulate_mouse_move(outside, MouseButton::Left, Modifiers::none());
+        assert!(!vcx.update(|_, cx| cx.has_active_drag()), "native handoff clears internal drag");
+        // A later move or release must not export or perform an internal drop again.
+        vcx.simulate_mouse_move(outside, MouseButton::Left, Modifiers::none());
+        vcx.simulate_mouse_up(outside, MouseButton::Left, Modifiers::none());
+        vcx.run_until_parked();
+        vcx.update(|_, cx| {
+            let requests = &cx.global::<Requests>().0;
+            assert_eq!(requests.len(), index + 1);
+            assert_eq!(requests[index], vec![root.join("sub"), root.join("a.txt")]);
+        });
+    }
+    assert!(root.join("a.txt").exists());
+    assert!(root.join("sub").is_dir());
+}
+
 /// Native payloads include directory metadata and the full selection, rather
 /// than just the row under the mouse.
 #[gpui_kit::test]

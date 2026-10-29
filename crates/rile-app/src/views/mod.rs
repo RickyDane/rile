@@ -445,7 +445,10 @@ pub fn entry_interactions(
             let icon = if count > 1 { IconName::Files } else { entry_icon.clone() };
             cx.new(|_| DragPreview { icon, offset })
         })
-        .external_drag_payload(|d: &DraggedFiles, _, cx| d.external_payload(cx));
+        // macOS and Windows use our native handoff at the workspace boundary.
+        .when(!cfg!(any(target_os = "macos", windows)), |el| {
+            el.external_drag_payload(|d: &DraggedFiles, _, cx| d.external_payload(cx))
+        });
     if entry.is_dir {
         drop_target(el, entry.path.clone(), cx)
     } else {

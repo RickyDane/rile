@@ -14,6 +14,8 @@ mod icons;
 #[cfg(windows)]
 mod instance;
 mod jobs;
+#[cfg(any(target_os = "macos", windows))]
+mod native_drag;
 mod pane;
 mod platform_text;
 mod progress;
