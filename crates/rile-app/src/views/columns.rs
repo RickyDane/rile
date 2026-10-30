@@ -11,7 +11,7 @@ use rile_core::Entry;
 
 use super::{empty_message, entry_interactions, placeholder, prefs};
 use gpui_kit::assets::IconName;
-use crate::icons::{entry_icon, icon_for_entry};
+use crate::icons::entry_icon;
 use crate::pane::Pane;
 
 const COLUMN_WIDTH: f32 = 240.;
@@ -145,7 +145,7 @@ fn side_column(
                     .when(hl, |d| d.bg(ch.selection_inactive))
                     .cursor_pointer()
                     .hover(|s| s.bg(ch.hover_strong))
-                    .child(crate::icons::icon(icon_for_entry(e)).size_4().text_color(if e.is_dir { ch.accent } else { ch.sidebar_icon }))
+                    .child(entry_icon(e, 16., if e.is_dir { ch.accent } else { ch.sidebar_icon }, cx))
                     .child(div().flex_1().min_w_0().truncate().child(SharedString::from(e.name.clone())))
                     .when(clickable || is_dir, |d| {
                         d.cursor_pointer().on_mouse_down(

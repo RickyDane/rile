@@ -24,6 +24,7 @@ mod progress;
 mod remote;
 mod sidebar;
 mod statusbar;
+mod symbols;
 mod theme;
 mod views;
 mod workspace;

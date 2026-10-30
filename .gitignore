@@ -1,3 +1,4 @@
 target/
 /dist
 .playwright-mcp/
+__pycache__/

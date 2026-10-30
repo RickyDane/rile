@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rile Rich Symbols</title>
+<style>
+:root{
+  --page:#e9ebef; --page-ink:#1d2129; --page-mute:#5d6472; --sheet:#ffffff; --sheet-line:#d9dde4;
+  --win:#2a2b2f; --side:#323338; --bar:#2f3034; --line:#3d3e44; --ink:#e9eaee; --mute:#9a9ca4; --faint:#6f717a;
+  --row-alt:#2e2f33; --sel:#3f6595; --side-sel:#47484f; --accent:#4b9cf5;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#121316;--page-ink:#e7e8ec;--page-mute:#9a9ea8;--sheet:#1c1d21;--sheet-line:#2c2e33}}
+:root[data-theme="dark"]{--page:#121316;--page-ink:#e7e8ec;--page-mute:#9a9ea8;--sheet:#1c1d21;--sheet-line:#2c2e33}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--page-ink);font:14px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 16px 48px}
+h1{font-size:20px;margin:0 0 4px;font-weight:650}
+.lede{margin:0 0 20px;color:var(--page-mute);max-width:70ch}
+.stage{overflow-x:auto;padding:4px 0 12px}
+.win{width:1120px;height:720px;background:var(--win);border-radius:14px;display:grid;grid-template-columns:232px 1fr;overflow:hidden;box-shadow:0 0 0 1px #00000066,0 24px 60px #0005;color:var(--ink)}
+svg.i{display:block;flex:none}
+/* sidebar */
+.side{background:var(--side);border-right:1px solid #24252a;display:flex;flex-direction:column;min-height:0}
+.lights{display:flex;gap:8px;align-items:center;padding:18px 18px 10px}
+.lights i{width:12px;height:12px;border-radius:50%;display:block}
+.lights i:nth-child(1){background:#ff5f57}.lights i:nth-child(2){background:#febc2e}.lights i:nth-child(3){background:#28c840}
+.lights .sp{flex:1}
+.nav{flex:1;overflow:auto;padding:4px 10px}
+.sec{font-size:12px;font-weight:650;color:var(--mute);padding:14px 10px 6px;display:flex;justify-content:space-between;align-items:center}
+.it{display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-radius:7px;font-size:13.5px;color:#e4e5e9;cursor:default}
+.it:hover{background:#3b3c42}
+.it.on{background:var(--side-sel)}
+.it .meta{margin-left:auto;font-size:11.5px;color:var(--mute)}
+.dot{width:6px;height:6px;border-radius:50%;background:#3ccf86;margin-left:auto}
+.dev{background:linear-gradient(90deg,#3f3b33,#3a3730);position:relative}
+.dev::after{content:"";position:absolute;right:6px;top:5px;bottom:5px;width:3px;border-radius:2px;background:#e3a547}
+.sidefoot{border-top:1px solid #2a2b30;padding:10px 16px;display:flex;justify-content:flex-end}
+/* main */
+.main{display:flex;flex-direction:column;min-width:0}
+.top{height:58px;display:flex;align-items:center;gap:14px;padding:0 16px;border-bottom:1px solid #26272b}
+.crumbs{display:flex;align-items:center;gap:10px;font-size:13.5px;color:#cfd0d5;margin-left:18px}
+.crumbs b{color:#fff;font-weight:650}.crumbs s{text-decoration:none;color:var(--faint);font-size:10px}
+.search{margin-left:auto;width:290px;height:32px;border-radius:9px;background:#26272b;border:1px solid #393a40;display:flex;align-items:center;gap:8px;padding:0 10px;color:var(--mute);font-size:13.5px}
+.tabs{height:52px;display:flex;align-items:center;gap:16px;padding:0 8px;border-bottom:1px solid #26272b}
+.tab{display:flex;align-items:center;gap:8px;height:38px;width:200px;padding:0 12px;background:#45464c;border-radius:8px;font-size:13px}
+.tab .x{margin-left:auto;color:var(--mute)}
+.head{display:flex;align-items:center;gap:12px;padding:16px 28px;border-bottom:1px solid #2d2e33}
+.head h2{margin:0;font-size:20px;font-weight:700}.head small{color:var(--mute);font-size:12.5px}
+.seg{margin-left:auto;display:flex;gap:14px;align-items:center;color:#c7c8cd}
+.seg .grp{display:flex;background:#232428;border-radius:8px;padding:3px;gap:2px}
+.seg .grp span{width:32px;height:26px;display:grid;place-items:center;border-radius:6px}
+.seg .grp span.on{background:#4a4b51}
+.cols{display:grid;grid-template-columns:1fr 170px 56px 110px;padding:10px 20px 6px 46px;font-size:12.5px;color:#cfd0d5;font-weight:550}
+.list{flex:1;overflow:auto;padding:0 20px 8px}
+.row{display:grid;grid-template-columns:30px 1fr 170px 56px 110px;align-items:center;height:30px;padding:0 6px;border-radius:7px;font-size:13.5px}
+.row:nth-child(even){background:var(--row-alt)}
+.row.sel{background:var(--sel)}
+.row .d{color:#c3c4ca;font-variant-numeric:tabular-nums;font-size:12.5px}.row .s{color:var(--mute);text-align:right;padding-right:14px}.row .k{color:#c3c4ca;font-size:12.5px}
+.row.sel .d,.row.sel .k{color:#fff}
+.status{height:38px;border-top:1px solid #2a2b30;display:flex;align-items:center;gap:14px;padding:0 20px;font-size:12px;color:var(--mute)}
+/* sheet */
+.sheet{margin-top:28px;background:var(--sheet);border:1px solid var(--sheet-line);border-radius:14px;padding:22px}
+.sheet h3{margin:0 0 4px;font-size:15px}.sheet p{margin:0 0 16px;color:var(--page-mute);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:10px;margin-bottom:22px}
+.cell{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 6px 10px;border-radius:10px;border:1px solid var(--sheet-line);font-size:11.5px;color:var(--page-mute)}
+.cell .sizes{display:flex;align-items:flex-end;gap:10px}
+.toggle{display:inline-flex;gap:4px;padding:3px;border-radius:9px;background:var(--sheet);border:1px solid var(--sheet-line);margin-bottom:14px}
+.toggle button{font:inherit;font-size:12.5px;border:0;background:none;color:var(--page-mute);padding:5px 12px;border-radius:6px;cursor:pointer}
+.toggle button[aria-pressed="true"]{background:var(--accent);color:#fff}
+/* tinted variant: sidebar symbols become monochrome-accent */
+.win.tinted .side svg.sym{filter:grayscale(1) brightness(1.15) sepia(1) hue-rotate(175deg) saturate(3.2)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+  <!-- ===== folder base (matches crates/rile-app/assets/overview/folder.svg) ===== -->
+  <linearGradient id="fb" x1="8" y1="11" x2="56" y2="50" gradientUnits="userSpaceOnUse"><stop stop-color="#64c9ff"/><stop offset="1" stop-color="#2074c6"/></linearGradient>
+  <linearGradient id="ff" x1="9" y1="22" x2="53" y2="52" gradientUnits="userSpaceOnUse"><stop stop-color="#7ad1ff"/><stop offset=".55" stop-color="#359eea"/><stop offset="1" stop-color="#1876c8"/></linearGradient>
+  <symbol id="folder" viewBox="0 0 64 64">
+    <path d="M7 18a5 5 0 0 1 5-5h12l5 5h22a5 5 0 0 1 5 5v24a5 5 0 0 1-5 5H12a5 5 0 0 1-5-5Z" fill="url(#fb)"/>
+    <path d="M7 26a5 5 0 0 1 5-5h39a5 5 0 0 1 5 5v20a6 6 0 0 1-6 6H13a6 6 0 0 1-6-6Z" fill="url(#ff)"/>
+    <path d="M12 23h38" fill="none" stroke="#d8f4ff" stroke-opacity=".55" stroke-linecap="round"/>
+    <path d="M13 49h37" fill="none" stroke="#135a9c" stroke-opacity=".5" stroke-linecap="round"/>
+  </symbol>
+
+  <!-- ===== embossed folder glyphs (currentColor, 64 grid, centred on the front face) ===== -->
+  <symbol id="g-apps" viewBox="0 0 64 64"><g fill="currentColor"><rect x="23" y="28" width="7.5" height="7.5" rx="2"/><rect x="33.5" y="28" width="7.5" height="7.5" rx="2"/><rect x="23" y="38.5" width="7.5" height="7.5" rx="2"/><rect x="33.5" y="38.5" width="7.5" height="7.5" rx="3.75"/></g></symbol>
+  <symbol id="g-desktop" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="21.5" y="28" width="21" height="13.5" rx="2"/><path d="M28 46.5h8M32 41.5v5"/></g></symbol>
+  <symbol id="g-docs" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M26 27h8l5 5v13a1.5 1.5 0 0 1-1.5 1.5h-11.5A1.5 1.5 0 0 1 24.5 45V28.5A1.5 1.5 0 0 1 26 27Z"/><path d="M28.5 36h6M28.5 40.5h6"/></g></symbol>
+  <symbol id="g-down" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="37" r="9.5"/><path d="M32 31.5v10M27.8 37.6 32 41.8l4.2-4.2"/></g></symbol>
+  <symbol id="g-library" viewBox="0 0 64 64"><g fill="currentColor"><rect x="22.5" y="28" width="5" height="18" rx="1.2"/><rect x="29.5" y="30" width="5" height="16" rx="1.2"/><rect x="36.4" y="28.6" width="5" height="17.5" rx="1.2" transform="rotate(-14 38.9 37.35)"/></g></symbol>
+  <symbol id="g-movies" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><rect x="21.5" y="28.5" width="21" height="17" rx="2.5"/><path d="M27 28.5v17M37 28.5v17M21.5 37h5.5M37 37h5.5"/></g></symbol>
+  <symbol id="g-music" viewBox="0 0 64 64"><g fill="currentColor"><path d="M28.5 43.5V31l11.5-3v12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><circle cx="25.6" cy="43.6" r="3.4"/><circle cx="37.1" cy="40.4" r="3.4"/></g></symbol>
+  <symbol id="g-pics" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><rect x="21.5" y="28.5" width="21" height="17" rx="2.5"/></g><g fill="currentColor"><path d="M23 44.5 29 38l4 4 3-2.5 5.5 5Z"/><circle cx="36.6" cy="33.4" r="2"/></g></symbol>
+  <symbol id="g-public" viewBox="0 0 64 64"><g fill="currentColor"><circle cx="32" cy="32.5" r="4.6"/><path d="M23.5 46.5a8.5 8.5 0 0 1 17 0Z"/></g></symbol>
+  <symbol id="g-games" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M26 31h12a5.5 5.5 0 0 1 5.3 6.9l-1.4 5a2.6 2.6 0 0 1-4.4 1.1L35 41.5h-6L26.5 44a2.6 2.6 0 0 1-4.4-1.1l-1.4-5A5.5 5.5 0 0 1 26 31Z"/><path d="M27 34.5v4M25 36.5h4"/></g><g fill="currentColor"><circle cx="36.5" cy="35.4" r="1.4"/><circle cx="39" cy="38" r="1.4"/></g></symbol>
+  <symbol id="g-code" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M26.5 31.5 21 37l5.5 5.5M37.5 31.5 43 37l-5.5 5.5M34 29.5l-4 15"/></g></symbol>
+  <symbol id="g-box" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M32 27.5 41 32v10L32 46.5 23 42V32Z"/><path d="M23 32l9 4.5 9-4.5M32 36.5v10"/></g></symbol>
+  <symbol id="g-work" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><rect x="21.5" y="31.5" width="21" height="14" rx="2.5"/><path d="M28 31.5v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M21.5 37.5h21"/></g></symbol>
+  <symbol id="g-vm" viewBox="0 0 64 64"><g fill="currentColor"><rect x="25" y="27.5" width="5" height="19" rx="1.4"/><rect x="34" y="27.5" width="5" height="19" rx="1.4"/></g></symbol>
+  <symbol id="g-api" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M33.5 27.5 26 38h6l-1.5 8.5L38 36h-6Z"/></g></symbol>
+  <symbol id="g-cube" viewBox="0 0 64 64"><g fill="currentColor"><path d="M32 27 41 32l-9 5-9-5Z" opacity=".9"/><path d="M23 33.6l8 4.4v9.5l-8-4.5Z" opacity=".75"/><path d="M41 33.6 33 38v9.5l8-4.5Z" opacity=".55"/></g></symbol>
+
+  <!-- ===== full-colour sidebar symbols (64 grid) ===== -->
+  <linearGradient id="h-roof" x1="32" y1="10" x2="32" y2="38" gradientUnits="userSpaceOnUse"><stop stop-color="#ff9e5e"/><stop offset="1" stop-color="#e2502b"/></linearGradient>
+  <linearGradient id="h-wall" x1="32" y1="20" x2="32" y2="56" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#cdd4e0"/></linearGradient>
+  <linearGradient id="blue" x1="32" y1="6" x2="32" y2="58" gradientUnits="userSpaceOnUse"><stop stop-color="#5fd0ff"/><stop offset="1" stop-color="#1a72dc"/></linearGradient>
+  <symbol id="s-home" viewBox="0 0 64 64">
+    <rect x="41" y="13" width="7" height="13" rx="1.5" fill="#c7452a"/>
+    <path d="M14 31v19a5 5 0 0 0 5 5h26a5 5 0 0 0 5-5V31L32 15Z" fill="url(#h-wall)"/>
+    <rect x="26.5" y="37" width="11" height="18" rx="2.5" fill="url(#blue)"/>
+    <path d="M7.9 31.4 28.6 11.6a4.9 4.9 0 0 1 6.8 0l20.7 19.8a3.2 3.2 0 0 1-4.4 4.6L32 17.3 12.3 36a3.2 3.2 0 0 1-4.4-4.6Z" fill="url(#h-roof)"/>
+  </symbol>
+
+  <linearGradient id="sky" x1="32" y1="20" x2="32" y2="50" gradientUnits="userSpaceOnUse"><stop stop-color="#8fd9ff"/><stop offset="1" stop-color="#3c8fe9"/></linearGradient>
+  <linearGradient id="hill" x1="32" y1="30" x2="32" y2="52" gradientUnits="userSpaceOnUse"><stop stop-color="#5bd47a"/><stop offset="1" stop-color="#1f9448"/></linearGradient>
+  <linearGradient id="card" x1="32" y1="10" x2="32" y2="54" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#dfe4ec"/></linearGradient>
+  <linearGradient id="amber" x1="16" y1="8" x2="48" y2="50" gradientUnits="userSpaceOnUse"><stop stop-color="#ffd76a"/><stop offset="1" stop-color="#f29a1f"/></linearGradient>
+  <clipPath id="pic-a"><rect x="18" y="24" width="34" height="24" rx="2.5"/></clipPath>
+  <clipPath id="pic-b"><rect x="12" y="17" width="40" height="31" rx="3"/></clipPath>
+  <symbol id="s-photos" viewBox="0 0 64 64">
+    <rect x="8" y="12" width="38" height="32" rx="5" fill="url(#amber)" transform="rotate(-11 27 28)"/>
+    <rect x="14" y="20" width="42" height="32" rx="5" fill="url(#card)"/>
+    <g clip-path="url(#pic-a)"><rect x="18" y="24" width="34" height="24" fill="url(#sky)"/><path d="M16 50 27 37l7 7 5-5 15 13Z" fill="url(#hill)"/><circle cx="44" cy="31" r="3.6" fill="#ffe680"/></g>
+  </symbol>
+  <symbol id="s-pictures" viewBox="0 0 64 64">
+    <rect x="8" y="13" width="48" height="39" rx="6" fill="url(#card)"/>
+    <g clip-path="url(#pic-b)"><rect x="12" y="17" width="40" height="31" fill="url(#sky)"/><path d="M8 52 23 34l9 9 6-6 18 17Z" fill="url(#hill)"/><circle cx="42" cy="26" r="4.5" fill="#ffe680"/></g>
+  </symbol>
+
+  <linearGradient id="d-blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#5ec6ff"/><stop offset="1" stop-color="#1c6fd8"/></linearGradient>
+  <linearGradient id="d-teal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#5ff0cf"/><stop offset="1" stop-color="#14a88e"/></linearGradient>
+  <linearGradient id="d-orange" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffc35a"/><stop offset="1" stop-color="#f2711f"/></linearGradient>
+  <symbol id="s-space" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="19" fill="none" stroke="#545862" stroke-width="11"/>
+    <g transform="rotate(-90 32 32)" fill="none" stroke-width="11">
+      <circle cx="32" cy="32" r="19" stroke="#2f8df0" stroke-dasharray="56 120"/>
+      <circle cx="32" cy="32" r="19" stroke="#1fc4a1" stroke-dasharray="30 120" stroke-dashoffset="-57.5"/>
+      <circle cx="32" cy="32" r="19" stroke="#f5932c" stroke-dasharray="17 120" stroke-dashoffset="-89"/>
+    </g>
+    <circle cx="32" cy="32" r="24.5" fill="none" stroke="#fff" stroke-opacity=".14"/>
+  </symbol>
+
+  <linearGradient id="teal" x1="32" y1="6" x2="32" y2="58" gradientUnits="userSpaceOnUse"><stop stop-color="#4fe0bf"/><stop offset="1" stop-color="#0e9480"/></linearGradient>
+  <symbol id="s-backup" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="25" fill="url(#teal)"/>
+    <path d="M19.6 34A12.5 12.5 0 1 0 23 23.2" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round"/>
+    <path d="M17.4 17.6 18 27.8l10-2.4Z" fill="#fff" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M32 26v7.5l5 3" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <linearGradient id="metal" x1="32" y1="10" x2="32" y2="56" gradientUnits="userSpaceOnUse"><stop stop-color="#f3f5f9"/><stop offset="1" stop-color="#a6afbe"/></linearGradient>
+  <linearGradient id="wall-p" x1="11" y1="15" x2="53" y2="42" gradientUnits="userSpaceOnUse"><stop stop-color="#5a8cff"/><stop offset=".55" stop-color="#a056f0"/><stop offset="1" stop-color="#ff7aa2"/></linearGradient>
+  <symbol id="s-desktop" viewBox="0 0 64 64">
+    <path d="M26 44h12l2.4 8H23.6Z" fill="#aeb6c4"/>
+    <rect x="20" y="50" width="24" height="5" rx="2.5" fill="#8d96a6"/>
+    <rect x="6" y="10" width="52" height="36" rx="5" fill="url(#metal)"/>
+    <rect x="9.5" y="13.5" width="45" height="29" rx="2.5" fill="url(#wall-p)"/>
+    <path d="M9.5 34c10-6 22-2 45-10v16a2.5 2.5 0 0 1-2.5 2.5H12a2.5 2.5 0 0 1-2.5-2.5Z" fill="#fff" fill-opacity=".18"/>
+  </symbol>
+
+  <symbol id="s-docs" viewBox="0 0 64 64">
+    <path d="M17 6h21l14 14v33a5 5 0 0 1-5 5H17a5 5 0 0 1-5-5V11a5 5 0 0 1 5-5Z" fill="url(#card)"/>
+    <path d="M38 6v9a5 5 0 0 0 5 5h9Z" fill="#b9c3d2"/>
+    <rect x="18" y="15" width="13" height="4" rx="2" fill="#2f6fd8"/>
+    <rect x="18" y="27" width="28" height="3.2" rx="1.6" fill="#5d9bf5"/>
+    <rect x="18" y="34" width="28" height="3.2" rx="1.6" fill="#5d9bf5"/>
+    <rect x="18" y="41" width="28" height="3.2" rx="1.6" fill="#5d9bf5"/>
+    <rect x="18" y="48" width="17" height="3.2" rx="1.6" fill="#5d9bf5"/>
+  </symbol>
+
+  <linearGradient id="green" x1="32" y1="6" x2="32" y2="58" gradientUnits="userSpaceOnUse"><stop stop-color="#62e08a"/><stop offset="1" stop-color="#159a4e"/></linearGradient>
+  <symbol id="s-down" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="25" fill="url(#blue)"/>
+    <path d="M32 17v22M22.5 30.5 32 40l9.5-9.5" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M21 47h22" stroke="#fff" stroke-width="4.4" stroke-linecap="round"/>
+  </symbol>
+
+  <linearGradient id="pink" x1="32" y1="6" x2="32" y2="58" gradientUnits="userSpaceOnUse"><stop stop-color="#ff7c98"/><stop offset="1" stop-color="#e01f55"/></linearGradient>
+  <symbol id="s-music" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="25" fill="url(#pink)"/>
+    <path d="M27.5 42V23.5l15-4V38" fill="none" stroke="#fff" stroke-width="3.6" stroke-linejoin="round"/>
+    <path d="M27.5 23.5l15-4v5.5l-15 4Z" fill="#fff"/>
+    <ellipse cx="23.2" cy="42.6" rx="5.2" ry="4.4" fill="#fff" transform="rotate(-18 23.2 42.6)"/>
+    <ellipse cx="38.2" cy="38.6" rx="5.2" ry="4.4" fill="#fff" transform="rotate(-18 38.2 38.6)"/>
+  </symbol>
+
+  <linearGradient id="slate" x1="32" y1="20" x2="32" y2="56" gradientUnits="userSpaceOnUse"><stop stop-color="#3a4052"/><stop offset="1" stop-color="#1b1f2b"/></linearGradient>
+  <clipPath id="clap"><rect x="0" y="0" width="48" height="9" rx="2.5"/></clipPath>
+  <symbol id="s-movies" viewBox="0 0 64 64">
+    <rect x="8" y="25" width="48" height="30" rx="5" fill="url(#slate)"/>
+    <path d="M27 33.5v13.6a.9.9 0 0 0 1.4.8l11-6.8a.9.9 0 0 0 0-1.6l-11-6.8a.9.9 0 0 0-1.4.8Z" fill="url(#d-orange)"/>
+    <g transform="translate(7 12) rotate(-13)">
+      <g clip-path="url(#clap)"><rect width="48" height="9" fill="#262b38"/><path d="M4 9 10 0h6l-6 9Zm12 0 6-9h6l-6 9Zm12 0 6-9h6l-6 9Zm12 0 6-9h6l-6 9Z" fill="#f2f4f8"/></g>
+    </g>
+    <circle cx="9.5" cy="23.5" r="2.2" fill="#8e97a8"/>
+  </symbol>
+
+  <clipPath id="globe-c"><circle cx="32" cy="32" r="24"/></clipPath>
+  <symbol id="s-globe" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="25" fill="url(#blue)"/>
+    <g clip-path="url(#globe-c)" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="2.4">
+      <ellipse cx="32" cy="32" rx="10.5" ry="25"/><path d="M32 6v52M6 32h52M10 20c12 4 32 4 44 0M10 44c12-4 32-4 44 0"/>
+    </g>
+  </symbol>
+
+  <linearGradient id="cloud" x1="32" y1="14" x2="32" y2="50" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#c6dcf7"/></linearGradient>
+  <symbol id="s-cloud" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="25" fill="url(#blue)"/>
+    <path d="M22 44a8 8 0 0 1-1.3-15.9A11.5 11.5 0 0 1 43 26.6 8.7 8.7 0 0 1 43.5 44Z" fill="url(#cloud)"/>
+    <path d="M32 31v8M28.5 35.5 32 39l3.5-3.5" fill="none" stroke="#1d72d8" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <linearGradient id="drive-f" x1="32" y1="36" x2="32" y2="48" gradientUnits="userSpaceOnUse"><stop stop-color="#9aa3b2"/><stop offset="1" stop-color="#6e7788"/></linearGradient>
+  <symbol id="s-drive" viewBox="0 0 64 64">
+    <rect x="5" y="18" width="54" height="30" rx="6" fill="url(#metal)"/>
+    <path d="M5 36h54v6a6 6 0 0 1-6 6H11a6 6 0 0 1-6-6Z" fill="url(#drive-f)"/>
+    <path d="M12 42h20" stroke="#4d5462" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="50" cy="42" r="2.6" fill="#45e183"/><circle cx="50" cy="42" r="5" fill="#45e183" fill-opacity=".2"/>
+    <path d="M10 23h44" stroke="#fff" stroke-opacity=".8" stroke-linecap="round"/>
+  </symbol>
+
+  <linearGradient id="gear" x1="32" y1="6" x2="32" y2="58" gradientUnits="userSpaceOnUse"><stop stop-color="#d6dce6"/><stop offset="1" stop-color="#7c8596"/></linearGradient>
+  <symbol id="s-gear" viewBox="0 0 64 64">
+    <g fill="url(#gear)">
+      <circle cx="32" cy="32" r="18"/>
+      <rect x="27.5" y="6" width="9" height="13" rx="2.5"/><rect x="27.5" y="6" width="9" height="13" rx="2.5" transform="rotate(45 32 32)"/>
+      <rect x="27.5" y="6" width="9" height="13" rx="2.5" transform="rotate(90 32 32)"/><rect x="27.5" y="6" width="9" height="13" rx="2.5" transform="rotate(135 32 32)"/>
+      <rect x="27.5" y="6" width="9" height="13" rx="2.5" transform="rotate(180 32 32)"/><rect x="27.5" y="6" width="9" height="13" rx="2.5" transform="rotate(225 32 32)"/>
+      <rect x="27.5" y="6" width="9" height="13" rx="2.5" transform="rotate(270 32 32)"/><rect x="27.5" y="6" width="9" height="13" rx="2.5" transform="rotate(315 32 32)"/>
+    </g>
+    <circle cx="32" cy="32" r="7.5" fill="#3b404c"/>
+  </symbol>
+</defs>
+</svg>
+
+<div class="wrap">
+  <h1>Rich symbols</h1>
+  <p class="lede">The current explorer with its outline icons replaced by full-colour 64&nbsp;px-grid symbols. Folders reuse the Overview folder art, and well-known folders get an embossed glyph on the front face.</p>
+
+  <div class="toggle" role="group" aria-label="Sidebar style">
+    <button type="button" data-mode="color" aria-pressed="true">Sidebar: full colour</button>
+    <button type="button" data-mode="tinted" aria-pressed="false">Sidebar: accent tinted</button>
+  </div>
+
+  <div class="stage">
+  <div class="win" id="win">
+    <aside class="side">
+      <div class="lights"><i></i><i></i><i></i><span class="sp"></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a3a5ad" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/></svg></div>
+      <nav class="nav" id="nav"></nav>
+      <div class="sidefoot"><svg class="i sym" width="18" height="18"><use href="#s-gear"/></svg></div>
+    </aside>
+    <section class="main">
+      <div class="top">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9cad0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+        <svg width="22" height="22"><use href="#s-home"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f717a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        <div class="crumbs"><svg width="16" height="16"><use href="#s-drive"/></svg>Macintosh HD<s>▶</s><svg width="16" height="16"><use href="#folder"/></svg>Users<s>▶</s><svg width="16" height="16"><use href="#s-home"/></svg><b>rickyperlick</b></div>
+        <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>Search this folder</div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a3a5ad" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M15 4v16"/></svg>
+      </div>
+      <div class="tabs">
+        <div class="tab"><svg width="18" height="18"><use href="#folder"/></svg>rickyperlick<span class="x">✕</span></div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c9cad0" stroke-width="1.7" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg>
+        <span style="color:#c9cad0;font-size:22px;line-height:1">+</span>
+      </div>
+      <div class="head">
+        <svg width="30" height="30"><use href="#folder"/></svg>
+        <h2>rickyperlick</h2><small>24 items</small>
+        <div class="seg">
+          <div class="grp"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></span><span class="on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></span><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M10 4v16M15 4v16"/></svg></span></div>
+          <span style="color:#9a9ca4">···</span>
+        </div>
+      </div>
+      <div class="cols"><span>Name ↑</span><span>Date Modified</span><span style="text-align:right;padding-right:14px">Size</span><span>Kind</span></div>
+      <div class="list" id="list"></div>
+      <div class="status"><span>24 items</span><span>·</span><span>1 selected · 0 B</span></div>
+    </section>
+  </div>
+  </div>
+
+  <div class="sheet">
+    <h3>Sidebar symbols</h3>
+    <p>Each one is drawn on a 64&nbsp;px grid and shown here at 16, 20, 32 and 48&nbsp;px. Gradients run top to bottom with a light source from above.</p>
+    <div class="grid" id="sheet-side"></div>
+    <h3>Folder variants</h3>
+    <p>The glyphs are embossed in <code>#0b3f78</code> at 78% opacity, with a 1&nbsp;px highlight underneath, so they read at 16&nbsp;px without breaking up the folder.</p>
+    <div class="grid" id="sheet-folders"></div>
+  </div>
+</div>
+
+<script>
+const side = [
+  ["Library"],
+  ["s-home","Home"],["s-photos","Photos"],["s-space","Space Analyzer"],["s-backup","Backups"],
+  ["Locations"],
+  ["s-home","Home",{on:1}],["s-desktop","Desktop"],["s-docs","Documents"],["s-down","Downloads"],["s-pictures","Pictures"],["s-music","Music"],["s-movies","Movies"],
+  ["Favorites"],
+  ["Network",{plus:1}],
+  ["s-cloud","RP GDrive P…",{dot:1}],
+  ["Nearby",{chev:1}],
+  ["Devices"],
+  ["s-drive","Maci…",{meta:"37.42 GB",dev:1}],
+];
+const nav = document.getElementById("nav");
+nav.innerHTML = side.map(([a,b,o]) => {
+  if (b === undefined || typeof b === "object") {
+    const opt = b || {};
+    return `<div class="sec">${a}${opt.plus ? '<span style="font-size:17px;font-weight:400">+</span>' : opt.chev ? '<span style="font-size:10px">▶</span>' : ''}</div>`;
+  }
+  o = o || {};
+  return `<div class="it${o.on?" on":""}${o.dev?" dev":""}"><svg class="i sym" width="20" height="20"><use href="#${a}"/></svg>${b}${o.meta?`<span class="meta">${o.meta}</span>`:""}${o.dot?'<span class="dot"></span>':""}</div>`;
+}).join("");
+
+const folder = (glyph, size) => `<svg class="i" width="${size}" height="${size}" viewBox="0 0 64 64"><use href="#folder"/>${glyph ? `<use href="#${glyph}" color="#e6f6ff" opacity=".45" transform="translate(0 1.2)"/><use href="#${glyph}" color="#0b3f78" opacity=".78"/>` : ""}</svg>`;
+
+const rows = [
+  ["Applications","g-apps","Oct 25, 2026, 10:17"],
+  ["Applications (Parallels)","g-apps","Oct 27, 2026, 23:23"],
+  ["Coding","g-code","Yesterday, 22:52"],
+  ["Desktop","g-desktop","Today, 14:46",1],
+  ["Documents","g-docs","Yesterday, 18:51"],
+  ["Downloads","g-down","Today, 17:28"],
+  ["Games","g-games","Jun 7, 2026, 10:59"],
+  ["go",null,"Feb 5, 2025, 19:36"],
+  ["Library","g-library","Oct 27, 2026, 20:33"],
+  ["Movies","g-movies","Oct 16, 2026, 10:49"],
+  ["Music","g-music","May 11, 2026, 18:51"],
+  ["mydata",null,"Feb 5, 2025, 19:36"],
+  ["Packages","g-box","Oct 28, 2026, 10:46"],
+  ["Parallels","g-vm","May 2, 2026, 19:40"],
+  ["Pictures","g-pics","Oct 28, 2026, 13:53"],
+  ["Postman","g-api","Sep 26, 2024, 09:05"],
+  ["Programs",null,"Apr 19, 2026, 10:23"],
+  ["Projects","g-work","Sep 22, 2026, 08:37"],
+  ["Public","g-public","Feb 11, 2026, 11:40"],
+  ["untitled folder",null,"Yesterday, 10:41"],
+];
+document.getElementById("list").innerHTML = rows.map(([n,g,d,sel]) =>
+  `<div class="row${sel?" sel":""}">${folder(g,22)}<span>${n}</span><span class="d">${d}</span><span class="s">—</span><span class="k">Folder</span></div>`).join("");
+
+const sizes = [16,20,32,48];
+document.getElementById("sheet-side").innerHTML = [
+  ["s-home","Home"],["s-photos","Photos"],["s-space","Space Analyzer"],["s-backup","Backups"],["s-desktop","Desktop"],["s-docs","Documents"],
+  ["s-down","Downloads"],["s-pictures","Pictures"],["s-music","Music"],["s-movies","Movies"],["s-globe","Network"],["s-cloud","Cloud share"],["s-drive","Drive"],["s-gear","Settings"],
+].map(([id,l]) => `<div class="cell"><div class="sizes">${sizes.map(s=>`<svg width="${s}" height="${s}"><use href="#${id}"/></svg>`).join("")}</div>${l}</div>`).join("");
+document.getElementById("sheet-folders").innerHTML = [
+  [null,"Plain"],["g-apps","Applications"],["g-desktop","Desktop"],["g-docs","Documents"],["g-down","Downloads"],["g-library","Library"],["g-movies","Movies"],["g-music","Music"],
+  ["g-pics","Pictures"],["g-public","Public"],["g-code","Code"],["g-games","Games"],["g-box","Packages"],["g-work","Projects"],["g-vm","Virtual machines"],["g-api","API"],["g-cube","3D / Models"],
+].map(([g,l]) => `<div class="cell"><div class="sizes">${sizes.map(s=>folder(g,s)).join("")}</div>${l}</div>`).join("");
+
+const win = document.getElementById("win");
+document.querySelectorAll(".toggle button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".toggle button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  win.classList.toggle("tinted", b.dataset.mode === "tinted");
+}));
+</script>
+</body>
+</html>

@@ -14,7 +14,7 @@ use gpui_kit::{
 };
 #[cfg(not(windows))]
 use rile_core::settings::AppIcon;
-use rile_core::settings::{Accent, Density, FileCategory, IconSet, Settings, StartLocation, SymbolStyle, ThemeMode, ViewKind};
+use rile_core::settings::{Accent, Density, FileCategory, IconColor, IconSet, Settings, StartLocation, SymbolStyle, ThemeMode, ViewKind};
 
 use crate::views::kit::PointerUnless;
 use crate::theme::accent_color;
@@ -962,6 +962,41 @@ impl Render for SettingsView {
                             })
                     }))
                     .into_any_element();
+                let symbol_preview = [IconName::House, IconName::Download, IconName::Music, IconName::Folder];
+                let icon_colors = h_flex()
+                    .gap(px(6.))
+                    .children(IconColor::ALL.into_iter().map(|mode| {
+                        let ws = self.ws.clone();
+                        let selected = s.icon_color == mode;
+                        let previous = crate::symbols::icon_color();
+                        // Draw the preview symbols in that mode.
+                        crate::symbols::set_icon_color(mode);
+                        let glyphs = h_flex().gap(px(4.)).children(
+                            symbol_preview.iter().map(|i| crate::symbols::place_icon(*i, 14., if selected { ch.accent } else { ch.text_muted }, ch.accent)),
+                        );
+                        crate::symbols::set_icon_color(previous);
+                        v_flex()
+                            .id(mode.label())
+                            .items_center()
+                            .gap(px(5.))
+                            .px(px(9.))
+                            .py(px(7.))
+                            .rounded(px(8.))
+                            .cursor_pointer()
+                            .border_1()
+                            .border_color(if selected { ch.accent.opacity(0.6) } else { ch.hairline })
+                            .when(selected, |d| d.bg(ch.accent_soft))
+                            .hover(|d| d.bg(ch.hover_strong))
+                            .child(glyphs)
+                            .child(div().text_size(px(10.)).text_color(if selected { ch.text_strong } else { ch.text_muted }).child(mode.label()))
+                            .on_click(move |_, window, cx| {
+                                ws.update(cx, |ws, cx| {
+                                    ws.settings.icon_color = mode;
+                                    ws.settings_changed(window, cx);
+                                })
+                            })
+                    }))
+                    .into_any_element();
                 #[cfg(not(windows))]
                 let app_icons = h_flex()
                     .flex_wrap()
@@ -1037,6 +1072,7 @@ impl Render for SettingsView {
                     .into_any_element();
                 let icon_card = kit::card(cx)
                     .child(kit::row("Icon style", "Used across the sidebar, toolbar, menus and files", icon_sets, true, &ch))
+                    .child(kit::row("Places and folders", "Sidebar places and folders in the file list", icon_colors, true, &ch))
                     .child(
                         kit::row("Symbol style", "Full-color artwork on the Overview, devices and storage", symbol_styles, false, &ch)
                             .items_start(),

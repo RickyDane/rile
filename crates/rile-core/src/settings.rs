@@ -165,11 +165,11 @@ pub enum StartLocation {
 #[serde(rename_all = "lowercase")]
 pub enum IconSet {
     /// Lucide outlines (the original look).
-    #[default]
     Outline,
     /// Solid Phosphor glyphs.
     Filled,
     /// Phosphor two-tone: outline plus a translucent fill.
+    #[default]
     Duotone,
     /// Thin Phosphor strokes.
     Light,
@@ -194,6 +194,31 @@ impl IconSet {
             IconSet::Filled => Some("fill"),
             IconSet::Duotone => Some("duotone"),
             IconSet::Light => Some("light"),
+        }
+    }
+}
+
+/// How sidebar places and folders in the file list are drawn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum IconColor {
+    /// Single-color glyphs of the icon style.
+    Outline,
+    /// Full-color symbols; well-known folders carry an embossed glyph.
+    #[default]
+    Color,
+    /// The full-color symbols recolored in the accent color.
+    Tinted,
+}
+
+impl IconColor {
+    pub const ALL: [IconColor; 3] = [IconColor::Outline, IconColor::Color, IconColor::Tinted];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            IconColor::Outline => "Outline",
+            IconColor::Color => "Color",
+            IconColor::Tinted => "Tinted",
         }
     }
 }
@@ -370,6 +395,8 @@ pub struct Settings {
     pub last_location: Option<PathBuf>,
     /// Icon style of the whole UI.
     pub icon_set: IconSet,
+    /// Sidebar and folder symbols: outline, full color or accent-tinted.
+    pub icon_color: IconColor,
     /// Dock icon artwork.
     pub app_icon: AppIcon,
     /// Style of the full-color symbols.
@@ -522,7 +549,8 @@ impl Default for Settings {
             start_location: StartLocation::Home,
             start_dir: None,
             last_location: None,
-            icon_set: IconSet::Outline,
+            icon_set: IconSet::default(),
+            icon_color: IconColor::default(),
             app_icon: AppIcon::FolioBolt,
             symbol_style: SymbolStyle::DEFAULT,
             glass: false,

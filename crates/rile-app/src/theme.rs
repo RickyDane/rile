@@ -46,6 +46,7 @@ pub fn apply(settings: &Settings, window: &mut Window, cx: &mut App) {
     apply_accent(settings.accent, cx);
     crate::app_icon::install(settings.app_icon, settings.accent);
     crate::icons::set_icon_set(settings.icon_set);
+    crate::symbols::set_icon_color(settings.icon_color);
     crate::art::set_symbol_style(settings.symbol_style);
     crate::art::set_thumbnail_quality(settings.thumbnail_quality);
     let chrome = Chrome::new(settings, cx);

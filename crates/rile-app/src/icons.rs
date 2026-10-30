@@ -33,8 +33,8 @@ gpui_kit::assets::icon_assets!(
     ]
 );
 
-/// The icon style in use (index into [`IconSet::ALL`]).
-static ICON_SET: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+/// The icon style in use (index into [`IconSet::ALL`]); starts as the default.
+static ICON_SET: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(2);
 
 pub fn set_icon_set(set: IconSet) {
     let ix = IconSet::ALL.iter().position(|s| *s == set).unwrap_or(0);
@@ -344,14 +344,24 @@ pub fn app_icon<V: 'static>(app: &std::path::Path, size: f32, color: gpui_kit::H
     }
 }
 
-/// Icon element for an entry: the real app icon for bundles, else the
-/// Lucide icon tinted like the rest of the UI.
+/// Icon element for an entry: the real app icon for bundles, the folder
+/// symbol for folders (unless symbols are set to outline), else the Lucide
+/// icon tinted like the rest of the UI.
 pub fn entry_icon<V: 'static>(entry: &Entry, size: f32, color: gpui_kit::Hsla, cx: &mut gpui_kit::Context<V>) -> gpui_kit::AnyElement {
     use gpui_kit::{IntoElement, Styled, StyledImage};
     let view = cx.entity_id();
     match native_icon(entry, view, cx) {
         Some(image) => gpui_kit::img(image).size(gpui_kit::px(size)).object_fit(gpui_kit::ObjectFit::Contain).into_any_element(),
-        None => icon(icon_for_entry(entry)).size(gpui_kit::px(size)).text_color(color).into_any_element(),
+        None => {
+            if !is_app_bundle(entry)
+                // The artwork fills its box edge to edge; nudge it up a size
+                // to match the weight of the outline glyphs.
+                && let Some(folder) = crate::symbols::folder_icon(entry, size + 2., crate::theme::chrome(cx).accent)
+            {
+                return folder;
+            }
+            icon(icon_for_entry(entry)).size(gpui_kit::px(size)).text_color(color).into_any_element()
+        }
     }
 }
 

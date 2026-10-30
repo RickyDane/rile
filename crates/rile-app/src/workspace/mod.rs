@@ -21,6 +21,7 @@ mod remote_ops;
 mod rewards;
 mod search;
 pub mod shelf;
+mod swipe;
 mod sources;
 mod speedtest;
 mod tabs;
@@ -169,6 +170,8 @@ pub struct Workspace {
     /// Measured width of each pane slot (0 until first painted). Layout
     /// inside a slot follows this, not the window width.
     pub slot_widths: [f32; 2],
+    /// Trackpad swipe state of each pane slot.
+    swipe: [swipe::Swipe; 2],
     /// The inspector floating over narrow windows; starts closed there so
     /// it never covers the files by default.
     pub inspector_overlay: bool,
@@ -278,6 +281,7 @@ impl Workspace {
             sidebar_visible: true,
             sidebar_transition: None,
             slot_widths: [0.; 2],
+            swipe: Default::default(),
             inspector_overlay: false,
             overview: Default::default(),
             rewards: Default::default(),
@@ -668,7 +672,7 @@ impl Workspace {
     pub fn settings_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let defaults = Settings::default();
         if self.settings.theme != defaults.theme || self.settings.accent != defaults.accent || self.settings.icon_set != defaults.icon_set
-            || self.settings.symbol_style != defaults.symbol_style
+            || self.settings.symbol_style != defaults.symbol_style || self.settings.icon_color != defaults.icon_color
         {
             self.reward_event(rile_services::rewards::Event::Personalized, cx);
         }
@@ -953,21 +957,7 @@ impl Workspace {
     fn render_pane_slot(&mut self, ix: usize, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let pane = self.panes[ix].clone();
         let location = pane.read(cx).location.clone();
-        let content = if location == Location::Home {
-            views::home::render(self, ix, window, cx).into_any_element()
-        } else if location == Location::Gallery {
-            views::gallery::render(self, ix, window, cx)
-        } else if location == Location::Backups {
-            views::backups::render(self, ix, window, cx)
-        } else if location == Location::Devices {
-            views::devices::render(self, ix, window, cx)
-        } else if let Location::SpaceAnalyzer(focus) = &location {
-            views::space_analyzer::render(self, ix, focus.clone(), window, cx)
-        } else if let Location::PluginPage { plugin, page, .. } = &location {
-            views::plugin_page::render(self, ix, plugin, page, window, cx)
-        } else {
-            views::chrome::render_browser(self, pane, ix, window, cx).into_any_element()
-        };
+        let content = self.render_page(pane, &location, ix, window, cx);
         let hairline = crate::theme::chrome(cx).hairline;
         let ws = cx.entity();
         v_flex()
@@ -983,7 +973,7 @@ impl Workspace {
                     .when(ix == 1, |d| d.justify_end())
                     .child(self.render_drive_selector(ix, cx)))
             })
-            .child(content)
+            .child(self.render_swipe(ix, content, window, cx))
             // Records the slot's width so its layout can adapt to it.
             .child(
                 gpui_kit::canvas(
@@ -1001,6 +991,25 @@ impl Workspace {
                 .absolute()
                 .size_full(),
             )
+    }
+
+    /// The page for `location` in slot `ix`; `pane` supplies folder listings.
+    pub(super) fn render_page(&mut self, pane: Entity<Pane>, location: &Location, ix: usize, window: &mut Window, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
+        if *location == Location::Home {
+            views::home::render(self, ix, window, cx).into_any_element()
+        } else if *location == Location::Gallery {
+            views::gallery::render(self, ix, window, cx)
+        } else if *location == Location::Backups {
+            views::backups::render(self, ix, window, cx)
+        } else if *location == Location::Devices {
+            views::devices::render(self, ix, window, cx)
+        } else if let Location::SpaceAnalyzer(focus) = location {
+            views::space_analyzer::render(self, ix, focus.clone(), window, cx)
+        } else if let Location::PluginPage { plugin, page, .. } = location {
+            views::plugin_page::render(self, ix, plugin, page, window, cx)
+        } else {
+            views::chrome::render_browser(self, pane, ix, window, cx).into_any_element()
+        }
     }
 
     /// Width available to a pane slot: measured once painted, estimated

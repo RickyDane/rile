@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## v0.8.2-beta.3
+
+- Full-color symbols for sidebar places, drives, network and Nearby devices, and folder artwork with embossed glyphs for well-known folders (Applications, Desktop, Documents, Downloads, Music, Pictures and more) in the list, column and icon views.
+- New **Places and folders** setting under Appearance: Outline, Color (default) or Tinted in the accent color.
+- Duotone is now the default icon style for new installs.
+- Swipe two fingers left or right on a trackpad to go back or forward. The page follows the fingers with the previous or next page attached beside it.
 
 ## v0.8.2-beta.2
 

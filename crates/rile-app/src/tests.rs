@@ -1079,6 +1079,67 @@ async fn external_drag_payload_only_exports_local_dragged_entries(cx: &mut TestA
 }
 
 #[gpui_kit::test]
+async fn trackpad_swipe_navigates_history(cx: &mut TestAppContext) {
+    use gpui_kit::{Modifiers, ScrollDelta, ScrollEvent, ScrollSource, TouchPhase, VisualTestContext, point, px};
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    fs::create_dir(root.join("dir")).unwrap();
+    // Enough files that the folder's list can scroll.
+    let inner: Vec<String> = (0..200).map(|i| format!("f{i:03}.txt")).collect();
+    let inner: Vec<&str> = inner.iter().map(String::as_str).collect();
+    for name in &inner {
+        fs::write(root.join("dir").join(name), "").unwrap();
+    }
+    fs::write(root.join("a.txt"), "").unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["dir", "a.txt"]).await;
+    let pane = cx.update(|cx| ws.read(cx).pane().clone());
+    cx.update(|cx| pane.update(cx, |p, cx| p.navigate(Location::Dir(root.join("dir")), cx)));
+    wait_for_names(cx, window, &ws, &inner).await;
+
+    // Two fingers sliding `dx` per step over the file list, then lifting.
+    let swipe = |cx: &mut TestAppContext, dx: f32, dy: f32| {
+        let mut vcx = VisualTestContext::from_window(window, cx);
+        let at = vcx.update(|window, _| {
+            let s = window.viewport_size();
+            point(s.width * 0.6, s.height * 0.5)
+        });
+        let event = |phase, dx: f32, dy: f32| ScrollEvent {
+            position: at,
+            delta: ScrollDelta::Pixels(point(px(dx), px(dy))),
+            modifiers: Modifiers::none(),
+            touch_phase: phase,
+            source: ScrollSource::Pointer,
+        };
+        vcx.simulate_event(event(TouchPhase::Started, 0., 0.));
+        for _ in 0..12 {
+            vcx.simulate_event(event(TouchPhase::Moved, dx, dy));
+        }
+        vcx.simulate_event(event(TouchPhase::Ended, 0., 0.));
+        vcx.executor().advance_clock(Duration::from_millis(400));
+        vcx.run_until_parked();
+        // The trackpad's momentum keeps coming after the fingers lift.
+        for _ in 0..20 {
+            vcx.simulate_event(event(TouchPhase::Moved, dx, dy));
+        }
+        vcx.run_until_parked();
+    };
+
+    // A short nudge springs back, and a vertical swipe only scrolls.
+    swipe(cx, 2., 0.);
+    swipe(cx, 2., 120.);
+    wait_for_names(cx, window, &ws, &inner).await;
+    // Fingers to the right go back, to the left go forward.
+    swipe(cx, 120., 0.);
+    wait_for_names(cx, window, &ws, &["dir", "a.txt"]).await;
+    swipe(cx, -120., 0.);
+    wait_for_names(cx, window, &ws, &inner).await;
+    // ...without that momentum scrolling the page that slid in.
+    let offset = cx.update(|cx| pane.read(cx).scroll.0.borrow().base_handle.offset());
+    assert_eq!(offset.y, px(0.), "momentum scrolled the list");
+}
+
+#[gpui_kit::test]
 async fn rubber_band_new_file_and_mouse_navigation(cx: &mut TestAppContext) {
     use gpui_kit::{Modifiers, MouseButton, NavigationDirection, VisualTestContext, point, px};
     let tmp = tempfile::tempdir().unwrap();

@@ -162,7 +162,7 @@ fn free_space_image(style: SymbolStyle, level: FreeSpaceLevel) -> Arc<Image> {
 
 /// SVGs rasterize at their intrinsic size, so declare a large one to stay
 /// crisp on Retina at any display size.
-fn hires_svg(svg: &str, w: u32, h: u32) -> Arc<Image> {
+pub(crate) fn hires_svg(svg: &str, w: u32, h: u32) -> Arc<Image> {
     let svg = svg.replacen("<svg ", &format!("<svg width=\"{w}\" height=\"{h}\" "), 1);
     Arc::new(Image::from_bytes(ImageFormat::Svg, svg.into_bytes()))
 }
@@ -433,7 +433,8 @@ pub fn file_object<V: 'static>(entry: &Entry, size: f32, thumbnails: bool, local
         return crate::icons::entry_icon(entry, size * 0.9, rgba(0x58adffff).into(), cx);
     }
     if entry.is_dir {
-        return art(Art::Folder, size);
+        let accent = crate::theme::chrome(cx).accent;
+        return crate::symbols::folder_icon(entry, size, accent).unwrap_or_else(|| art(Art::Folder, size));
     }
     if local && wants_thumbnail(entry, thumbnails) {
         // Vector images rasterize at their own size; bitmaps are downscaled.

@@ -98,6 +98,16 @@ impl History {
         Some(next)
     }
 
+    /// Where [`Self::go_back`] would go, without going.
+    pub fn back_target(&self) -> Option<&Location> {
+        self.back.last()
+    }
+
+    /// Where [`Self::go_forward`] would go, without going.
+    pub fn forward_target(&self) -> Option<&Location> {
+        self.forward.last()
+    }
+
     pub fn can_go_back(&self) -> bool {
         !self.back.is_empty()
     }

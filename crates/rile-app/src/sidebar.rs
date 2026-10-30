@@ -223,7 +223,7 @@ fn places(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>, 
             .text_color(ch.sidebar_text)
             .when(active, |d| d.bg(ch.sidebar_active).text_color(ch.text_strong))
             .when(!active, |d| d.hover(|s| s.bg(ch.hover_strong)))
-            .child(crate::icons::icon(icon).size(px(16.)).text_color(if active { ch.sidebar_active_icon } else { ch.sidebar_icon }))
+            .child(crate::symbols::place_icon(icon, 16., if active { ch.sidebar_active_icon } else { ch.sidebar_icon }, accent))
             .when(!rail, |d| d.child(div().flex_1().min_w_0().truncate().child(label.clone())))
             .when(rail, |d| {
                 d.tooltip(move |w, cx| gpui_kit::component::tooltip::Tooltip::new(label.clone()).build(w, cx))
@@ -653,7 +653,7 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
             .rounded(px(6.))
             .cursor_pointer()
             .hover(|s| s.bg(ch.hover_strong))
-            .child(crate::icons::icon(IconName::Settings).size(px(14.)).text_color(ch.sidebar_icon))
+            .child(crate::symbols::place_icon(IconName::Settings, 14., ch.sidebar_icon, ch.accent))
             .tooltip(|w, cx| {
                 gpui_kit::component::tooltip::Tooltip::new(format!("Settings ({},)", crate::views::chrome::mod_key())).build(w, cx)
             })
