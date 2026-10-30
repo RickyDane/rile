@@ -26,10 +26,15 @@ pub struct PluginState {
 }
 
 struct RootPicker {
-    /// The plugin page asking, or `None` for the Space Analyzer.
-    key: Option<(String, String)>,
+    target: RootPickerTarget,
     pane: EntityId,
     previous: Location,
+}
+
+enum RootPickerTarget {
+    Plugin((String, String)),
+    SpaceAnalyzer,
+    Compare(PathBuf),
 }
 
 /// The host-side state of an open plugin page.
@@ -234,19 +239,30 @@ impl Workspace {
     pub fn choose_plugin_root(&mut self, plugin: &str, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         let key = (plugin.to_string(), page.to_string());
         let start = self.plugins.sessions.get(&key).and_then(|s| s.root.clone().or_else(|| s.browse_from.clone()));
-        self.start_root_picker(Some(key), start, window, cx);
+        self.start_root_picker(RootPickerTarget::Plugin(key), start, window, cx);
     }
 
     /// Lets the user browse to the folder the Space Analyzer should analyze.
     pub fn choose_space_root(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let start = self.space.last_focus.clone();
-        self.start_root_picker(None, start, window, cx);
+        self.start_root_picker(RootPickerTarget::SpaceAnalyzer, start, window, cx);
     }
 
-    fn start_root_picker(&mut self, key: Option<(String, String)>, start: Option<PathBuf>, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn choose_compare_root(&mut self, left: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+        self.start_root_picker(RootPickerTarget::Compare(left), None, window, cx);
+    }
+
+    pub fn root_picker_compare_left(&self) -> Option<&PathBuf> {
+        match &self.plugins.root_picker.as_ref()?.target {
+            RootPickerTarget::Compare(left) => Some(left),
+            _ => None,
+        }
+    }
+
+    fn start_root_picker(&mut self, target: RootPickerTarget, start: Option<PathBuf>, window: &mut Window, cx: &mut Context<Self>) {
         let previous = self.pane().read(cx).location.clone();
         let start = start.or_else(|| self.pane().read(cx).dir_path()).or_else(dirs::home_dir).filter(|p| p.is_dir());
-        self.plugins.root_picker = Some(RootPicker { key, pane: self.pane().entity_id(), previous });
+        self.plugins.root_picker = Some(RootPicker { target, pane: self.pane().entity_id(), previous });
         self.open_location(start.map(Location::Dir).unwrap_or(Location::Home), window, cx);
     }
 
@@ -255,7 +271,7 @@ impl Workspace {
     }
 
     /// A single selected directory wins; otherwise use the folder being viewed.
-    /// Remote and virtual locations are not valid WASM filesystem scan roots.
+    /// Remote and virtual locations are not valid local folder roots.
     pub fn plugin_root_picker_path(&self, cx: &App) -> Option<PathBuf> {
         if !self.plugin_root_picker_active() { return None; }
         let pane = self.pane().read(cx);
@@ -267,12 +283,17 @@ impl Workspace {
     pub fn confirm_plugin_root(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(dir) = self.plugin_root_picker_path(cx).filter(|p| p.is_dir()) else { return };
         let Some(picker) = self.plugins.root_picker.take() else { return };
-        let Some(key) = picker.key else {
-            self.analyze_folder(dir, window, cx);
-            return;
-        };
-        self.set_page_root(key.clone(), dir, window, cx);
-        self.open_plugin_page(&key.0, &key.1, window, cx);
+        match picker.target {
+            RootPickerTarget::SpaceAnalyzer => self.analyze_folder(dir, window, cx),
+            RootPickerTarget::Plugin(key) => {
+                self.set_page_root(key.clone(), dir, window, cx);
+                self.open_plugin_page(&key.0, &key.1, window, cx);
+            }
+            RootPickerTarget::Compare(left) => {
+                self.open_location(picker.previous, window, cx);
+                self.open_compare(left, dir, window, cx);
+            }
+        }
     }
 
     pub fn cancel_plugin_root(&mut self, window: &mut Window, cx: &mut Context<Self>) {

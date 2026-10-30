@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use gpui_kit::assets::IconName;
-use gpui_kit::component::{ActiveTheme, Sizable, h_flex, menu::ContextMenuExt, spinner::Spinner, v_flex};
+use gpui_kit::component::{ActiveTheme, Sizable, h_flex, menu::{ContextMenuExt, PopupMenu, PopupMenuItem}, spinner::Spinner, v_flex};
 use gpui_kit::{
     AnyElement, AppContext, Context, ElementId, Render, FontWeight, InteractiveElement, IntoElement, ParentElement, StatefulInteractiveElement,
     Styled, Window, div, linear_color_stop, linear_gradient, prelude::FluentBuilder, px,
@@ -22,6 +22,93 @@ use crate::workspace::{Workspace, display_name};
 /// Limits for a sidebar width set by dragging its edge.
 pub const MIN_WIDTH: f32 = 160.;
 pub const MAX_WIDTH: f32 = 420.;
+
+/// Use explicit destinations, not pane actions: a right-click must never act
+/// on the current file selection or navigate before an action is chosen.
+fn navigation_menu(
+    menu: PopupMenu,
+    workspace: gpui_kit::WeakEntity<Workspace>,
+    open: impl Fn(&mut Workspace, &mut Window, &mut Context<Workspace>) + Clone + 'static,
+) -> PopupMenu {
+    let this = workspace.clone();
+    let open_here = open.clone();
+    menu.item(PopupMenuItem::new("Open").icon(menu_icon(IconName::FolderOpen)).on_click(move |_, w, cx| {
+        this.update(cx, |ws, cx| open_here(ws, w, cx)).ok();
+    }))
+    .item(PopupMenuItem::new("Open in New Tab").icon(menu_icon(IconName::Plus)).on_click(move |_, w, cx| {
+        workspace.update(cx, |ws, cx| {
+            // Preserve the browsing context for pages that initialize from it.
+            let location = ws.pane().read(cx).location.clone();
+            ws.open_tab(location, w, cx);
+            open(ws, w, cx);
+        }).ok();
+    }))
+}
+
+fn path_menu(
+    menu: PopupMenu,
+    workspace: gpui_kit::WeakEntity<Workspace>,
+    path: PathBuf,
+    ejectable: bool,
+    cx: &mut Context<PopupMenu>,
+) -> PopupMenu {
+    let favorite = workspace.upgrade().is_some_and(|ws| ws.read(cx).settings.favorites.contains(&path));
+    let ai = cfg!(feature = "ai") && workspace.upgrade().is_some_and(|ws| ws.read(cx).settings.ai_enabled);
+    let directory = path.is_dir();
+    let action = |label: &'static str, icon: gpui_kit::component::Icon, run: fn(&mut Workspace, PathBuf, &mut Window, &mut Context<Workspace>)| {
+        let this = workspace.clone();
+        let target = path.clone();
+        PopupMenuItem::new(label).icon(icon).on_click(move |_, w, cx| {
+            this.update(cx, |ws, cx| run(ws, target.clone(), w, cx)).ok();
+        })
+    };
+    let open = path.clone();
+    let menu = if directory {
+        navigation_menu(menu, workspace.clone(), move |ws, w, cx| ws.open_path(open.clone(), w, cx))
+            .item(action("Open in Other Pane", menu_icon(IconName::Columns2), |ws, path, w, cx| {
+                if !ws.dual {
+                    ws.set_dual(true, w, cx);
+                }
+                if let Some(other) = ws.other_pane().cloned() {
+                    other.update(cx, |pane, cx| pane.navigate(Location::Dir(path), cx));
+                }
+            }))
+    } else {
+        let this = workspace.clone();
+        menu.item(PopupMenuItem::new("Open").icon(menu_icon(IconName::ExternalLink)).on_click(move |_, w, cx| {
+            this.update(cx, |ws, cx| ws.open_path(open.clone(), w, cx)).ok();
+        }))
+    };
+    let menu = menu
+        .when(directory, |menu| {
+            menu.separator()
+                .item(action("Open in Terminal", menu_icon(IconName::SquareTerminal), |ws, path, w, cx| ws.open_terminal_at(path, w, cx)))
+                .item(action("Analyze Space", menu_icon(IconName::ChartPie), |ws, path, w, cx| ws.analyze_folder(path, w, cx)))
+        })
+        .when(ai, |menu| {
+            menu.separator().item(action("Summarize with AI", crate::icons::ai_icon(), |ws, path, w, cx| ws.summarize_paths(vec![path], w, cx)))
+        });
+    let copy = path.clone();
+    let toggle = path.clone();
+    let this = workspace.clone();
+    menu.separator()
+        .item(PopupMenuItem::new("Copy Path").icon(menu_icon(IconName::Link)).on_click(move |_, _, cx| {
+            cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string(copy.to_string_lossy().into_owned()));
+        }))
+        .item(PopupMenuItem::new(if favorite { "Remove from Favorites" } else { "Add to Favorites" })
+            .icon(menu_icon(IconName::Star)).on_click(move |_, w, cx| {
+                this.update(cx, |ws, cx| ws.toggle_favorite_path(toggle.clone(), w, cx)).ok();
+            }))
+        .when(ejectable, |menu| {
+            let workspace = workspace.clone();
+            let path = path.clone();
+            menu.separator().item(PopupMenuItem::new("Eject").icon(menu_icon(IconName::Eject)).on_click(move |_, w, cx| {
+                workspace.update(cx, |ws, cx| ws.unmount(path.clone(), w, cx)).ok();
+            }))
+        })
+        .separator()
+        .item(action("Properties", menu_icon(IconName::Info), |ws, path, w, cx| ws.open_properties(vec![path], None, w, cx)))
+}
 
 // Wheel events can leave the handle outside its bounds until prepaint.
 // Keep the frosted copy in sync with the position the real list will paint.
@@ -173,18 +260,24 @@ fn places(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>, 
     };
 
     // Items of each section; headers are added when assembling below.
+    let workspace = cx.entity().downgrade();
     let mut lib: Vec<AnyElement> = vec![
         item("side-home".into(), IconName::House, "Home".into(), at_home, None)
+            .debug_selector(|| "side-home".into())
             .on_click(cx.listener(|this, _, w, cx| this.open_location(Location::Home, w, cx)))
+            .context_menu({ let ws = workspace.clone(); move |menu, _, _| navigation_menu(menu, ws.clone(), |ws, w, cx| ws.open_location(Location::Home, w, cx)) })
             .into_any_element(),
         item("side-photos".into(), IconName::Images, "Photos".into(), at_gallery, None)
             .on_click(cx.listener(|this, _, w, cx| this.open_location(Location::Gallery, w, cx)))
+            .context_menu({ let ws = workspace.clone(); move |menu, _, _| navigation_menu(menu, ws.clone(), |ws, w, cx| ws.open_location(Location::Gallery, w, cx)) })
             .into_any_element(),
         item("side-space".into(), IconName::ChartPie, "Space Analyzer".into(), matches!(location, Location::SpaceAnalyzer(_)), None)
             .on_click(cx.listener(|this, _, w, cx| this.open_space_analyzer(w, cx)))
+            .context_menu({ let ws = workspace.clone(); move |menu, _, _| navigation_menu(menu, ws.clone(), |ws, w, cx| ws.open_space_analyzer(w, cx)) })
             .into_any_element(),
         item("side-backups".into(), IconName::DatabaseBackup, "Backups".into(), matches!(location, Location::Backups), None)
             .on_click(cx.listener(|this, _, w, cx| this.open_location(Location::Backups, w, cx)))
+            .context_menu({ let ws = workspace.clone(); move |menu, _, _| navigation_menu(menu, ws.clone(), |ws, w, cx| ws.open_location(Location::Backups, w, cx)) })
             .into_any_element(),
     ];
     // Plugin pages sit with the built-in library pages.
@@ -197,7 +290,18 @@ fn places(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>, 
         };
         lib.push(
             item(("side-plugin-page", ix).into(), icon, page.title.clone().into(), active, None)
-                .on_click(cx.listener(move |this, _, w, cx| this.open_plugin_page(&plugin, &page.id, w, cx)))
+                .on_click(cx.listener({
+                    let (plugin, page) = (plugin.clone(), page.id.clone());
+                    move |this, _, w, cx| this.open_plugin_page(&plugin, &page, w, cx)
+                }))
+                .context_menu({
+                    let ws = workspace.clone();
+                    let (plugin, page) = (plugin.clone(), page.id.clone());
+                    move |menu, _, _| {
+                        let (plugin, page) = (plugin.clone(), page.clone());
+                        navigation_menu(menu, ws.clone(), move |ws, w, cx| ws.open_plugin_page(&plugin, &page, w, cx))
+                    }
+                })
                 .into_any_element(),
         );
     }
@@ -207,22 +311,13 @@ fn places(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>, 
         let active = current.as_ref() == Some(&path);
         let icon = ws.places.iter().find(|p| p.path == path).map(|p| icon_for_place(p.icon)).unwrap_or(IconName::Folder);
         let open = path.clone();
-        let remove = path.clone();
+        let target = path.clone();
         let this = cx.entity().downgrade();
         fav.push(
             drop_into(drop_feedback(item(("fav", ix).into(), icon, display_name(&path), active, None), &path, ("fav-drop", ix)), path.clone(), cx)
+                .debug_selector(move || format!("sidebar-favorite-{ix}"))
                 .on_click(cx.listener(move |this, _, w, cx| this.open_path(open.clone(), w, cx)))
-                .context_menu(move |menu, _, _| {
-                    let this = this.clone();
-                    let remove = remove.clone();
-                    menu.item(
-                        gpui_kit::component::menu::PopupMenuItem::new("Remove from Favorites").on_click(
-                            move |_, w, cx| {
-                                this.update(cx, |ws, cx| ws.toggle_favorite_path(remove.clone(), w, cx)).ok();
-                            },
-                        ),
-                    )
-                })
+                .context_menu(move |menu, _, cx| path_menu(menu, this.clone(), target.clone(), false, cx))
                 .into_any_element(),
         );
     }
@@ -230,9 +325,12 @@ fn places(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>, 
     for (ix, place) in ws.places.iter().enumerate() {
         let active = current.as_ref() == Some(&place.path);
         let path = place.path.clone();
+        let target = path.clone();
+        let this = workspace.clone();
         loc.push(
             drop_into(drop_feedback(item(("place", ix).into(), icon_for_place(place.icon), place.name.clone(), active, None), &place.path, ("place-drop", ix)), place.path.clone(), cx)
                 .on_click(cx.listener(move |this, _, w, cx| this.open_path(path.clone(), w, cx)))
+                .context_menu(move |menu, _, cx| path_menu(menu, this.clone(), target.clone(), false, cx))
                 .into_any_element(),
         );
     }
@@ -243,6 +341,8 @@ fn places(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>, 
         let icon = if vol.removable { IconName::Usb } else { IconName::HardDrive };
         let ejectable = rile_services::volumes::can_unmount(vol);
         let mount = vol.mount_point.clone();
+        let target = path.clone();
+        let this = workspace.clone();
         let used = vol.used_fraction();
         let usage_tip = format!(
             "{}: {} free of {} ({:.0}% used)",
@@ -280,6 +380,7 @@ fn places(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>, 
                             })),
                     )
                 })
+                .context_menu(move |menu, _, cx| path_menu(menu, this.clone(), target.clone(), ejectable, cx))
                 .into_any_element(),
         );
     }
@@ -340,6 +441,7 @@ fn places(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>, 
         near.push(
             item("side-devices".into(), IconName::Radar, "All Devices".into(), matches!(location, Location::Devices), None)
                 .on_click(cx.listener(|this, _, w, cx| this.open_devices(w, cx)))
+                .context_menu({ let ws = workspace.clone(); move |menu, _, _| navigation_menu(menu, ws.clone(), |ws, w, cx| ws.open_devices(w, cx)) })
                 .into_any_element(),
         );
         for (ix, row) in ws.nearby.rows().into_iter().enumerate() {
@@ -771,6 +873,69 @@ fn drop_hl_color(ch: &crate::theme::Chrome) -> gpui_kit::Hsla {
 #[cfg(test)]
 mod tests {
     use super::clamped_scroll_y;
+
+    #[gpui_kit::test]
+    fn sidebar_properties_target_clicked_folder(cx: &mut gpui_kit::TestAppContext) {
+        use gpui_kit::{Modifiers, MouseButton, VisualTestContext};
+        use rile_core::history::Location;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let root = dunce::canonicalize(tmp.path()).unwrap();
+        let target = root.join("Favorite");
+        std::fs::create_dir(&target).unwrap();
+        let (window, ws) = crate::tests::setup(&root, cx);
+        ws.update(cx, |ws, cx| {
+            ws.settings.favorites = vec![target.clone()];
+            ws.settings.ai_enabled = false;
+            cx.notify();
+        });
+        let mut vcx = VisualTestContext::from_window(window, cx);
+        vcx.run_until_parked();
+        let favorite = vcx.debug_bounds("sidebar-favorite-0").expect("favorite row").center();
+        vcx.simulate_mouse_down(favorite, MouseButton::Right, Modifiers::none());
+        vcx.simulate_mouse_up(favorite, MouseButton::Right, Modifiers::none());
+        vcx.run_until_parked();
+        // Properties must be the last menu item.
+        cx.simulate_keystrokes(window, "up enter");
+        vcx.run_until_parked();
+        cx.update(|cx| {
+            let ws = ws.read(cx);
+            assert_eq!(ws.pane().read(cx).location, Location::Dir(root));
+            assert_eq!(ws.preview.target, Some(target));
+            assert_eq!(ws.preview.target_conn, None);
+            assert!(ws.preview.properties_only);
+            assert!(ws.preview.properties_view.is_some());
+        });
+    }
+
+    #[gpui_kit::test]
+    fn sidebar_menu_opens_destination_in_new_tab(cx: &mut gpui_kit::TestAppContext) {
+        use gpui_kit::{Modifiers, MouseButton, VisualTestContext};
+        use rile_core::history::Location;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let root = dunce::canonicalize(tmp.path()).unwrap();
+        let (window, ws) = crate::tests::setup(&root, cx);
+        let mut vcx = VisualTestContext::from_window(window, cx);
+        vcx.run_until_parked();
+        let home = vcx.debug_bounds("side-home").expect("Home sidebar row").center();
+        vcx.simulate_mouse_down(home, MouseButton::Right, Modifiers::none());
+        vcx.simulate_mouse_up(home, MouseButton::Right, Modifiers::none());
+        vcx.run_until_parked();
+        cx.update(|cx| {
+            assert_eq!(ws.read(cx).pane().read(cx).location, Location::Dir(root.clone()));
+            assert_eq!(ws.read(cx).slot_tabs().len(), 1);
+        });
+
+        cx.simulate_keystrokes(window, "down down enter");
+        vcx.run_until_parked();
+        cx.update(|cx| {
+            let ws = ws.read(cx);
+            assert_eq!(ws.slot_tabs().len(), 2);
+            assert_eq!(ws.pane().read(cx).location, Location::Home);
+            assert_eq!(ws.slot_tabs()[0].read(cx).location, Location::Dir(root));
+        });
+    }
 
     #[test]
     fn frosted_scroll_stops_at_both_list_ends() {

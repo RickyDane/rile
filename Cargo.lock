@@ -8316,7 +8316,7 @@ dependencies = [
 
 [[package]]
 name = "rile-app"
-version = "0.8.2-beta.1"
+version = "0.8.2-beta.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8360,7 +8360,7 @@ dependencies = [
 
 [[package]]
 name = "rile-backup"
-version = "0.8.2-beta.1"
+version = "0.8.2-beta.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8386,7 +8386,7 @@ dependencies = [
 
 [[package]]
 name = "rile-core"
-version = "0.8.2-beta.1"
+version = "0.8.2-beta.2"
 dependencies = [
  "anyhow",
  "dirs 6.0.0",
@@ -8401,7 +8401,7 @@ dependencies = [
 
 [[package]]
 name = "rile-plugins"
-version = "0.8.2-beta.1"
+version = "0.8.2-beta.2"
 dependencies = [
  "anyhow",
  "dirs 6.0.0",
@@ -8414,7 +8414,7 @@ dependencies = [
 
 [[package]]
 name = "rile-remote"
-version = "0.8.2-beta.1"
+version = "0.8.2-beta.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8456,7 +8456,7 @@ dependencies = [
 
 [[package]]
 name = "rile-server"
-version = "0.8.2-beta.1"
+version = "0.8.2-beta.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -8475,11 +8475,12 @@ dependencies = [
 
 [[package]]
 name = "rile-services"
-version = "0.8.2-beta.1"
+version = "0.8.2-beta.2"
 dependencies = [
  "anyhow",
  "block2 0.6.2",
  "brotli",
+ "chrono",
  "dirs 6.0.0",
  "dunce",
  "flate2",
@@ -8512,6 +8513,7 @@ dependencies = [
  "syntect",
  "tar",
  "tempfile",
+ "trash",
  "ureq",
  "uzers",
  "windows 0.62.2",

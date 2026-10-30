@@ -30,15 +30,23 @@ pub fn root_picker_bar(ws: &Workspace, cx: &mut Context<Workspace>) -> Option<An
     if !ws.plugin_root_picker_active() { return None; }
     let ch = chrome(cx);
     let path = ws.plugin_root_picker_path(cx);
+    let compare_left = ws.root_picker_compare_left();
+    let title = compare_left.map(|left| format!("Choose a folder to compare with “{}”", crate::workspace::display_name(left)))
+        .unwrap_or_else(|| "Choose a folder in Rile".into());
+    let (confirm_label, confirm_icon) = if compare_left.is_some() {
+        ("Compare this folder", IconName::GitCompareArrows)
+    } else {
+        ("Analyze this folder", IconName::ChartPie)
+    };
     Some(h_flex().id("plugin-root-picker").debug_selector(|| "plugin-root-picker".into())
         .gap_3().px_4().py_3().flex_wrap().border_b_1().border_color(ch.card_border).bg(ch.accent.opacity(0.05))
         .child(crate::icons::icon(IconName::FolderOpen).size(px(22.)).text_color(ch.accent))
         .child(v_flex().flex_1().min_w(px(140.)).gap_1()
-            .child(div().text_size(px(12.)).font_weight(FontWeight::SEMIBOLD).text_color(ch.text_strong).child("Choose a folder in Rile"))
+            .child(div().text_size(px(12.)).font_weight(FontWeight::SEMIBOLD).text_color(ch.text_strong).child(title))
             .child(div().truncate().text_size(px(11.)).text_color(ch.text_muted)
                 .child(path.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "Open a local folder using the explorer or sidebar.".into()))))
-        .child(Button::new("plugin-root-cancel").cursor_pointer().small().outline().label("Cancel").on_click(cx.listener(|ws, _, w, cx| ws.cancel_plugin_root(w, cx))))
-        .child(Button::new("plugin-root-confirm").cursor_pointer().small().primary().icon(IconName::ChartPie).label("Analyze this folder").pointer_unless(path.is_none())
+        .child(Button::new("plugin-root-cancel").debug_selector(|| "plugin-root-cancel".into()).cursor_pointer().small().outline().label("Cancel").on_click(cx.listener(|ws, _, w, cx| ws.cancel_plugin_root(w, cx))))
+        .child(Button::new("plugin-root-confirm").debug_selector(|| "plugin-root-confirm".into()).cursor_pointer().small().primary().icon(confirm_icon).label(confirm_label).pointer_unless(path.is_none())
             .on_click(cx.listener(|ws, _, w, cx| ws.confirm_plugin_root(w, cx))))
         .into_any_element())
 }

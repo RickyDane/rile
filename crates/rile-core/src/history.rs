@@ -28,6 +28,55 @@ pub enum Location {
     PluginPage { plugin: String, page: String, title: String },
 }
 
+/// A [`Location`] as stored in saved workspaces.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum SavedLocation {
+    Overview,
+    Gallery,
+    Folder { path: PathBuf },
+    Remote { conn: String, path: String },
+    SpaceAnalyzer {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        path: Option<PathBuf>,
+    },
+    Backups,
+    Devices,
+    PluginPage { plugin: String, page: String, title: String },
+}
+
+impl From<&Location> for SavedLocation {
+    fn from(l: &Location) -> Self {
+        match l {
+            Location::Home => SavedLocation::Overview,
+            Location::Gallery => SavedLocation::Gallery,
+            Location::Dir(p) => SavedLocation::Folder { path: p.clone() },
+            Location::Remote { conn, path } => SavedLocation::Remote { conn: conn.clone(), path: path.clone() },
+            Location::SpaceAnalyzer(p) => SavedLocation::SpaceAnalyzer { path: p.clone() },
+            Location::Backups => SavedLocation::Backups,
+            Location::Devices => SavedLocation::Devices,
+            Location::PluginPage { plugin, page, title } => {
+                SavedLocation::PluginPage { plugin: plugin.clone(), page: page.clone(), title: title.clone() }
+            }
+        }
+    }
+}
+
+impl From<SavedLocation> for Location {
+    fn from(l: SavedLocation) -> Self {
+        match l {
+            SavedLocation::Overview => Location::Home,
+            SavedLocation::Gallery => Location::Gallery,
+            SavedLocation::Folder { path } => Location::Dir(path),
+            SavedLocation::Remote { conn, path } => Location::Remote { conn, path },
+            SavedLocation::SpaceAnalyzer { path } => Location::SpaceAnalyzer(path),
+            SavedLocation::Backups => Location::Backups,
+            SavedLocation::Devices => Location::Devices,
+            SavedLocation::PluginPage { plugin, page, title } => Location::PluginPage { plugin, page, title },
+        }
+    }
+}
+
 impl History {
     /// Records `from` before navigating somewhere new; clears forward stack.
     pub fn push(&mut self, from: Location) {

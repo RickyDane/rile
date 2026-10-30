@@ -66,6 +66,16 @@ actions!(
         Compress,
         Extract,
         SmartTag,
+        Undo,
+        Redo,
+        ShowHistory,
+        BatchRename,
+        AddToShelf,
+        ToggleShelf,
+        CompareFolders,
+        OpenTerminal,
+        SaveWorkspace,
+        BrowseArchive,
     ]
 );
 
@@ -158,6 +168,13 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new(mac_or("cmd-]", "alt-right"), GoForward, Some(WORKSPACE)),
         KeyBinding::new(mac_or("cmd-up", "alt-up"), GoUp, Some(WORKSPACE)),
         KeyBinding::new(mac_or("cmd-l", "alt-d"), EditPath, Some(WORKSPACE)),
+        KeyBinding::new(k("mod-z"), Undo, Some(WORKSPACE)),
+        KeyBinding::new(k("mod-shift-z"), Redo, Some(WORKSPACE)),
+        KeyBinding::new(mac_or("cmd-shift-z", "ctrl-y"), Redo, Some(WORKSPACE)),
+        KeyBinding::new(mac_or("cmd-alt-z", "ctrl-h"), ShowHistory, Some(WORKSPACE)),
+        KeyBinding::new("shift-f2", BatchRename, Some(FILE_LIST)),
+        KeyBinding::new(mac_or("cmd-alt-a", "ctrl-shift-a"), AddToShelf, Some(FILE_LIST)),
+        KeyBinding::new(mac_or("cmd-alt-t", "ctrl-`"), OpenTerminal, Some(WORKSPACE)),
         // Registered last so they win over the plain FileList bindings while previewing.
         KeyBinding::new("escape", ClosePreview, Some("FileList && previewing")),
         KeyBinding::new("space", ClosePreview, Some("FileList && previewing")),

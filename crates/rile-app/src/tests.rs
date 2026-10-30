@@ -105,6 +105,8 @@ fn platform_keys(keys: &str) -> String {
         "cmd-alt-o" => "ctrl-shift-right".into(),
         "cmd-y" => "f3".into(),
         "cmd-down" => "ctrl-end".into(),
+        "cmd-alt-a" => "ctrl-shift-a".into(),
+        "cmd-alt-z" => "ctrl-h".into(),
         _ => keys.replace("cmd-", "ctrl-"),
     }
 }
@@ -1041,6 +1043,7 @@ async fn external_drag_payload_includes_selected_files_and_folders(cx: &mut Test
             source: ws.read(cx).pane().downgrade(),
             conn: None,
             path: root.join("a.txt"),
+            set: None,
         };
         assert_eq!(drag.external_payload(cx), Some(ExternalDragPayload::Files(FileDragPaths::new([
             (root.join("sub"), true), (root.join("a.txt"), false),
@@ -1062,7 +1065,7 @@ async fn external_drag_payload_only_exports_local_dragged_entries(cx: &mut TestA
     press(cx, window, &["home"]);
     cx.update(|cx| {
         let source = ws.read(cx).pane().downgrade();
-        let mut drag = DraggedFiles { source, conn: None, path: root.join("b.txt") };
+        let mut drag = DraggedFiles { source, conn: None, path: root.join("b.txt"), set: None };
         let expected = Some(ExternalDragPayload::Files(FileDragPaths::new([(root.join("b.txt"), false)])));
         assert_eq!(drag.external_payload(cx), expected, "unselected row must not export another selection");
         drag.path = root.join("a.txt");
@@ -1665,6 +1668,9 @@ fn desktop_symbol_exists_in_every_style(cx: &mut TestAppContext) {
             assert!(frame.as_bytes(0).unwrap().chunks(4).any(|p| p[3] > 200), "{style:?} desktop is blank");
             let laptop = renderer.render_single_frame(crate::art::image_in(*style, crate::art::Art::Computer).bytes(), 1.).unwrap();
             assert_ne!(frame.as_bytes(0).unwrap(), laptop.as_bytes(0).unwrap(), "{style:?} desktop equals the laptop");
+            let nearby = renderer.render_single_frame(crate::art::image_in(*style, crate::art::Art::NearbyDesktop).bytes(), 1.).unwrap();
+            assert_eq!(frame.size(0), nearby.size(0), "{style:?} nearby desktop size");
+            assert_ne!(frame.as_bytes(0).unwrap(), nearby.as_bytes(0).unwrap(), "{style:?} nearby desktop lacks its badge");
         }
     });
 }
@@ -2844,3 +2850,352 @@ async fn go_to_path_dialog_jumps_and_reveals(cx: &mut TestAppContext) {
     let sel = cx.update(|cx| ws.read(cx).selection(cx));
     assert_eq!(sel, vec![root.join("a.txt")]);
 }
+
+
+// --- Undo, batch rename, shelf, archives, compare, workspaces ---------------
+
+/// The journal is process-wide and other tests run file operations at the
+/// same time, so find this test's record by path instead of relying on ⌘Z
+/// picking it.
+fn journal_record_for(path: &Path) -> u64 {
+    use rile_services::journal::{self, Change};
+    journal::list()
+        .into_iter()
+        .find(|r| r.changes.iter().any(|c| match c {
+            Change::Moved { to, .. } => to == path,
+            other => other.path() == path,
+        }))
+        .unwrap_or_else(|| panic!("no history record for {}", path.display()))
+        .id
+}
+
+#[gpui_kit::test]
+async fn undo_redo_a_move_and_open_history(cx: &mut TestAppContext) {
+    use gpui_kit::component::WindowExt;
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    fs::create_dir(root.join("sub")).unwrap();
+    fs::write(root.join("a.txt"), "x").unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["sub", "a.txt"]).await;
+
+    // Cut a.txt and paste it into sub.
+    press(cx, window, &["down", "down", "cmd-x", "home", "enter"]);
+    wait_for_names(cx, window, &ws, &[]).await;
+    press(cx, window, &["cmd-v"]);
+    wait_for_names(cx, window, &ws, &["a.txt"]).await;
+    let id = journal_record_for(&root.join("sub/a.txt"));
+
+    let run = |cx: &mut TestAppContext, redo: bool| {
+        cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.run_journal(id, redo, window, cx))).unwrap();
+    };
+    run(cx, false);
+    wait_until(cx, "move undone", |_| root.join("a.txt").exists() && !root.join("sub/a.txt").exists());
+    run(cx, true);
+    wait_until(cx, "move redone", |_| root.join("sub/a.txt").exists() && !root.join("a.txt").exists());
+
+    press(cx, window, &["cmd-alt-z"]);
+    assert!(cx.update_window(window, |_, window, cx| window.has_active_dialog(cx)).unwrap(), "history dialog");
+
+}
+
+#[gpui_kit::test]
+async fn batch_rename_from_shift_f2(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    fs::write(root.join("IMG_1.jpg"), "1").unwrap();
+    fs::write(root.join("IMG_2.jpg"), "2").unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["IMG_1.jpg", "IMG_2.jpg"]).await;
+
+    // F2 with several items selected opens batch rename too.
+    press(cx, window, &["cmd-a", "f2"]);
+    cx.simulate_input(window, "IMG_");
+    cx.run_until_parked();
+    let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
+    click_selector(&mut vcx, "br-go");
+    wait_for_names(cx, window, &ws, &["1.jpg", "2.jpg"]).await;
+    assert_eq!(fs::read_to_string(root.join("2.jpg")).unwrap(), "2");
+
+    // One history step undoes the whole batch.
+    let id = journal_record_for(&root.join("1.jpg"));
+    cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.run_journal(id, false, window, cx))).unwrap();
+    wait_for_names(cx, window, &ws, &["IMG_1.jpg", "IMG_2.jpg"]).await;
+}
+
+#[gpui_kit::test]
+async fn shelf_collects_flies_and_copies_here(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    fs::create_dir(root.join("dest")).unwrap();
+    fs::write(root.join("a.txt"), "a").unwrap();
+    fs::write(root.join("b.txt"), "b").unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["dest", "a.txt", "b.txt"]).await;
+
+    press(cx, window, &["down", "down", "cmd-alt-a"]);
+    press(cx, window, &["down", "cmd-alt-a"]);
+    let items = cx.update(|cx| ws.read(cx).shelf.items.clone());
+    assert_eq!(items, [root.join("a.txt"), root.join("b.txt")]);
+
+    // The items fly in; afterwards the popup's Copy sends the whole shelf.
+    std::thread::sleep(Duration::from_millis(900));
+    let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
+    click_selector(&mut vcx, "shelf-button");
+    assert!(cx.update(|cx| ws.read(cx).shelf.open));
+    let badge = vcx.debug_bounds("shelf-count").unwrap();
+    let label = vcx.debug_bounds("shelf-count-label").unwrap();
+    assert!(badge.contains(&label.origin) && badge.contains(&label.bottom_right()), "the shelf count must fit inside its badge");
+    press(cx, window, &["home", "enter"]);
+    wait_for_names(cx, window, &ws, &[]).await;
+    let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
+    click_selector(&mut vcx, "shelf-copy-here");
+    wait_for_names(cx, window, &ws, &["a.txt", "b.txt"]).await;
+    assert!(root.join("a.txt").exists(), "copy keeps the originals");
+    assert!(cx.update(|cx| ws.read(cx).shelf.items.is_empty()), "sending empties the shelf");
+}
+
+#[gpui_kit::test]
+async fn shelf_inset_list_stays_contained_and_controls_preserve_files(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    let paths: Vec<_> = (0..20).map(|i| root.join(format!("a-long-staged-file-name-{i:02}.txt"))).collect();
+    for path in &paths {
+        fs::write(path, "keep").unwrap();
+    }
+    let (window, ws) = setup(&root, cx);
+    cx.update_window(window, |_, _, cx| ws.update(cx, |ws, cx| {
+        ws.shelf.items = paths.clone();
+        ws.shelf.open = true;
+        cx.notify();
+    })).unwrap();
+    let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
+    for (width, height) in [(900., 700.), (400., 480.)] {
+        vcx.simulate_resize(gpui_kit::size(gpui_kit::px(width), gpui_kit::px(height)));
+        vcx.run_until_parked();
+        let popup = vcx.debug_bounds("shelf-popup").unwrap();
+        let tray = vcx.debug_bounds("shelf-tray").unwrap();
+        let list = vcx.debug_bounds("shelf-list").unwrap();
+        let row = vcx.debug_bounds("shelf-item-0").unwrap();
+        let copy = vcx.debug_bounds("shelf-copy-here").unwrap();
+        assert!(tray.origin.x >= popup.origin.x + gpui_kit::px(12.));
+        assert!(tray.right() <= popup.right() - gpui_kit::px(12.));
+        assert!(row.origin.x > tray.origin.x && row.right() < tray.right(), "rows sit inside the tray");
+        assert!(list.size.height <= gpui_kit::px(240.), "long collections scroll instead of growing the popup");
+        assert!(popup.origin.y >= gpui_kit::px(0.));
+        assert!(popup.contains(&copy.origin) && popup.contains(&copy.bottom_right()), "copy remains visible");
+    }
+    click_selector(&mut vcx, "shelf-remove-0");
+    assert_eq!(cx.update(|cx| ws.read(cx).shelf.items.len()), 19);
+    assert!(paths[0].exists(), "removing an item only unstages it");
+    click_selector(&mut vcx, "shelf-clear");
+    assert!(cx.update(|cx| ws.read(cx).shelf.items.is_empty() && !ws.read(cx).shelf.open));
+    assert!(paths.iter().all(|p| p.exists()), "clearing the shelf leaves originals untouched");
+}
+
+#[gpui_kit::test]
+async fn archives_open_like_folders(cx: &mut TestAppContext) {
+    use std::sync::atomic::AtomicBool;
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    let src = root.join("src");
+    fs::create_dir_all(src.join("inner")).unwrap();
+    fs::write(src.join("inner/deep.txt"), "deep").unwrap();
+    fs::write(src.join("top.txt"), "top").unwrap();
+    let work = root.join("work");
+    fs::create_dir(&work).unwrap();
+    rile_services::archive::compress(&[src.join("inner"), src.join("top.txt")], &work.join("pack.zip"), rile_services::archive::ArchiveFormat::Zip, 6, &AtomicBool::new(false), |_| {}).unwrap();
+    let (window, ws) = setup(&work, cx);
+    wait_for_names(cx, window, &ws, &["pack.zip"]).await;
+
+    // Enter opens it like a folder, and folders inside open too.
+    press(cx, window, &["down", "enter"]);
+    wait_for_names(cx, window, &ws, &["inner", "top.txt"]).await;
+    press(cx, window, &["down", "enter"]);
+    wait_for_names(cx, window, &ws, &["deep.txt"]).await;
+
+    // Copy out with ⌘C, then paste into the folder holding the archive.
+    press(cx, window, &["down", "cmd-c", "cmd-up", "cmd-up"]);
+    wait_for_names(cx, window, &ws, &["pack.zip"]).await;
+    press(cx, window, &["cmd-v"]);
+    wait_for_names(cx, window, &ws, &["deep.txt", "pack.zip"]).await;
+    assert_eq!(fs::read_to_string(work.join("deep.txt")).unwrap(), "deep");
+}
+
+#[gpui_kit::test]
+async fn compare_picks_folder_in_rile_and_cancel_restores_location(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    let left = root.join("left");
+    let right = root.join("right");
+    fs::create_dir(&left).unwrap();
+    fs::create_dir(&right).unwrap();
+    fs::write(left.join("only.txt"), "left").unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["left", "right"]).await;
+
+    for cancel in [true, false] {
+        cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| {
+            ws.pane().update(cx, |pane, _| {
+                pane.selected.clear();
+                pane.selected.insert(left.clone());
+            });
+            ws.compare_folders(&actions::CompareFolders, window, cx);
+            assert!(ws.plugin_root_picker_active(), "compare must use Rile, not a system dialog");
+            assert_eq!(ws.root_picker_compare_left(), Some(&left));
+            ws.open_location(Location::Dir(right.clone()), window, cx);
+        })).unwrap();
+        wait_for_names(cx, window, &ws, &[]).await;
+        let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
+        vcx.run_until_parked();
+        assert!(vcx.debug_bounds("plugin-root-picker").is_some());
+        click_selector(&mut vcx, if cancel { "plugin-root-cancel" } else { "plugin-root-confirm" });
+        cx.update(|cx| {
+            let ws = ws.read(cx);
+            assert!(!ws.plugin_root_picker_active());
+            assert_eq!(ws.pane().read(cx).location, Location::Dir(root.clone()));
+        });
+        if cancel {
+            assert!(!right.join("only.txt").exists());
+            wait_for_names(cx, window, &ws, &["left", "right"]).await;
+        }
+    }
+    let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
+    let start = std::time::Instant::now();
+    while vcx.debug_bounds("cmp-sync").is_none() {
+        assert!(start.elapsed() < TIMEOUT, "timed out waiting for comparison");
+        std::thread::sleep(Duration::from_millis(10));
+        vcx.run_until_parked();
+    }
+    click_selector(&mut vcx, "cmp-sync");
+    wait_until(cx, "picked folder synced", |_| right.join("only.txt").exists());
+    assert_eq!(fs::read_to_string(right.join("only.txt")).unwrap(), "left");
+}
+
+#[gpui_kit::test]
+async fn compare_and_sync_two_folders(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    fs::create_dir_all(root.join("left/new")).unwrap();
+    fs::create_dir(root.join("right")).unwrap();
+    fs::write(root.join("left/new/n.txt"), "n").unwrap();
+    fs::write(root.join("left/only.txt"), "o").unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["left", "right"]).await;
+
+    // Two selected folders compare with each other; the default mirror
+    // copies what's missing on the right.
+    press(cx, window, &["cmd-a"]);
+    cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.compare_folders(&actions::CompareFolders, window, cx))).unwrap();
+    std::thread::sleep(Duration::from_millis(200));
+    cx.run_until_parked();
+    let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
+    click_selector(&mut vcx, "cmp-sync");
+    wait_until(cx, "synced", |_| root.join("right/new/n.txt").exists() && root.join("right/only.txt").exists());
+}
+
+#[gpui_kit::test]
+async fn confirmation_focus_defaults_to_execute_and_tab_can_cancel(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let (window, _ws) = setup(tmp.path(), cx);
+    let executions = std::rc::Rc::new(std::cell::Cell::new(0));
+    for cancel in [true, false] {
+        let on_execute = executions.clone();
+        cx.update_window(window, |_, window, cx| {
+            crate::dialogs::confirm("Execute action?".into(), "Execute", false, window, cx, move |_, _| on_execute.set(on_execute.get() + 1));
+        }).unwrap();
+        cx.run_until_parked();
+        let initial_focus = cx.update_window(window, |_, window, cx| window.focused(cx)).unwrap();
+        assert!(initial_focus.is_some());
+        {
+            let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
+            let button = vcx.debug_bounds("confirm-ok").unwrap();
+            let outline = vcx.debug_bounds("confirmation-focus-outline").unwrap();
+            assert_eq!(button.left() - outline.left(), gpui_kit::px(4.));
+            assert_eq!(outline.right() - button.right(), gpui_kit::px(4.));
+            assert_eq!(button.top() - outline.top(), gpui_kit::px(4.));
+            assert_eq!(outline.bottom() - button.bottom(), gpui_kit::px(4.));
+        }
+        if cancel {
+            press(cx, window, &["tab"]);
+            let moved_focus = cx.update_window(window, |_, window, cx| window.focused(cx)).unwrap();
+            assert_ne!(initial_focus, moved_focus, "Tab must move focus away from Execute");
+            let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
+            let button = vcx.debug_bounds("confirm-cancel").unwrap();
+            let outline = vcx.debug_bounds("confirmation-focus-outline").unwrap();
+            assert_eq!(button.left() - outline.left(), gpui_kit::px(4.));
+        }
+        press(cx, window, &["enter"]);
+        assert_eq!(executions.get(), usize::from(!cancel), "Enter activates only the focused button");
+    }
+}
+
+#[gpui_kit::test]
+async fn choice_confirmation_focuses_primary_action(cx: &mut TestAppContext) {
+    use gpui_kit::component::button::ButtonVariant;
+    let tmp = tempfile::tempdir().unwrap();
+    let (window, _ws) = setup(tmp.path(), cx);
+    let selected = std::rc::Rc::new(std::cell::Cell::new(None));
+    let first = selected.clone();
+    let primary = selected.clone();
+    cx.update_window(window, |_, window, cx| {
+        crate::dialogs::choose("Restore?".into(), "Choose where to restore.".into(), false, vec![
+            crate::dialogs::Choice::new("Choose folder", ButtonVariant::Secondary, move |_, _| first.set(Some(0))),
+            crate::dialogs::Choice::new("Restore", ButtonVariant::Primary, move |_, _| primary.set(Some(1))),
+        ], window, cx);
+    }).unwrap();
+    cx.run_until_parked();
+    press(cx, window, &["enter"]);
+    assert_eq!(selected.get(), Some(1));
+}
+
+#[gpui_kit::test]
+async fn updating_workspace_requires_confirmation(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    let child = root.join("project");
+    fs::create_dir(&child).unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["project"]).await;
+    cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| {
+        ws.save_workspace_as("Project".into(), window, cx);
+        ws.open_tab(Location::Dir(child.clone()), window, cx);
+    })).unwrap();
+    for confirm in [false, true] {
+        cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.update_workspace("Project".into(), window, cx))).unwrap();
+        assert_eq!(cx.update(|cx| ws.read(cx).settings.workspaces.iter().find(|w| w.name == "Project").unwrap().slots[0].tabs.len()), 1);
+        let mut vcx = gpui_kit::VisualTestContext::from_window(window, cx);
+        click_selector(&mut vcx, if confirm { "confirm-ok" } else { "confirm-cancel" });
+        assert_eq!(cx.update(|cx| ws.read(cx).settings.workspaces.iter().find(|w| w.name == "Project").unwrap().slots[0].tabs.len()), if confirm { 2 } else { 1 });
+    }
+}
+
+#[gpui_kit::test]
+async fn named_workspaces_save_and_restore_tabs(cx: &mut TestAppContext) {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    fs::create_dir(root.join("a")).unwrap();
+    fs::create_dir(root.join("b")).unwrap();
+    let (window, ws) = setup(&root, cx);
+    wait_for_names(cx, window, &ws, &["a", "b"]).await;
+    cx.update_window(window, |_, window, cx| {
+        ws.update(cx, |ws, cx| {
+            ws.open_tab(Location::Dir(root.join("a")), window, cx);
+            ws.open_tab(Location::Dir(root.join("b")), window, cx);
+            ws.save_workspace_as("Project".into(), window, cx);
+            // Close everything but one tab, somewhere else.
+            ws.close_tab(2, window, cx);
+            ws.close_tab(1, window, cx);
+            ws.open_location(Location::Home, window, cx);
+        })
+    })
+    .unwrap();
+    cx.run_until_parked();
+    assert_eq!(cx.update(|cx| ws.read(cx).slot_tabs().len()), 1);
+    cx.update_window(window, |_, window, cx| ws.update(cx, |ws, cx| ws.restore_workspace("Project", window, cx))).unwrap();
+    cx.run_until_parked();
+    let tabs: Vec<Location> = cx.update(|cx| ws.read(cx).slot_tabs().iter().map(|p| p.read(cx).location.clone()).collect());
+    assert_eq!(tabs, [Location::Dir(root.clone()), Location::Dir(root.join("a")), Location::Dir(root.join("b"))]);
+    assert_eq!(cx.update(|cx| ws.read(cx).active_tab()), 2);
+}
+

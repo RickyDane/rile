@@ -938,7 +938,7 @@ pub fn extract(
 
     let mut cb = |p: &ArchiveProgress| on_progress(p);
     let tracker = RefCell::new(Tracker::new(cancel, &mut cb));
-    let mut sink = Sink { root: staging.path().to_path_buf(), dirs: HashSet::new(), dir_modes: Vec::new() };
+    let mut sink = Sink { root: staging.path().to_path_buf(), only: None, dirs: HashSet::new(), dir_modes: Vec::new() };
 
     let res = match format {
         ArchiveFormat::Zip => extract_zip(archive, &mut sink, &tracker),
@@ -975,6 +975,158 @@ pub fn extract(
     t.p.items_total = t.p.items_total.max(t.p.items_done);
     t.emit(true);
     Ok(created)
+}
+
+// ---------------------------------------------------------------------------
+// Browsing
+// ---------------------------------------------------------------------------
+
+/// An entry of an archive, as listed for browsing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ListedEntry {
+    /// `/`-separated path inside the archive, without leading or trailing `/`.
+    pub path: String,
+    pub is_dir: bool,
+    pub is_symlink: bool,
+    pub size: u64,
+    pub modified: Option<SystemTime>,
+}
+
+/// Whether `path` can be browsed like a folder (any supported archive).
+pub fn browsable(path: &Path) -> bool {
+    detect(path).is_some()
+}
+
+/// Zip stores local wall-clock time without a zone; read it as this
+/// computer's local time.
+fn zip_mtime(t: Option<zip::DateTime>) -> Option<SystemTime> {
+    use chrono::TimeZone;
+    let t = t?;
+    let naive = chrono::NaiveDate::from_ymd_opt(t.year() as i32, t.month() as u32, t.day() as u32)?
+        .and_hms_opt(t.hour() as u32, t.minute() as u32, t.second() as u32)?;
+    let secs = chrono::Local.from_local_datetime(&naive).earliest()?.timestamp();
+    (secs >= 0).then(|| UNIX_EPOCH + Duration::from_secs(secs as u64))
+}
+
+/// Lists every entry of `archive`. Folders that only appear as parents of
+/// other entries are listed too. Unsafe names (`..`, absolute) are skipped.
+pub fn list(archive: &Path, cancel: &AtomicBool) -> Result<Vec<ListedEntry>> {
+    let (stem, format) = split_suffix(archive).with_context(|| format!("\"{}\" isn't a supported archive", archive.display()))?;
+    let open = || File::open(archive).with_context(|| format!("Can't open \"{}\"", archive.display()));
+    let mut out: Vec<ListedEntry> = Vec::new();
+    let mut push = |rel: Option<PathBuf>, is_dir: bool, is_symlink: bool, size: u64, modified: Option<SystemTime>| {
+        let Some(rel) = rel.filter(|r| !is_macos_junk(r)) else { return };
+        let path = rel.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect::<Vec<_>>().join("/");
+        out.push(ListedEntry { path, is_dir, is_symlink, size, modified });
+    };
+    match format {
+        ArchiveFormat::Zip => {
+            let mut za = zip::ZipArchive::new(BufReader::new(open()?))?;
+            for i in 0..za.len() {
+                let e = za.by_index_raw(i)?;
+                let link = e.unix_mode().is_some_and(mode_is_symlink);
+                push(safe_relative_str(e.name()).ok().flatten(), e.is_dir(), link, e.size(), zip_mtime(e.last_modified()));
+            }
+        }
+        ArchiveFormat::SevenZ => {
+            let reader = sevenz_rust2::ArchiveReader::open(archive, sevenz_rust2::Password::empty())
+                .with_context(|| format!("Can't open \"{}\"", archive.display()))?;
+            for f in &reader.archive().files {
+                let attrs = f.windows_attributes;
+                let link = f.has_windows_attributes && attrs & SEVENZ_UNIX_EXTENSION != 0 && mode_is_symlink(attrs >> 16);
+                let mtime = f.has_last_modified_date.then(|| SystemTime::from(f.last_modified_date));
+                push(safe_relative_str(f.name()).ok().flatten(), f.is_directory, link, f.size, mtime);
+            }
+        }
+        _ if format.is_tar() => {
+            let raw = BufReader::with_capacity(256 * 1024, open()?);
+            let decoder: Box<dyn Read> = match format {
+                ArchiveFormat::Tar => Box::new(raw),
+                ArchiveFormat::TarGz => Box::new(flate2::read::MultiGzDecoder::new(raw)),
+                ArchiveFormat::TarBr => Box::new(brotli::Decompressor::new(raw, 64 * 1024)),
+                _ => Box::new(zstd::stream::read::Decoder::new(raw)?),
+            };
+            for entry in tar::Archive::new(decoder).entries()? {
+                if cancel.load(Ordering::Relaxed) {
+                    bail!(CANCELLED);
+                }
+                let entry = entry?;
+                let h = entry.header();
+                use tar::EntryType as E;
+                let (is_dir, link) = match h.entry_type() {
+                    E::Directory => (true, false),
+                    E::Regular | E::Continuous | E::GNUSparse | E::Link => (false, false),
+                    E::Symlink => (false, true),
+                    _ => continue,
+                };
+                let mtime = h.mtime().ok().map(|s| UNIX_EPOCH + Duration::from_secs(s));
+                push(safe_relative(&entry.path()?).ok().flatten(), is_dir, link, entry.size(), mtime);
+            }
+        }
+        _ => {
+            let stem = if stem.is_empty() { "Archive".to_string() } else { stem };
+            let size = uncompressed_size(archive, cancel)?.unwrap_or(0);
+            let mtime = fs::metadata(archive).and_then(|m| m.modified()).ok();
+            push(Some(PathBuf::from(stem)), false, false, size, mtime);
+        }
+    }
+    // Later duplicates win (as when extracting); add implied parent folders.
+    let mut seen = HashSet::new();
+    let mut entries: Vec<ListedEntry> = out.into_iter().rev().filter(|e| seen.insert(e.path.clone())).collect();
+    let mut parents = Vec::new();
+    for e in &entries {
+        let mut p = e.path.as_str();
+        while let Some(i) = p.rfind('/') {
+            p = &p[..i];
+            if seen.insert(p.to_string()) {
+                parents.push(ListedEntry { path: p.to_string(), is_dir: true, is_symlink: false, size: 0, modified: None });
+            }
+        }
+    }
+    entries.extend(parents);
+    entries.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok(entries)
+}
+
+/// Extracts the entry `inner` (a file or a whole folder, `/`-separated) of
+/// `archive` to exactly `dest`, which must not exist yet. Hardened like
+/// [`extract`]; nothing is left behind on failure.
+pub fn extract_entry(
+    archive: &Path,
+    inner: &str,
+    dest: &Path,
+    cancel: &AtomicBool,
+    mut on_progress: impl FnMut(&ArchiveProgress),
+) -> Result<()> {
+    let (stem, format) = split_suffix(archive).with_context(|| format!("\"{}\" isn't a supported archive", archive.display()))?;
+    let stem = if stem.is_empty() { "Archive".to_string() } else { stem };
+    let only = safe_relative_str(inner)?.context("Nothing to extract")?;
+    let parent = dest.parent().context("no destination folder")?;
+    if fs::symlink_metadata(dest).is_ok() {
+        bail!("\"{}\" already exists", dest.display());
+    }
+    let staging = tempfile::Builder::new()
+        .prefix(".rile-extract-")
+        .tempdir_in(parent)
+        .with_context(|| format!("Can't create a folder in \"{}\"", parent.display()))?;
+    let mut cb = |p: &ArchiveProgress| on_progress(p);
+    let tracker = RefCell::new(Tracker::new(cancel, &mut cb));
+    let mut sink = Sink { root: staging.path().to_path_buf(), only: Some(only.clone()), dirs: HashSet::new(), dir_modes: Vec::new() };
+    let res = match format {
+        ArchiveFormat::Zip => extract_zip(archive, &mut sink, &tracker),
+        ArchiveFormat::SevenZ => extract_7z(archive, &mut sink, &tracker),
+        _ => extract_stream(archive, format, &stem, &mut sink, &tracker),
+    };
+    map_cancel(res, cancel)?;
+    tracker.borrow().check()?;
+    sink.apply_dir_modes();
+    let name = only.file_name().context("Nothing to extract")?;
+    let out = staging.path().join(name);
+    if fs::symlink_metadata(&out).is_err() {
+        bail!("\"{inner}\" isn't in the archive");
+    }
+    fs::rename(&out, dest).with_context(|| format!("Can't create \"{}\"", dest.display()))?;
+    Ok(())
 }
 
 /// Turns an archive entry path into a safe relative path. `Ok(None)` for
@@ -1035,12 +1187,24 @@ fn link_stays_inside(link: &Path, target: &Path) -> bool {
 /// Writes entries below `root`, never through symlinks.
 struct Sink {
     root: PathBuf,
+    /// Extract only this entry (file or folder) of the archive; it lands in
+    /// the root under its own name.
+    only: Option<PathBuf>,
     /// Directories (relative) verified to be real directories.
     dirs: HashSet<PathBuf>,
     dir_modes: Vec<(PathBuf, u32)>,
 }
 
 impl Sink {
+    /// Where `rel` goes in the root, or None when it's outside [`Sink::only`].
+    fn map(&self, rel: &Path) -> Option<PathBuf> {
+        let Some(only) = &self.only else { return Some(rel.to_path_buf()) };
+        let rest = rel.strip_prefix(only).ok()?;
+        let base = PathBuf::from(only.file_name()?);
+        // `join("")` would add a trailing separator.
+        Some(if rest.as_os_str().is_empty() { base } else { base.join(rest) })
+    }
+
     /// Makes sure every ancestor of `rel` is a real directory (creating it if
     /// needed) and returns the absolute path for `rel`.
     fn ensure_dir(&mut self, rel: &Path) -> Result<PathBuf> {
@@ -1221,9 +1385,9 @@ fn extract_zip(archive: &Path, sink: &mut Sink, t: &RefCell<Tracker<'_>>) -> Res
     for i in 0..za.len() {
         t.borrow().check()?;
         let mut e = za.by_index(i)?;
-        let rel = match safe_relative_str(e.name())? {
-            Some(rel) if !is_macos_junk(&rel) => rel,
-            _ => {
+        let rel = match safe_relative_str(e.name())?.filter(|rel| !is_macos_junk(rel)).and_then(|rel| sink.map(&rel)) {
+            Some(rel) => rel,
+            None => {
                 t.borrow_mut().finish_item();
                 continue;
             }
@@ -1262,12 +1426,12 @@ fn extract_7z(archive: &Path, sink: &mut Sink, t: &RefCell<Tracker<'_>>) -> Resu
     let res = reader.for_each_entries(|entry, r| {
         let mut step = || -> Result<()> {
             t.borrow().check()?;
-            let rel = match safe_relative_str(entry.name())? {
-                // Anti-items are ignored on purpose: real ones only occur in
-                // update archives, and buggy writers (sevenz-rust2 0.20) flag
-                // ordinary dirs/empty files with it.
-                Some(rel) if !is_macos_junk(&rel) => rel,
-                _ => {
+            // Anti-items are ignored on purpose: real ones only occur in
+            // update archives, and buggy writers (sevenz-rust2 0.20) flag
+            // ordinary dirs/empty files with it.
+            let rel = match safe_relative_str(entry.name())?.filter(|rel| !is_macos_junk(rel)).and_then(|rel| sink.map(&rel)) {
+                Some(rel) => rel,
+                None => {
                     io::copy(r, &mut io::sink())?;
                     t.borrow_mut().finish_item();
                     return Ok(());
@@ -1328,7 +1492,7 @@ fn extract_stream(
     };
 
     if !format.is_tar() {
-        let rel = PathBuf::from(stem);
+        let Some(rel) = sink.map(Path::new(stem)) else { bail!("\"{stem}\" isn't in the archive") };
         return sink.file(&rel, &mut decoder, 0, None, None, t);
     }
 
@@ -1340,6 +1504,7 @@ fn extract_stream(
         if is_macos_junk(&rel) {
             continue;
         }
+        let Some(rel) = sink.map(&rel) else { continue };
         let header = entry.header();
         let mode = header.mode().ok();
         let mtime = header.mtime().ok().map(|s| UNIX_EPOCH + Duration::from_secs(s));
@@ -1357,7 +1522,10 @@ fn extract_stream(
             E::Link => {
                 let target = entry.link_name()?.context("hard link without a target")?;
                 let target_rel = safe_relative(&target)?.context("hard link to the archive root")?;
-                sink.hard_link(&rel, &target_rel, t)?;
+                // A link to something outside the extracted subtree is left out.
+                if let Some(target_rel) = sink.map(&target_rel) {
+                    sink.hard_link(&rel, &target_rel, t)?;
+                }
             }
             // Devices, FIFOs and metadata-only records are skipped.
             _ => {}
@@ -1462,6 +1630,34 @@ mod tests {
         // Second extraction gets a unique name.
         let root2 = extract(&archive, &out_dir, &AtomicBool::new(false), noop).unwrap();
         assert_eq!(root2, out_dir.join("project copy"));
+    }
+
+    #[test]
+    fn browse_list_and_extract_entry() {
+        for format in ArchiveFormat::ALL.into_iter().filter(|f| f.supports_multiple()) {
+            let tmp = TempDir::new().unwrap();
+            let src = fixture(tmp.path());
+            let archive = tmp.path().join(suggested_name(std::slice::from_ref(&src), format));
+            compress(std::slice::from_ref(&src), &archive, format, format.default_level(), &AtomicBool::new(false), noop).unwrap();
+            let entries = list(&archive, &AtomicBool::new(false)).unwrap();
+            let get = |p: &str| entries.iter().find(|e| e.path == p).unwrap_or_else(|| panic!("{format:?}: {p} missing in {entries:?}"));
+            assert!(get("project").is_dir);
+            assert!(get("project/sub/deeper").is_dir);
+            assert_eq!(get("project/sub/b.bin").size, 300_000);
+            assert!(!get("project/a.txt").is_dir);
+
+            // A single file, then a whole folder, to exact destinations.
+            let out = tmp.path().join("one.txt");
+            extract_entry(&archive, "project/sub/deeper/c.txt", &out, &AtomicBool::new(false), noop).unwrap_or_else(|e| panic!("{format:?}: {e:?}"));
+            assert_eq!(fs::read_to_string(&out).unwrap(), "deep\n");
+            let out = tmp.path().join("sub-out");
+            extract_entry(&archive, "project/sub", &out, &AtomicBool::new(false), noop).unwrap();
+            assert_eq!(fs::read_to_string(out.join("deeper/c.txt")).unwrap(), "deep\n");
+            assert!(!out.join("a.txt").exists());
+            assert!(extract_entry(&archive, "project/nope", &tmp.path().join("nope"), &AtomicBool::new(false), noop).is_err());
+            // No staging folders left behind.
+            assert!(only_entries(tmp.path()).iter().all(|n| !n.starts_with(".rile-extract")));
+        }
     }
 
     #[test]

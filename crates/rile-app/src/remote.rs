@@ -81,6 +81,9 @@ pub fn info(id: &str) -> Option<ConnectionInfo> {
 /// Live session for a connection, connecting (blocking) if needed.
 /// Call from background threads only.
 pub fn session(id: &str) -> Result<Session> {
+    if crate::archive_fs::is_archive_conn(id) {
+        return crate::archive_fs::session(id);
+    }
     let (info, secret) = {
         let r = registry().lock().unwrap();
         let info = r.infos.get(id).cloned().context("unknown connection")?;
@@ -152,6 +155,9 @@ fn load_cached(id: &str) -> Option<String> {
 }
 
 pub fn is_connected(id: &str) -> bool {
+    if crate::archive_fs::is_archive_conn(id) {
+        return true;
+    }
     Pool::global().is_connected(id)
 }
 
@@ -225,17 +231,29 @@ pub fn join(base: &str, name: &str) -> String {
 
 /// Where remote files are downloaded for opening/previewing.
 pub fn temp_path(id: &str, remote: &str) -> PathBuf {
+    if let Some(archive) = crate::archive_fs::archive_of(id) {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        archive.hash(&mut h);
+        return std::env::temp_dir().join("rile-remote").join(format!("archive-{:x}", h.finish())).join(paths::file_name(remote));
+    }
     // Device ids look like `peer:…`; `:` isn't allowed in Windows file names.
     std::env::temp_dir().join("rile-remote").join(id.replace(':', "-")).join(paths::file_name(remote))
 }
 
 /// Lowercase "user@host" label for breadcrumbs and titles.
 pub fn label(id: &str) -> String {
+    if let Some(archive) = crate::archive_fs::archive_of(id) {
+        return archive.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| id.to_string());
+    }
     info(id).map(|i| if i.name.is_empty() { i.display() } else { i.name.clone() }).unwrap_or_else(|| id.to_string())
 }
 
 /// Icon of a connection: a computer for nearby Rile devices, else a globe.
 pub fn icon(id: &str) -> gpui_kit::assets::IconName {
+    if crate::archive_fs::is_archive_conn(id) {
+        return gpui_kit::assets::IconName::FileArchive;
+    }
     if rile_remote::peer::peer_of_conn(id).is_some() {
         gpui_kit::assets::IconName::Laptop
     } else {

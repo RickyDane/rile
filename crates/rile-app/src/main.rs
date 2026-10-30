@@ -4,6 +4,7 @@
 mod actions;
 mod ai_glow;
 mod app_icon;
+mod archive_fs;
 mod background;
 #[cfg(any(target_os = "macos", windows))]
 mod backup_menu;

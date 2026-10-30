@@ -887,7 +887,7 @@ fn storage(ws: &Workspace, width: Width, cols: usize, cx: &mut Context<Workspace
             let usage = row.details.as_ref().map(|d| (d.storage_used, d.storage_total)).filter(|(_, t)| *t > 0);
             let art_kind = match row.kind {
                 rile_remote::peer::DeviceKind::Server => Art::NearbyServer,
-                rile_remote::peer::DeviceKind::Desktop => Art::Desktop,
+                rile_remote::peer::DeviceKind::Desktop => Art::NearbyDesktop,
                 rile_remote::peer::DeviceKind::Laptop => Art::NearbyComputer,
             };
             // OS first so it survives truncation of long CPU model names.

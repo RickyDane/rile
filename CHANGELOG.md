@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.8.2-beta.2
+
+- Add batch rename, file comparison, operation history and a shelf for organizing files.
+- Improve archive browsing, file operations, previews, plugins and sidebar navigation.
+- Add Nearby desktop artwork and a new website deployed to GitHub Pages.
+
 ## v0.8.2-beta.1
 
 - Consolidate Rile and backup status/actions into one tray/menu bar item. Retire the old backup-only login helper without interrupting its active backups; retain the headless scheduler.

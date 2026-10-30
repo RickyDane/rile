@@ -90,6 +90,12 @@ impl Workspace {
         if paths.is_empty() {
             return;
         }
+        // Archives are read-only: taking something out of one copies it.
+        let copy = copy || src_conn.as_deref().is_some_and(crate::archive_fs::is_archive_conn);
+        if dest_conn.as_deref().is_some_and(crate::archive_fs::is_archive_conn) {
+            window.push_notification(Notification::info("Archives are read-only here — extract it to add files"), cx);
+            return;
+        }
         let dual_transfer = self.dual && self.other_dir(cx).is_some_and(|(other, conn)| other == dest && conn == dest_conn)
             && (src_conn != dest_conn || paths.iter().any(|p| p.parent() != Some(dest.as_path())));
         match (src_conn, dest_conn) {

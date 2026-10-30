@@ -12,6 +12,7 @@ use gpui_kit::component::{WindowExt, input::{InputEvent, InputState}, notificati
 use gpui_kit::{App, AppContext, ClipboardEntry, ClipboardItem, Context, SharedString, Window};
 use rile_core::ops::{self, Progress, TransferKind};
 use rile_core::ClipboardMode;
+use rile_services::journal::{self, Change, OpKind};
 
 use super::{RunningOp, Workspace, display_name, item_count};
 use crate::actions::*;
@@ -232,6 +233,7 @@ impl Workspace {
                     std::fs::remove_file(&path).ok();
                     return Err(error).with_context(|| format!("writing {}", path.display()));
                 }
+                journal::record(OpKind::Copy, "Pasted an image", vec![Change::Created { path: path.clone(), trashed: None }]);
                 Ok(vec![path])
             });
             return;
@@ -256,7 +258,12 @@ impl Workspace {
             return;
         }
         let label = format!("Duplicating {}", item_count(paths.len()));
-        self.start_op(label, window, cx, move |cancel, _| ops::duplicate(&paths, cancel));
+        self.start_op(label, window, cx, move |cancel, _| {
+            let created = ops::duplicate(&paths, cancel)?;
+            let changes = created.iter().map(|p| Change::Created { path: p.clone(), trashed: None }).collect();
+            journal::record(OpKind::Duplicate, format!("Duplicated {}", item_count(created.len())), changes);
+            Ok(created)
+        });
     }
 
     pub(crate) fn move_to_trash(&mut self, _: &MoveToTrash, window: &mut Window, cx: &mut Context<Self>) {
@@ -274,7 +281,7 @@ impl Workspace {
             dialogs::confirm(
                 format!("Move {} to the {}?", item_count(paths.len()), crate::platform_text::trash()),
                 if cfg!(target_os = "macos") { "Move to Trash" } else { "Delete" },
-                false,
+                true,
                 window,
                 cx,
                 move |window, cx| {
@@ -289,7 +296,12 @@ impl Workspace {
 
     pub(crate) fn trash_paths(&mut self, paths: Vec<PathBuf>, window: &mut Window, cx: &mut Context<Self>) {
         let label = format!("Moving {} to {}", item_count(paths.len()), crate::platform_text::trash());
-        self.start_op(label, window, cx, move |_, _| ops::move_to_trash(&paths).map(|_| Vec::new()));
+        let past = format!("Moved {} to the {}", item_count(paths.len()), crate::platform_text::trash());
+        self.start_op(label, window, cx, move |_, _| {
+            let (changes, result) = journal::trash(&paths);
+            journal::record(OpKind::Trash, past, changes);
+            result.map(|_| Vec::new())
+        });
     }
 
     pub(crate) fn delete_permanently(&mut self, _: &DeletePermanently, window: &mut Window, cx: &mut Context<Self>) {
@@ -323,10 +335,14 @@ impl Workspace {
                             if cancel.load(Ordering::Relaxed) {
                                 anyhow::bail!("Cancelled");
                             }
-                            ops::remove_permanently(path)?;
+                            if let Err(e) = ops::remove_permanently(path) {
+                                journal::record(OpKind::Delete, format!("Deleted {} permanently", item_count(p.items_done)), deleted(&paths[..p.items_done]));
+                                return Err(e);
+                            }
                             p.items_done += 1;
                             report(p.clone());
                         }
+                        journal::record(OpKind::Delete, format!("Deleted {} permanently", item_count(paths.len())), deleted(&paths));
                         Ok(Vec::new())
                     });
                 })
@@ -336,7 +352,10 @@ impl Workspace {
     }
 
     pub(crate) fn rename(&mut self, _: &Rename, window: &mut Window, cx: &mut Context<Self>) {
-        if let Some(path) = self.selection(cx).first().cloned() {
+        let selection = self.selection(cx);
+        if selection.len() > 1 && self.pane().read(cx).conn().is_none() {
+            self.batch_rename(&BatchRename, window, cx);
+        } else if let Some(path) = selection.first().cloned() {
             self.rename_path(path, window, cx);
         }
     }
@@ -364,6 +383,10 @@ impl Workspace {
                 }
                 match ops::rename(&path, &new_name) {
                     Ok(dest) => {
+                        if dest != path {
+                            let old = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                            journal::record(OpKind::Rename, format!("Renamed \"{old}\" to \"{new_name}\""), vec![Change::Moved { from: path.clone(), to: dest.clone() }]);
+                        }
                         pane.update(cx, |p, cx| {
                             p.select_after_reload(vec![dest]);
                             p.reload(cx);
@@ -412,6 +435,7 @@ impl Workspace {
         let Some(dir) = self.current_dir(cx) else { return };
         match ops::create_file(&dir, "untitled.txt") {
             Ok(path) => {
+                journal::record(OpKind::NewFile, format!("Created \"{}\"", display_name(&path)), vec![Change::Created { path: path.clone(), trashed: None }]);
                 self.pane().update(cx, |p, cx| {
                     p.select_after_reload(vec![path.clone()]);
                     p.reload(cx);
@@ -430,6 +454,7 @@ impl Workspace {
         let Some(dir) = self.current_dir(cx) else { return };
         match ops::create_folder(&dir, "untitled folder") {
             Ok(path) => {
+                journal::record(OpKind::NewFolder, format!("Created \"{}\"", display_name(&path)), vec![Change::Created { path: path.clone(), trashed: None }]);
                 self.pane().update(cx, |p, cx| {
                     p.select_after_reload(vec![path.clone()]);
                     p.reload(cx);
@@ -480,7 +505,15 @@ impl Workspace {
             // Only count actual selected files moved to a different folder,
             // not no-op moves, copies, or guessed recursive totals.
             let organized = if copy { 0 } else { paths.iter().filter(|p| p.is_file() && p.parent() != Some(dest.as_path())).count() };
-            let created = ops::transfer(&paths, &dest, kind, cancel, report)?;
+            let pairs = ops::transfer_pairs(&paths, &dest, kind, cancel, report)?;
+            let changes: Vec<Change> = pairs
+                .iter()
+                .filter(|(from, to)| from != to)
+                .map(|(from, to)| if copy { Change::Created { path: to.clone(), trashed: None } } else { Change::Moved { from: from.clone(), to: to.clone() } })
+                .collect();
+            let past = format!("{} {} to {}", if copy { "Copied" } else { "Moved" }, item_count(changes.len()), display_name(&dest));
+            journal::record(if copy { OpKind::Copy } else { OpKind::Move }, past, changes);
+            let created: Vec<PathBuf> = pairs.into_iter().map(|(_, to)| to).collect();
             if !cancel.load(Ordering::Relaxed) {
                 if organized > 0 { rile_services::rewards::record_event(rile_services::rewards::Event::Organized(organized)); }
                 if dual_transfer { rile_services::rewards::record_event(rile_services::rewards::Event::DualTransfer); }
@@ -551,6 +584,31 @@ impl Workspace {
         }
     }
 
+    /// Opens a terminal in the selected folder, else the current one.
+    pub(crate) fn open_terminal(&mut self, _: &OpenTerminal, window: &mut Window, cx: &mut Context<Self>) {
+        let pane = self.pane().read(cx);
+        if pane.conn().is_some() {
+            window.push_notification(Notification::info("Open in Terminal works with folders on this computer"), cx);
+            return;
+        }
+        let selected: Vec<PathBuf> = pane.selected_entries().into_iter().filter(|e| e.is_dir).map(|e| e.path.clone()).collect();
+        let dir = match selected.as_slice() {
+            [one] => Some(one.clone()),
+            _ => pane.current_dir().map(PathBuf::from),
+        };
+        let Some(dir) = dir else {
+            window.push_notification(Notification::info("Open a folder first"), cx);
+            return;
+        };
+        self.open_terminal_at(dir, window, cx);
+    }
+
+    pub(crate) fn open_terminal_at(&mut self, dir: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+        if let Err(e) = rile_services::terminal::open(&dir, &self.settings.terminal) {
+            window.push_notification(Notification::error(format!("{e:#}")), cx);
+        }
+    }
+
     /// Unmounts/ejects a volume, leaving it first if a pane is inside.
     pub fn unmount(&mut self, mount: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
         for pane in self.all_panes() {
@@ -575,6 +633,10 @@ impl Workspace {
             },
         );
     }
+}
+
+fn deleted(paths: &[PathBuf]) -> Vec<Change> {
+    paths.iter().map(|p| Change::Deleted { path: p.clone() }).collect()
 }
 
 /// Paths copied as text elsewhere (one per line), if they all exist.

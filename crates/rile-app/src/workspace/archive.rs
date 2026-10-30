@@ -46,6 +46,14 @@ impl Workspace {
         }
         let paths = self.selection(cx);
         let Some(dir) = paths.first().and_then(|p| p.parent()).map(PathBuf::from) else { return };
+        self.compress_paths(paths, dir, window, cx);
+    }
+
+    /// The Compress dialog for `paths`, saving into `dir`.
+    pub(crate) fn compress_paths(&mut self, paths: Vec<PathBuf>, dir: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+        if paths.is_empty() {
+            return;
+        }
         let ws = cx.entity().downgrade();
         let view = cx.new(|cx| CompressForm::new(ws, paths.clone(), dir, window, cx));
         let subtitle: SharedString = match paths.as_slice() {
@@ -72,10 +80,25 @@ impl Workspace {
             let label = format!("Extracting {}", display_name(&path));
             self.start_op(label, window, cx, move |cancel, report| {
                 let root = archive::extract(&path, &dest, cancel, |p| report(to_progress(p)))?;
+                rile_services::journal::record(
+                    rile_services::journal::OpKind::Extract,
+                    format!("Extracted \"{}\"", display_name(&path)),
+                    vec![rile_services::journal::Change::Created { path: root.clone(), trashed: None }],
+                );
                 rile_services::rewards::record_event(rile_services::rewards::Event::Archive);
                 Ok(vec![root])
             });
         }
+    }
+
+    /// Shows the selected archive's contents like a folder.
+    pub(crate) fn browse_archive(&mut self, _: &BrowseArchive, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(path) = self.selection(cx).into_iter().find(|p| crate::archive_fs::is_browsable(p)) else {
+            window.push_notification(Notification::info("Select a zip, 7z or tar archive to browse"), cx);
+            return;
+        };
+        let conn = crate::archive_fs::conn_for(&path);
+        self.open_location(rile_core::history::Location::Remote { conn, path: "/".into() }, window, cx);
     }
 
     pub(crate) fn start_compress(
@@ -90,6 +113,11 @@ impl Workspace {
         let label = format!("Compressing {} to {}", item_count(inputs.len()), display_name(&dest));
         self.start_op(label, window, cx, move |cancel, report| {
             archive::compress(&inputs, &dest, format, level, cancel, |p| report(to_progress(p)))?;
+            rile_services::journal::record(
+                rile_services::journal::OpKind::Compress,
+                format!("Compressed {} to \"{}\"", item_count(inputs.len()), display_name(&dest)),
+                vec![rile_services::journal::Change::Created { path: dest.clone(), trashed: None }],
+            );
             rile_services::rewards::record_event(rile_services::rewards::Event::Archive);
             Ok(vec![dest])
         });

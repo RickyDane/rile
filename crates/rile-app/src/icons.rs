@@ -27,6 +27,8 @@ gpui_kit::assets::icon_assets!(
         Archive, PackageOpen, AppWindow, ExternalLink, Images, Files, Link, FilePlus, WandSparkles,
         LayoutDashboard, TextSearch, Brain, GripVertical, AppWindowMac, Gauge, Play,
         DatabaseBackup, ArchiveRestore, Clock, FolderSync, CircleCheck, Pause, Square,
+        Undo2, Redo2, ClockFading, Package, PackagePlus, PackageX, GitCompareArrows, ArrowRightLeft, Equal, Layers,
+        Terminal, Replace, CaseSensitive, Regex, ListOrdered, Save, Minus, FolderInput, FolderOutput, RotateCcw,
         SquareTerminal, ShieldCheck, Network, User, KeyRound, FileKey, Lock, IdCard, Cloud, Lightbulb,
     ]
 );

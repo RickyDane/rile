@@ -287,6 +287,11 @@ impl Workspace {
 
     /// Re-targets previews when the cursor moves; loads in the background.
     pub fn sync_preview(&mut self, cx: &mut Context<Self>) {
+        // Properties has an explicit target (which may come from the sidebar),
+        // not the active pane's cursor. Keep it pinned until dismissed.
+        if self.preview.quicklook && self.preview.properties_only {
+            return;
+        }
         if !self.preview.quicklook && !self.settings.show_preview_panel && !self.inspector_overlay {
             return;
         }
@@ -875,10 +880,11 @@ impl Workspace {
         if paths.is_empty() {
             paths.extend(self.current_dir(cx));
         }
-        self.open_properties(paths, window, cx);
+        let conn = self.pane().read(cx).conn();
+        self.open_properties(paths, conn, window, cx);
     }
 
-    fn open_properties(&mut self, paths: Vec<PathBuf>, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn open_properties(&mut self, paths: Vec<PathBuf>, conn: Option<String>, window: &mut Window, cx: &mut Context<Self>) {
         if paths.is_empty() {
             return;
         }
@@ -888,9 +894,8 @@ impl Workspace {
         };
         self.preview.properties_only = true;
         self.set_previewing(true, cx);
-        if self.preview.target.is_none() {
-            self.preview.target = paths.first().cloned();
-        }
+        self.preview.target = paths.first().cloned();
+        self.preview.target_conn = conn;
         self.preview.properties_subtitle = Some(subtitle);
         if self.preview.target_conn.is_none() {
             self.preview.properties_view = Some(cx.new(|cx| PropertiesView::new(paths, cx)));

@@ -303,14 +303,18 @@ impl Workspace {
     /// Summarizes the selection (or the current folder) in a read-only
     /// dialog; only reachable from the context menu.
     fn open_summary(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if !self.settings.ai_enabled {
-            window.push_notification(Notification::info("AI features are turned off in Settings"), cx);
-            return;
-        }
         let mut selection = self.selection(cx);
         // Summarizing with nothing selected describes the folder itself.
         if selection.is_empty() {
             selection.extend(self.current_dir(cx));
+        }
+        self.summarize_paths(selection, window, cx);
+    }
+
+    pub(crate) fn summarize_paths(&mut self, selection: Vec<PathBuf>, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.settings.ai_enabled {
+            window.push_notification(Notification::info("AI features are turned off in Settings"), cx);
+            return;
         }
         if selection.is_empty() {
             return;

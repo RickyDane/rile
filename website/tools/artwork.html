@@ -1,0 +1,228 @@
+<!doctype html>
+<!--
+  Procedural space artwork used for the website backgrounds and for the demo
+  files shown in the app screenshots. Rendered with WebGL2; every image is
+  deterministic for a given query string.
+
+    ?mode=nebula&seed=3&pal=carina
+    ?mode=planet&seed=7&kind=gas&rings=1
+    ?mode=field&seed=1            (stars only)
+
+  Set the viewport to the output size, wait for `window.ready`, then capture.
+-->
+<html lang="en">
+<meta charset="utf-8">
+<title>Rile artwork</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+<canvas id="c"></canvas>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const mode = q.get('mode') ?? 'nebula';
+const seed = Number(q.get('seed') ?? 1);
+const rings = q.get('rings') === '1';
+const transparent = q.get('bg') === 'none';
+
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+// Each palette: deep, mid, highlight, core.
+const palettes = {
+  carina:    ['#120a2e', '#b4366c', '#ff9e5e', '#fff1d6'],
+  helix:     ['#041a2a', '#12839a', '#f05a7e', '#fff3e0'],
+  orion:     ['#0d0623', '#6a2c91', '#e0559b', '#ffe3f1'],
+  pillars:   ['#120d06', '#8a4b1f', '#e9b26a', '#f7f1dd'],
+  crab:      ['#060a1f', '#2a4bd1', '#ff7a3d', '#fff4dc'],
+  lagoon:    ['#1a0716', '#c42c5b', '#ff9a8a', '#ffeef0'],
+  andromeda: ['#05081a', '#3a5bb5', '#b9c8ff', '#fffaf0'],
+  tarantula: ['#04120f', '#169f8a', '#a6f0c6', '#f2fff8'],
+  rile:      ['#05061a', '#3b2a8f', '#4f8dff', '#e8f1ff'],
+  aurora:    ['#030b17', '#1f4fb3', '#9b5cff', '#ffd9f4'],
+};
+const planets = {
+  gas:   ['#3a1d0e', '#c27a43', '#f2d3a2', '#8a4a2b'],
+  ice:   ['#0d2333', '#5aa7c9', '#e7f6ff', '#2b6f93'],
+  rock:  ['#1c120d', '#7b4a32', '#d39a6d', '#3b2418'],
+  ocean: ['#03122a', '#1a4f9c', '#4f7d4a', '#e9f1f5'],
+  neon:  ['#140829', '#6b3fd1', '#ff6fb5', '#2a1d68'],
+};
+const pal = (mode === 'planet' ? planets[q.get('kind') ?? 'gas'] : palettes[q.get('pal') ?? 'carina']).map(hex);
+
+const common = `#version 300 es
+precision highp float;
+uniform vec2 uRes; uniform float uSeed; uniform vec3 uA, uB, uC, uD; uniform float uRings, uKind;
+out vec4 o;
+float h21(vec2 p){ p = fract(p*vec2(233.34, 851.73)); p += dot(p, p+23.45); return fract(p.x*p.y); }
+vec2 h22(vec2 p){ float n = h21(p); return vec2(n, h21(p+n)); }
+float noise(vec2 p){
+  vec2 i = floor(p), f = fract(p); vec2 u = f*f*f*(f*(f*6.-15.)+10.);
+  return mix(mix(h21(i), h21(i+vec2(1,0)), u.x), mix(h21(i+vec2(0,1)), h21(i+vec2(1,1)), u.x), u.y);
+}
+float fbm(vec2 p){ float v = 0., a = .5; mat2 m = mat2(1.62, 1.18, -1.18, 1.62);
+  for (int i = 0; i < 8; i++) { v += a*noise(p); p = m*p + 7.31; a *= .5; } return v; }
+float ridged(vec2 p){ float v = 0., a = .5; mat2 m = mat2(1.62, 1.18, -1.18, 1.62);
+  for (int i = 0; i < 6; i++) { v += a*(1. - abs(noise(p)*2. - 1.)); p = m*p + 3.1; a *= .5; } return v; }
+// Point stars on a jittered grid, with a soft glow and rare diffraction spikes.
+vec3 stars(vec2 uv, float scale, float density){
+  vec3 c = vec3(0);
+  for (int l = 0; l < 3; l++) {
+    float s = scale * (1. + float(l)*1.9);
+    vec2 g = uv*s, id = floor(g), f = fract(g) - .5;
+    for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
+      vec2 o2 = vec2(x, y), cid = id + o2 + uSeed*17.;
+      float r = h21(cid);
+      if (r > density) continue;
+      vec2 pos = o2 + (h22(cid) - .5)*.8 - f;
+      float d = length(pos) * s / scale;
+      float b = pow(h21(cid+3.1), 6.) * (l == 0 ? 1.6 : .7);
+      float temp = h21(cid+9.7);
+      vec3 tint = mix(vec3(1., .82, .66), vec3(.7, .82, 1.), temp);
+      float core = exp(-d*d*4200.) + .5*exp(-d*420.);
+      float spike = 0.;
+      if (b > .55) spike = (exp(-abs(pos.x)*s/scale*1800.) + exp(-abs(pos.y)*s/scale*1800.)) * exp(-d*55.) * .5;
+      c += tint * (core*(.45 + 1.6*b) + spike*b*1.4);
+    }
+  }
+  return c;
+}
+`;
+
+const nebula = common + `
+void main(){
+  vec2 uv = (gl_FragCoord.xy - .5*uRes) / uRes.y;
+  vec2 p = uv*1.25 + vec2(uSeed*3.17, uSeed*1.71);
+  vec2 qv = vec2(fbm(p), fbm(p + vec2(5.2, 1.3)));
+  vec2 r = vec2(fbm(p + 3.2*qv + vec2(1.7, 9.2)), fbm(p + 3.2*qv + vec2(8.3, 2.8)));
+  float f = fbm(p + 3.0*r);
+  // Large-scale envelope keeps plenty of dark sky between clouds.
+  vec2 c0 = (h22(vec2(uSeed, 1.3)) - .5) * vec2(.7, .35);
+  float env = smoothstep(1.1, .0, length((uv - c0)*vec2(.7, 1.))) * smoothstep(.2, .65, fbm(p*.6 + 2.));
+  env = max(env, .35*smoothstep(.5, .8, fbm(p*.9 + 6.)));
+  float detail = .55 + .9*fbm(p*4.3 + r*3. + 21.);
+  float dens = pow(clamp(f*1.35 - .2, 0., 1.), 2.2) * env * detail;
+  float fil = pow(ridged(p*1.9 + r*2.4), 4.) * env;
+  float dust = smoothstep(.45, .75, fbm(p*2.6 + r*1.8 + 11.));
+  vec3 e = vec3(0);
+  e += uB * dens * 2.6;
+  e += uC * pow(dens, 1.9) * 4.2;
+  e += uC * fil * .9;
+  e += uD * pow(dens, 3.6) * 9.;
+  e += uD * exp(-length((uv - c0)*vec2(1., 1.3))*5.) * 1.1 * env;
+  e = mix(e, e.zyx*vec3(.9, 1., 1.1), .35*smoothstep(.3, .8, qv.y)*smoothstep(.2, .6, dens));
+  // Faint large halo of the deep colour
+  e += uA * 2.2 * env * f;
+  e *= 1. - dust*.8*smoothstep(.0, .3, dens + fil);
+  vec3 s = stars(uv, 30., .42) * 1.6;
+  e += s * (1. - dust*.7*env);
+  // Bright embedded stars near dense regions
+  e += stars(uv*.6 + 3., 9., .06) * 3. * clamp(dens*3., 0., 1.);
+  vec3 col = 1. - exp(-e*1.7);
+  float l = dot(col, vec3(.299, .587, .114)); col = mix(vec3(l), col, 1.25);
+  col = pow(col, vec3(1.08));
+  o = vec4(col, 1.);
+}`;
+
+const field = common + `
+void main(){
+  vec2 uv = (gl_FragCoord.xy - .5*uRes) / uRes.y;
+  float f = fbm(uv*1.2 + uSeed);
+  vec3 col = uA*.35 + uB*pow(f, 4.)*.25;
+  col += stars(uv, 30., .3);
+  o = vec4(col / (1. + col*.3), 1.);
+}`;
+
+const planet = common + `
+void main(){
+  vec2 uv = (gl_FragCoord.xy - .5*uRes) / min(uRes.x, uRes.y);
+  float R = .3;
+  vec3 col = vec3(0); float alpha = 0.;
+  vec3 light = normalize(vec3(-.8, .38, .42));
+  ${transparent ? '' : 'col = stars(uv, 26., .22) + uA*.08*fbm(uv*2.+uSeed); alpha = 1.;'}
+  // Ring geometry: tilted ellipse in screen space.
+  float tilt = .28, rot = -.32;
+  mat2 rm = mat2(cos(rot), -sin(rot), sin(rot), cos(rot));
+  vec2 ru = rm*uv; vec2 re = vec2(ru.x, ru.y/tilt);
+  float rd = length(re);
+  float ringBand = 0.;
+  if (uRings > .5) {
+    float t = (rd - R*1.35) / (R*1.05);
+    if (t > 0. && t < 1.) ringBand = (.55 + .45*sin(t*70. + noise(vec2(t*40., uSeed))*3.)) * smoothstep(0., .08, t) * smoothstep(1., .82, t) * (1. - .7*smoothstep(.42, .47, t)*smoothstep(.53, .48, t));
+  }
+  vec3 ringCol = mix(uC, uB, .4) * ringBand * .9;
+  bool behind = ru.y > 0.;
+  float d = length(uv);
+  if (uRings > .5 && behind) { col = mix(col, ringCol, ringBand*.9); alpha = max(alpha, ringBand*.9); }
+  // Atmosphere halo
+  float halo = .8*exp(-max(d - R, 0.)*55.) * smoothstep(R*.96, R*1.02, d);
+  vec3 atm = mix(uB, uC, .5);
+  if (d < R) {
+    vec3 n = vec3(uv, sqrt(R*R - d*d)) / R;
+    float lon = atan(n.x, n.z) + uSeed, lat = asin(n.y);
+    vec2 sp = vec2(lon*1.2, lat*2.4);
+    vec3 surf;
+    if (uKind < .5) { // gas giant: latitude bands with turbulence
+      float w = fbm(sp*vec2(1., 3.) + uSeed);
+      float bands = sin(lat*18. + w*5.5 + fbm(sp*4.)*2.);
+      surf = mix(uA, uB, smoothstep(-1., 1., bands));
+      surf = mix(surf, uC, pow(fbm(sp*vec2(2., 9.) + 3.), 2.)*.9);
+      float storm = exp(-pow(length((vec2(lon - uSeed, lat) - vec2(.6, -.35))*vec2(1., 2.)), 2.)*60.);
+      surf = mix(surf, uD*1.2, storm*.8);
+    } else if (uKind < 1.5) { // icy: cracked shell
+      float cracks = (1. - smoothstep(.0, .025, abs(noise(sp*5. + uSeed) - .5))) * .7 + (1. - smoothstep(.0, .015, abs(noise(sp*11. + 3.) - .5)))*.4;
+      surf = mix(uC, uB, fbm(sp*2.5)*.8) ;
+      surf = mix(surf, uD, cracks*.8);
+    } else { // rocky / ocean world
+      float h = fbm(sp*2.2 + uSeed*.7);
+      float land = smoothstep(.5, .54, h);
+      surf = mix(uB*.8, uA*1.6, h);
+      surf = mix(surf, mix(uC, uD, smoothstep(.6, .8, h)), land);
+      float cl = smoothstep(.55, .8, fbm(sp*3. + 9.));
+      surf = mix(surf, vec3(.95), cl*.65);
+    }
+    float diff = smoothstep(-.12, .5, dot(n, light));
+    float rim = pow(1. - n.z, 3.);
+    col = surf*diff + atm*rim*.9*smoothstep(-.3, .6, dot(n, light)) + surf*.03;
+    alpha = 1.;
+    // ring shadow on the planet
+    if (uRings > .5) {
+      vec2 sh = rm*(uv + light.xy*.06); float sd = length(vec2(sh.x, sh.y/tilt));
+      float st = (sd - R*1.35)/(R*1.05);
+      if (st > .05 && st < .95) col *= .78;
+    }
+  } else {
+    float lit = smoothstep(-.4, .7, dot(normalize(vec3(uv, 0.)), light));
+    col += atm*halo*lit*1.1; alpha = max(alpha, halo*lit);
+  }
+  if (uRings > .5 && !behind && (d > R || true)) { float m = ringBand*.95; col = mix(col, ringCol, m); alpha = max(alpha, m); }
+  col = col/(1. + col*.25);
+  o = vec4(col, alpha);
+}`;
+
+const canvas = document.getElementById('c');
+await new Promise((r) => setTimeout(r, 50));
+const dpr = Number(q.get('dpr') ?? 1);
+canvas.width = innerWidth*dpr; canvas.height = innerHeight*dpr;
+const gl = canvas.getContext('webgl2', { premultipliedAlpha: false, preserveDrawingBuffer: true, alpha: true });
+const vs = `#version 300 es
+in vec2 p; void main(){ gl_Position = vec4(p, 0, 1); }`;
+const sh = (t, s) => { const x = gl.createShader(t); gl.shaderSource(x, s); gl.compileShader(x);
+  if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; };
+const prog = gl.createProgram();
+gl.attachShader(prog, sh(gl.VERTEX_SHADER, vs));
+gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, mode === 'planet' ? planet : mode === 'field' ? field : nebula));
+gl.linkProgram(prog); gl.useProgram(prog);
+const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const u = (n) => gl.getUniformLocation(prog, n);
+gl.uniform2f(u('uRes'), canvas.width, canvas.height);
+gl.uniform1f(u('uSeed'), seed);
+gl.uniform1f(u('uRings'), rings ? 1 : 0);
+gl.uniform1f(u('uKind'), { gas: 0, ice: 1, rock: 2, ocean: 2, neon: 0 }[q.get('kind') ?? 'gas']);
+['uA', 'uB', 'uC', 'uD'].forEach((n, i) => gl.uniform3fv(u(n), pal[i]));
+gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLES, 0, 3);
+gl.finish();
+window.ready = true;
+window.png = () => canvas.toDataURL('image/png');
+</script>

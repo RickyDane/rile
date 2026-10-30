@@ -38,6 +38,9 @@ pub struct DraggedFiles {
     /// Remote connection the files live on (None = local disk).
     pub conn: Option<String>,
     pub path: PathBuf,
+    /// An explicit set of local paths (the shelf), instead of the source
+    /// pane's selection.
+    pub set: Option<std::sync::Arc<Vec<PathBuf>>>,
 }
 
 impl DraggedFiles {
@@ -46,6 +49,10 @@ impl DraggedFiles {
     pub fn external_payload(&self, cx: &App) -> Option<ExternalDragPayload> {
         if self.conn.is_some() {
             return None;
+        }
+        if let Some(set) = &self.set {
+            let paths = FileDragPaths::new(set.iter().filter(|p| p.exists()).map(|p| (p.clone(), p.is_dir())));
+            return if paths.entries().is_empty() { None } else { Some(ExternalDragPayload::Files(paths)) };
         }
         let source = self.source.upgrade()?;
         let pane = source.read(cx);
@@ -61,6 +68,9 @@ impl DraggedFiles {
     /// Paths being dragged. Must not be called while the source pane is
     /// being updated; inside a pane listener use [`Self::resolve_in`].
     pub fn resolve(&self, cx: &App) -> Vec<PathBuf> {
+        if let Some(set) = &self.set {
+            return set.to_vec();
+        }
         match self.source.upgrade() {
             Some(pane) => self.resolve_from(pane.read(cx)),
             None => vec![self.path.clone()],
@@ -70,6 +80,9 @@ impl DraggedFiles {
     /// Resolves from within a listener of `this` pane (which may or may not
     /// be the drag source) without re-entering the entity being updated.
     pub fn resolve_in(&self, this: &Pane, cx: &Context<Pane>) -> Vec<PathBuf> {
+        if let Some(set) = &self.set {
+            return set.to_vec();
+        }
         if self.source == cx.entity().downgrade() { self.resolve_from(this) } else { self.resolve(cx) }
     }
 
@@ -318,6 +331,11 @@ impl Pane {
         if let Some(parent) = parent {
             let loc = self.location_for(parent);
             self.navigate(loc, cx);
+        } else if let Location::Remote { conn, .. } = &self.location
+            && let Some(dir) = crate::archive_fs::archive_of(conn).and_then(|a| a.parent().map(Path::to_path_buf))
+        {
+            // Up from an archive's root: the folder holding the archive.
+            self.navigate(Location::Dir(dir), cx);
         }
     }
 
@@ -629,6 +647,8 @@ impl Pane {
         } else if entry.is_dir {
             let loc = self.location_for(entry.path.clone());
             self.navigate(loc, cx);
+        } else if self.conn().is_none() && crate::archive_fs::browse_on_open(&entry.path) {
+            self.navigate(Location::Remote { conn: crate::archive_fs::conn_for(&entry.path), path: "/".into() }, cx);
         } else if let Some(conn) = self.conn() {
             cx.emit(PaneEvent::OpenRemote { conn, path: crate::remote::path_str(&entry.path) });
         } else {

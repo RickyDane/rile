@@ -420,6 +420,33 @@ pub struct Settings {
     pub default_apps: std::collections::BTreeMap<String, PathBuf>,
     /// Nearby Devices: other Rile installations on the local network.
     pub nearby: NearbySettings,
+    /// Opening a zip, 7z or tar archive shows its contents like a folder.
+    pub browse_archives: bool,
+    /// Terminal for "Open in Terminal": an app name or command; empty picks
+    /// the system's default terminal.
+    pub terminal: String,
+    /// Named workspaces: saved sets of tabs and panes to come back to.
+    pub workspaces: Vec<SavedWorkspace>,
+}
+
+/// A saved layout: the tabs of one or two pane slots.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SavedWorkspace {
+    pub name: String,
+    #[serde(default)]
+    pub dual: bool,
+    #[serde(default)]
+    pub active_slot: usize,
+    #[serde(default)]
+    pub slots: Vec<SavedSlot>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SavedSlot {
+    #[serde(default)]
+    pub tabs: Vec<crate::history::SavedLocation>,
+    #[serde(default)]
+    pub active: usize,
 }
 
 /// A folder shared read-only with paired devices.
@@ -523,6 +550,9 @@ impl Default for Settings {
             nearby: NearbySettings::default(),
             collapsed_sidebar_sections: Vec::new(),
             default_apps: Default::default(),
+            browse_archives: true,
+            terminal: String::new(),
+            workspaces: Vec::new(),
             favorites: dirs::home_dir()
                 .into_iter()
                 .chain(dirs::desktop_dir())

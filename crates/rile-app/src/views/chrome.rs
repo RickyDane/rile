@@ -523,6 +523,12 @@ pub fn crumbs(ws: &Workspace, location: &Location) -> Vec<(String, Option<Locati
                 })
                 .collect();
             v.reverse();
+            // Inside an archive, the folders leading to it come first.
+            if let Some(parent) = crate::archive_fs::archive_of(conn).and_then(|a| a.parent().map(PathBuf::from)) {
+                let mut lead = crumbs(ws, &Location::Dir(parent));
+                lead.extend(v);
+                return lead;
+            }
             v
         }
         Location::Dir(dir) => {
@@ -695,6 +701,26 @@ pub fn render_tab_strip(ws: &mut Workspace, window: &mut Window, cx: &mut Contex
         .border_b_1()
         .border_color(ch.tabstrip_border)
         .child(h_flex().id("tabs").h_full().min_w_0().flex_shrink(1.).gap(px(6.)).overflow_x_scroll().children(items))
+        .child({
+            let weak = cx.entity().downgrade();
+            let focus = ws.pane().read(cx).focus_handle.clone();
+            let saved = ws.settings.workspaces.clone();
+            let current = ws.current_workspace.clone();
+            let label = current.clone().filter(|_| !phone);
+            Button::new("workspaces").cursor_pointer()
+                .ghost()
+                .small()
+                .icon(crate::icons::icon(IconName::Layers).size(px(15.)))
+                .when_some(label, |b, l| b.label(l).px(px(9.)))
+                .when(current.is_none() || phone, |b| b.size(px(32.)))
+                .h(px(32.))
+                .rounded(px(8.))
+                .text_color(ch.icon_button)
+                .tooltip("Workspaces")
+                .dropdown_menu_with_anchor(gpui_kit::Anchor::TopLeft, move |menu, window, cx| {
+                    crate::workspace::named::menu(menu, weak.clone(), focus.clone(), saved.clone(), current.clone(), window, cx)
+                })
+        })
         .child(
             Button::new("new-tab").cursor_pointer()
                 .ghost()
@@ -819,6 +845,9 @@ pub fn render_browser(ws: &mut Workspace, pane: Entity<Pane>, slot: usize, windo
                 .menu_with_check("Dual Pane", dual, Box::new(ToggleDualPane))
                 .separator()
                 .menu("Search Subfolders…", Box::new(AdvancedSearch))
+                .menu("Open in Terminal", Box::new(OpenTerminal))
+                .menu("Compare Folders…", Box::new(CompareFolders))
+                .menu("History…", Box::new(ShowHistory))
                 .menu("Folder Properties", Box::new(ShowProperties))
                 .menu("Refresh", Box::new(Refresh))
                 .separator()

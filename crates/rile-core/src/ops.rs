@@ -106,8 +106,20 @@ pub fn transfer(
     dest_dir: &Path,
     kind: TransferKind,
     cancel: &AtomicBool,
-    mut on_progress: impl FnMut(Progress),
+    on_progress: impl FnMut(Progress),
 ) -> Result<Vec<PathBuf>> {
+    Ok(transfer_pairs(sources, dest_dir, kind, cancel, on_progress)?.into_iter().map(|(_, dest)| dest).collect())
+}
+
+/// [`transfer`], returning each source with where it ended up (the same
+/// path for a move into the folder it's already in).
+pub fn transfer_pairs(
+    sources: &[PathBuf],
+    dest_dir: &Path,
+    kind: TransferKind,
+    cancel: &AtomicBool,
+    mut on_progress: impl FnMut(Progress),
+) -> Result<Vec<(PathBuf, PathBuf)>> {
     for src in sources {
         if src.is_dir() && path_starts_with(dest_dir, src) {
             bail!("Can't {} \"{}\" into itself", if kind == TransferKind::Copy { "copy" } else { "move" }, src.display());
@@ -122,13 +134,13 @@ pub fn transfer(
         let name = src.file_name().context("source has no file name")?.to_string_lossy();
         if kind == TransferKind::Move && src.parent().is_some_and(|p| path_starts_with(p, dest_dir) && path_starts_with(dest_dir, p)) {
             progress.items_done += 1;
-            created.push(src.clone());
+            created.push((src.clone(), src.clone()));
             continue;
         }
         let dest = unique_destination(dest_dir, &name);
         if kind == TransferKind::Move && fs::rename(src, &dest).is_ok() {
             progress.items_done += 1;
-            created.push(dest);
+            created.push((src.clone(), dest));
             continue;
         }
         pending.push((src.clone(), dest));
@@ -148,7 +160,7 @@ pub fn transfer(
         }
         progress.items_done += 1;
         on_progress(progress.clone());
-        created.push(dest);
+        created.push((src, dest));
     }
     Ok(created)
 }

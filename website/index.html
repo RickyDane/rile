@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Rile — a file explorer at light speed</title>
+  <meta name="description" content="Rile is a fast, native file explorer written in Rust and drawn on the GPU. Tabs, dual panes, remote servers, Nearby Devices, versioned backups and on-device AI for macOS and Windows.">
+  <meta name="theme-color" content="#04050d">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Rile — a file explorer at light speed">
+  <meta property="og:description" content="A native file explorer written in Rust. Tabs, dual panes, servers, Nearby Devices, backups and on-device AI.">
+  <meta property="og:image" content="assets/og.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="assets/icons/nebula-purple.png">
+  <link rel="apple-touch-icon" href="assets/icons/nebula-purple.png">
+  <link rel="preload" href="assets/fonts/space-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+  <script>document.documentElement.classList.add('js'); setTimeout(() => { if (!document.documentElement.hasAttribute('data-enhanced')) document.documentElement.classList.remove('js'); }, 3000)</script>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <!-- The sky: a fixed starfield canvas plus soft nebula light behind every section. -->
+  <div class="sky" aria-hidden="true">
+    <canvas id="stars"></canvas>
+    <div class="sky-glow sky-glow--a"></div>
+    <div class="sky-glow sky-glow--b"></div>
+    <div class="grain"></div>
+  </div>
+
+  <header class="nav" data-nav>
+    <div class="nav-inner">
+      <a class="brand" href="#top" aria-label="Rile home">
+        <img src="assets/icons/nebula-purple.png" alt="" width="30" height="30" data-app-icon>
+        <span>Rile</span>
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Open navigation" aria-controls="primary-navigation" aria-expanded="false" data-menu-toggle>
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <nav class="nav-links" id="primary-navigation" aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#tour">Tour</a>
+        <a href="#nearby">Nearby</a>
+        <a href="#intelligence">Intelligence</a>
+        <a href="#make-it-yours">Customize</a>
+      </nav>
+      <div class="nav-actions">
+        <a class="gh-pill" href="https://github.com/RickyDane/rile" target="_blank" rel="noopener" aria-label="Rile on GitHub">
+          <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
+          <span class="gh-label">GitHub</span>
+          <span class="gh-stars" data-stars hidden><svg class="i" aria-hidden="true"><use href="#i-star"/></svg><b></b></span>
+        </a>
+        <a class="btn btn--primary btn--sm" href="#download" data-magnetic>Download</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ───────────────────────────── Hero ───────────────────────────── -->
+    <section class="hero" id="top">
+      <div class="hero-nebula" aria-hidden="true"></div>
+      <div class="wrap hero-copy">
+        <h1 class="hero-title">
+          <span class="line" data-intro="0">Your files,</span>
+          <span class="line" data-intro="1"><em class="shimmer">at light speed.</em></span>
+        </h1>
+        <p class="hero-lede" data-intro="2">
+          Rile is a native file explorer written in Rust and drawn on the GPU.
+          Tabs, dual panes, remote servers, nearby devices, backups and on-device
+          intelligence — together in one calm, fast window.
+        </p>
+        <div class="hero-cta" data-intro="3">
+          <a class="btn btn--primary btn--lg" href="#download" data-primary-download data-magnetic data-warp>
+            <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
+            <span data-os-label>Download Rile</span>
+          </a>
+          <a class="btn btn--ghost btn--lg" href="https://github.com/RickyDane/rile" target="_blank" rel="noopener">
+            <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
+            View source
+          </a>
+        </div>
+        <p class="hero-meta" data-intro="4">
+          <span>Free &amp; open source</span><i></i><span>macOS · Windows · Linux server</span><i></i><span>MIT license</span>
+        </p>
+      </div>
+
+      <div class="hero-stage" data-hero-stage>
+        <div class="planet" aria-hidden="true"><div class="planet-rim"></div></div>
+        <div class="orbit-ring orbit-ring--1" aria-hidden="true"><span></span></div>
+        <div class="orbit-ring orbit-ring--2" aria-hidden="true"><span></span></div>
+        <figure class="window window--hero" data-tilt>
+          <img src="assets/screens/grid.webp" width="1600" height="1000" alt="Rile's grid view showing a Deep Field folder of nebula images, with an inspector for the selected image" fetchpriority="high" data-zoom>
+          <div class="window-sheen" aria-hidden="true"></div>
+        </figure>
+        <div class="float-chip float-chip--a" aria-hidden="true"><svg class="i"><use href="#i-columns"/></svg>Miller columns</div>
+        <div class="float-chip float-chip--b" aria-hidden="true"><svg class="i"><use href="#i-eye"/></svg>Quick Look</div>
+        <div class="float-chip float-chip--c" aria-hidden="true"><svg class="i"><use href="#i-server"/></svg>SFTP · SMB</div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────── Tech marquee ─────────────────────────── -->
+    <section class="marquee" aria-label="Built with and connects to">
+      <div class="marquee-track" data-marquee>
+        <span>Rust</span><span>GPUI</span><span>WebAssembly plugins</span><span>FTP · FTPS · SFTP</span><span>SMB 2/3</span><span>Google Drive</span><span>OneDrive</span><span>Bonjour / mDNS</span><span>Mutual TLS 1.3</span><span>llama.cpp</span><span>MLX</span><span>Apple Foundation Models</span><span>ZIP · 7z · tar</span>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────── Features ─────────────────────────── -->
+    <section class="section" id="features">
+      <div class="wrap">
+        <header class="section-head" data-reveal>
+          <p class="eyebrow"><span>01</span> Mission modules</p>
+          <h2>Everything a file explorer should be.<br><span class="muted">Then a little further out.</span></h2>
+        </header>
+
+        <div class="bento">
+          <article class="card card--views span-2" data-reveal data-spotlight>
+            <div class="card-art views-art" aria-hidden="true" data-views-art>
+              <div class="va-toolbar"><b class="on"></b><b></b><b></b></div>
+              <div class="va-items">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
+            </div>
+            <div class="card-copy">
+              <h3><svg class="i" aria-hidden="true"><use href="#i-grid"/></svg>Three ways to look</h3>
+              <p>Switch between list, thumbnail grid and Miller columns with <kbd>⌘1</kbd> <kbd>⌘2</kbd> <kbd>⌘3</kbd>. Open folders in tabs or put two of them side by side.</p>
+            </div>
+          </article>
+
+          <article class="card card--search" data-reveal data-spotlight>
+            <div class="card-art search-art" aria-hidden="true">
+              <div class="sa-field"><svg class="i"><use href="#i-search"/></svg><span data-typer>nebula *.jpg</span><i class="caret"></i></div>
+              <ul class="sa-results">
+                <li><span class="dot" style="--c:#ff7ac6"></span>01 — Carina Veil.jpg<em>812 KB</em></li>
+                <li><span class="dot" style="--c:#5ee1ff"></span>02 — Helix Bloom.jpg<em>764 KB</em></li>
+                <li><span class="dot" style="--c:#a78bff"></span>03 — Orion Drift.jpg<em>903 KB</em></li>
+              </ul>
+            </div>
+            <div class="card-copy">
+              <h3><svg class="i" aria-hidden="true"><use href="#i-search"/></svg>Search the whole galaxy</h3>
+              <p>Name, glob, regex, content, size, date and type — recursively, with <code>.gitignore</code> support and an optional Spotlight backend.</p>
+            </div>
+          </article>
+
+          <article class="card card--analyzer" data-reveal data-spotlight>
+            <div class="card-art bubbles-art" aria-hidden="true">
+              <svg viewBox="0 0 300 180" data-bubbles></svg>
+            </div>
+            <div class="card-copy">
+              <h3><svg class="i" aria-hidden="true"><use href="#i-pie"/></svg>Space Analyzer</h3>
+              <p>One parallel scan, then explore it as a bubble map. Review cleanup suggestions before anything moves to the Trash.</p>
+            </div>
+          </article>
+
+          <article class="card card--servers" data-reveal data-spotlight>
+            <div class="card-art constellation-art" aria-hidden="true">
+              <svg viewBox="0 0 300 170" data-constellation>
+                <g class="links">
+                  <path d="M150 85 L52 40"/><path d="M150 85 L250 34"/><path d="M150 85 L268 120"/><path d="M150 85 L40 128"/><path d="M150 85 L150 150"/><path d="M52 40 L40 128"/><path d="M250 34 L268 120"/>
+                </g>
+                <g class="nodes">
+                  <circle cx="150" cy="85" r="9" class="hub"/>
+                  <circle cx="52" cy="40" r="5"/><circle cx="250" cy="34" r="5"/><circle cx="268" cy="120" r="5"/><circle cx="40" cy="128" r="5"/><circle cx="150" cy="150" r="5"/>
+                </g>
+                <g class="labels">
+                  <text x="52" y="26">SFTP</text><text x="250" y="20">SMB</text><text x="268" y="142">FTPS</text><text x="40" y="150">Drive</text><text x="150" y="172">OneDrive</text>
+                </g>
+              </svg>
+            </div>
+            <div class="card-copy">
+              <h3><svg class="i" aria-hidden="true"><use href="#i-server"/></svg>Every server in reach</h3>
+              <p>FTP, FTPS, SFTP, SMB 2/3, Google Drive and OneDrive. Nearby servers appear via Bonjour; credentials live in the Keychain.</p>
+            </div>
+          </article>
+
+          <article class="card card--backups" data-reveal data-spotlight>
+            <div class="card-art timeline-art" aria-hidden="true">
+              <div class="tl-track"><div class="tl-fill"></div></div>
+              <ol class="tl-points">
+                <li><b></b><span>09:00</span></li>
+                <li><b></b><span>11:15</span></li>
+                <li><b></b><span>13:30</span></li>
+                <li><b></b><span>15:45</span></li>
+                <li class="now"><b></b><span>Now</span></li>
+              </ol>
+              <div class="tl-targets">
+                <span><svg class="i"><use href="#i-drive"/></svg>Local drive</span>
+                <span><svg class="i"><use href="#i-server"/></svg>Saved server</span>
+                <span><svg class="i"><use href="#i-radar"/></svg>Nearby device</span>
+              </div>
+            </div>
+            <div class="card-copy">
+              <h3><svg class="i" aria-hidden="true"><use href="#i-history"/></svg>Versioned, incremental backups</h3>
+              <p>Mirror your work to a drive, a saved server or a paired device, keeping earlier versions. Run them by hand, on a schedule or after changes — and restore from the Backups page.</p>
+            </div>
+          </article>
+
+          <article class="card card--preview" data-reveal data-spotlight>
+            <div class="card-art preview-art" aria-hidden="true">
+              <div class="pv-doc">
+                <b class="h"></b><i></i><i class="s"></i><i></i>
+                <div class="pv-code"><i></i><i class="s"></i><i class="xs"></i></div>
+              </div>
+            </div>
+            <div class="card-copy">
+              <h3><svg class="i" aria-hidden="true"><use href="#i-eye"/></svg>Quick Look, built in</h3>
+              <p>Press <kbd>Space</kbd> for PDFs, images, Markdown and syntax-highlighted code. Edit text right in the preview.</p>
+            </div>
+          </article>
+
+          <article class="card card--plugins" data-reveal data-spotlight>
+            <div class="card-art hex-art" aria-hidden="true">
+              <svg viewBox="0 0 200 120">
+                <g class="hexes">
+                  <path d="M70 18l22 12.7v25.4L70 68.8 48 56.1V30.7z"/>
+                  <path d="M118 18l22 12.7v25.4L118 68.8 96 56.1V30.7z"/>
+                  <path d="M94 59l22 12.7v25.4L94 109.8 72 97.1V71.7z" class="lit"/>
+                  <path d="M142 59l22 12.7v25.4l-22 12.7-22-12.7V71.7z"/>
+                </g>
+              </svg>
+            </div>
+            <div class="card-copy">
+              <h3><svg class="i" aria-hidden="true"><use href="#i-puzzle"/></svg>Sandboxed plugins</h3>
+              <p>Extend context menus and previews with WebAssembly plugins that run in a sandbox.</p>
+            </div>
+          </article>
+
+          <article class="card card--archives" data-reveal data-spotlight>
+            <div class="card-art archive-art" aria-hidden="true">
+              <div class="ar-box"><i></i><i></i><i></i></div>
+              <div class="ar-files"><span>.zip</span><span>.7z</span><span>.tar.gz</span></div>
+            </div>
+            <div class="card-copy">
+              <h3><svg class="i" aria-hidden="true"><use href="#i-archive"/></svg>Archives, handled</h3>
+              <p>Compress and extract ZIP, 7z, tar and friends, with the compression level you choose.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────── Tour ─────────────────────────── -->
+    <section class="section section--tour" id="tour">
+      <div class="wrap">
+        <header class="section-head" data-reveal>
+          <p class="eyebrow"><span>02</span> Guided tour</p>
+          <h2>Take the grand tour.</h2>
+          <p class="section-lede">Real captures of the native macOS app, browsing demonstration files. Click any image for a closer look.</p>
+        </header>
+
+        <div class="tour" data-tour>
+          <div class="tour-tabs" role="tablist" aria-label="Rile tour">
+            <button role="tab" aria-selected="true" aria-controls="tour-panel" data-shot="columns" id="tab-columns">
+              <span class="tour-num">01</span>
+              <span class="tour-text"><b>Find your way</b><small>Miller columns, tabs and breadcrumbs keep deep folders a click away.</small></span>
+              <span class="tour-progress"><i></i></span>
+            </button>
+            <button role="tab" aria-selected="false" aria-controls="tour-panel" data-shot="list" id="tab-list">
+              <span class="tour-num">02</span>
+              <span class="tour-text"><b>Inspect anything</b><small>A list with an inspector at your side: kind, size, dates and a live preview.</small></span>
+              <span class="tour-progress"><i></i></span>
+            </button>
+            <button role="tab" aria-selected="false" aria-controls="tour-panel" data-shot="dual" id="tab-dual">
+              <span class="tour-num">03</span>
+              <span class="tour-text"><b>Two panes, one window</b><small>Put folders side by side and copy across with <kbd>F5</kbd> or move with <kbd>F6</kbd>.</small></span>
+              <span class="tour-progress"><i></i></span>
+            </button>
+            <button role="tab" aria-selected="false" aria-controls="tour-panel" data-shot="preview" id="tab-preview">
+              <span class="tour-num">04</span>
+              <span class="tour-text"><b>Read without opening</b><small>Quick Look renders Markdown, code and images in place.</small></span>
+              <span class="tour-progress"><i></i></span>
+            </button>
+            <button role="tab" aria-selected="false" aria-controls="tour-panel" data-shot="home" id="tab-home">
+              <span class="tour-num">05</span>
+              <span class="tour-text"><b>Mission overview</b><small>Live storage, devices, saved servers and recent activity on one page.</small></span>
+              <span class="tour-progress"><i></i></span>
+            </button>
+          </div>
+          <figure class="tour-stage window" id="tour-panel" role="tabpanel" aria-labelledby="tab-columns">
+            <img class="is-active" src="assets/screens/columns.webp" width="1600" height="1000" alt="Miller columns showing Deep Field images with Orion Drift selected" data-shot="columns" data-zoom>
+            <img src="assets/screens/list.webp" width="1600" height="1000" alt="List view of Flight Plans with Mission Brief selected and its text in the inspector" data-shot="list" loading="lazy" data-zoom>
+            <img src="assets/screens/dual.webp" width="1600" height="1000" alt="Deep Field and Planets demonstration folders open side by side" data-shot="dual" loading="lazy" data-zoom>
+            <img src="assets/screens/preview.webp" width="1600" height="1000" alt="Quick Look rendering the Markdown Mission Brief" data-shot="preview" loading="lazy" data-zoom>
+            <img src="assets/screens/home.webp" width="1600" height="1000" alt="Current Home page with storage statistics, local and nearby devices, recent activity and file types" data-shot="home" loading="lazy" data-zoom>
+            <div class="window-sheen" aria-hidden="true"></div>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────── Space Analyzer spotlight ─────────────────────── -->
+    <section class="section section--analyzer">
+      <div class="wrap split">
+        <div class="split-copy" data-reveal>
+          <p class="eyebrow"><span>03</span> Space Analyzer</p>
+          <h2>Find out what's taking up <span class="grad">space</span>.</h2>
+          <p class="section-lede">Rile measures a folder once, then lets you drill into it as a bubble map, list its largest files and review what can safely go.</p>
+          <ul class="checks">
+            <li><svg class="i"><use href="#i-check"/></svg><span><b>Developer build output</b> — <code>node_modules</code>, <code>target</code>, DerivedData</span></li>
+            <li><svg class="i"><use href="#i-check"/></svg><span><b>Caches &amp; logs</b> — apps rebuild them when needed</span></li>
+            <li><svg class="i"><use href="#i-check"/></svg><span><b>Installers &amp; disk images</b> — usually done once installed</span></li>
+            <li><svg class="i"><use href="#i-check"/></svg><span><b>Old downloads &amp; stale files</b> — surfaced, never auto-deleted</span></li>
+          </ul>
+          <p class="fine">Nothing is removed until you review it, and everything goes to the Trash.</p>
+        </div>
+        <div class="split-media stack" data-reveal>
+          <figure class="window stack-back" data-parallax="-0.06">
+            <img src="assets/screens/cleanup.webp" width="1600" height="1000" alt="Cleanup suggestions for Rust build output and an installer disk image in Mission Control" loading="lazy" data-zoom>
+          </figure>
+          <figure class="window stack-front" data-parallax="0.05">
+            <img src="assets/screens/analyzer.webp" width="1600" height="1000" alt="Space Analyzer bubble map of the Mission Control demonstration folder" loading="lazy" data-zoom>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────── Nearby ─────────────────────────── -->
+    <section class="section section--nearby" id="nearby">
+      <div class="wrap split split--rev">
+        <div class="split-copy" data-reveal>
+          <p class="eyebrow"><span>04</span> Nearby Devices</p>
+          <h2>Your computers,<br>in orbit.</h2>
+          <p class="section-lede">Other computers running Rile on your network show up on their own. Pair once with a six-digit code, browse what they share and send files back and forth — directly, over the local network.</p>
+          <div class="facts">
+            <div><b>Mutual TLS 1.3</b><span>Every connection is encrypted and both sides prove who they are.</span></div>
+            <div><b>Receiver decides</b><span>Incoming files wait until they're accepted.</span></div>
+            <div><b>Read-only or read &amp; write</b><span>Share exactly the folders you choose.</span></div>
+          </div>
+        </div>
+        <div class="split-media" data-reveal>
+          <div class="orbits" aria-hidden="true" data-orbits>
+            <div class="orbit orbit--1"><div class="sat"><svg class="i"><use href="#i-laptop"/></svg><span>MacBook Pro</span></div></div>
+            <div class="orbit orbit--2"><div class="sat"><svg class="i"><use href="#i-monitor"/></svg><span>Studio PC</span></div></div>
+            <div class="orbit orbit--3"><div class="sat"><svg class="i"><use href="#i-server"/></svg><span>rile-server</span></div></div>
+            <div class="core">
+              <img src="assets/icons/nebula-purple.png" alt="" width="84" height="84" data-app-icon>
+              <div class="pair-code" data-pair-code><span>4</span><span>8</span><span>1</span><span>5</span><span>9</span><span>2</span></div>
+              <small>Pairing code</small>
+            </div>
+          </div>
+          <div class="terminal" data-reveal>
+            <div class="terminal-bar"><i></i><i></i><i></i><span>Rile Server · Linux</span></div>
+            <div class="terminal-body">
+              <p class="t-comment"># A headless Nearby device for your Linux box, as a systemd service.</p>
+              <div class="t-line">
+                <code><span class="t-prompt">$</span> curl -fsSL https://raw.githubusercontent.com/RickyDane/rile/master/packaging/linux/install.sh | sudo sh</code>
+                <button class="copy" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/RickyDane/rile/master/packaging/linux/install.sh | sudo sh" aria-label="Copy install command">
+                  <svg class="i i-copy"><use href="#i-copy"/></svg><svg class="i i-done"><use href="#i-check"/></svg>
+                </button>
+              </div>
+              <p class="t-out"><span class="t-ok">✓</span> rile-server installed · run <b>rilectl pair</b> to add a device</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────── Intelligence ─────────────────────────── -->
+    <section class="section section--ai" id="intelligence">
+      <div class="ai-aura" aria-hidden="true"></div>
+      <div class="wrap">
+        <header class="section-head section-head--center" data-reveal>
+          <p class="eyebrow"><span>05</span> On-device intelligence</p>
+          <h2>Intelligence that never<br>leaves orbit.</h2>
+          <p class="section-lede">Search by meaning, summarize folders and describe images with models that run on your own machine — Apple Foundation Models on supported Macs, or local llama.cpp and MLX models.</p>
+        </header>
+
+        <div class="ask" data-reveal data-ask>
+          <div class="ask-glow" aria-hidden="true"></div>
+          <div class="ask-panel">
+            <div class="ask-head">
+              <span class="ask-orb" aria-hidden="true"></span>
+              <span>Ask Rile</span>
+              <kbd>⌘K</kbd>
+            </div>
+            <p class="ask-q" data-ask-q>Where did I save the Europa ice charts?</p>
+            <span class="demo-label">Illustrative conversation</span>
+            <ol class="ask-steps">
+              <li><span class="step-ico"><svg class="i"><use href="#i-search"/></svg></span><code>search_files</code><span class="step-arg">"europa ice"</span><span class="step-state">3 results</span></li>
+              <li><span class="step-ico"><svg class="i"><use href="#i-folder"/></svg></span><code>list_folder</code><span class="step-arg">Mission Control/Planets</span><span class="step-state">5 items</span></li>
+              <li><span class="step-ico"><svg class="i"><use href="#i-file"/></svg></span><code>read_file</code><span class="step-arg">Mission Brief.md</span><span class="step-state">done</span></li>
+            </ol>
+            <p class="ask-a">The chart is <b>Europa.jpg</b> in <b>Mission Control › Planets</b>. The Mission Brief lists it under “Chart surface ice on Europa at 2 m resolution”.</p>
+          </div>
+        </div>
+
+        <div class="ai-grid">
+          <div class="ai-item" data-reveal><b>Search by meaning</b><span>Press <kbd>⇧↵</kbd> in search to describe what you're looking for.</span></div>
+          <div class="ai-item" data-reveal><b>Summaries</b><span>Get the gist of a file or a whole folder at a glance.</span></div>
+          <div class="ai-item" data-reveal><b>Describe &amp; tag</b><span>Images and documents get descriptions and smart tags.</span></div>
+          <div class="ai-item" data-reveal><b>Your model, your machine</b><span>Pick from a curated catalog of local models, or bring your own.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────── Keyboard ─────────────────────────── -->
+    <section class="section section--keys" id="keyboard">
+      <div class="wrap split">
+        <div class="split-copy" data-reveal>
+          <p class="eyebrow"><span>06</span> Keyboard first</p>
+          <h2>Pilot it from<br>the keyboard.</h2>
+          <p class="section-lede">Every action has a shortcut, and <kbd>⌘/</kbd> shows them all. Try a few right here — the keys light up as you press them.</p>
+        </div>
+        <ul class="keys" data-reveal data-keys>
+          <li data-combo="mod+t"><span class="combo"><kbd data-mod>⌘</kbd><kbd>T</kbd></span><span>New tab</span></li>
+          <li data-combo="mod+k"><span class="combo"><kbd data-mod>⌘</kbd><kbd>K</kbd></span><span>Ask Rile</span></li>
+          <li data-combo="mod+f"><span class="combo"><kbd data-mod>⌘</kbd><kbd>F</kbd></span><span>Search this folder</span></li>
+          <li data-combo="space"><span class="combo"><kbd class="wide">Space</kbd></span><span>Quick Look</span></li>
+          <li data-combo="mod+1"><span class="combo"><kbd data-mod>⌘</kbd><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span><span>List · Grid · Columns</span></li>
+          <li data-combo="mod+shift+d"><span class="combo"><kbd data-mod>⌘</kbd><kbd>⇧</kbd><kbd>D</kbd></span><span>Dual pane</span></li>
+          <li data-combo="f5"><span class="combo"><kbd>F5</kbd><kbd>F6</kbd></span><span>Copy · move to other pane</span></li>
+          <li data-combo="mod+/"><span class="combo"><kbd data-mod>⌘</kbd><kbd>/</kbd></span><span>All shortcuts</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────── Make it yours ─────────────────────────── -->
+    <section class="section section--custom" id="make-it-yours">
+      <div class="wrap split">
+        <div class="split-copy" data-reveal>
+          <p class="eyebrow"><span>07</span> Make it yours</p>
+          <h2>Pick your colors.<br><span class="muted">Even the Dock icon.</span></h2>
+          <p class="section-lede">Light or dark, eight accents, three densities, four icon styles and three app icon designs. Go on — this page follows along.</p>
+
+          <div class="picker" data-reveal>
+            <div class="picker-row" role="radiogroup" aria-label="Accent color" data-accents>
+              <button role="radio" aria-checked="false" style="--sw:hsl(212 92% 62%)" data-accent="blue" aria-label="Blue"></button>
+              <button role="radio" aria-checked="true" style="--sw:hsl(268 75% 68%)" data-accent="purple" aria-label="Purple"></button>
+              <button role="radio" aria-checked="false" style="--sw:hsl(330 80% 66%)" data-accent="pink" aria-label="Pink"></button>
+              <button role="radio" aria-checked="false" style="--sw:hsl(0 80% 64%)" data-accent="red" aria-label="Red"></button>
+              <button role="radio" aria-checked="false" style="--sw:hsl(28 95% 60%)" data-accent="orange" aria-label="Orange"></button>
+              <button role="radio" aria-checked="false" style="--sw:hsl(142 65% 52%)" data-accent="green" aria-label="Green"></button>
+              <button role="radio" aria-checked="false" style="--sw:hsl(178 70% 48%)" data-accent="teal" aria-label="Teal"></button>
+              <button role="radio" aria-checked="false" style="--sw:hsl(220 8% 62%)" data-accent="graphite" aria-label="Graphite"></button>
+            </div>
+            <div class="seg" role="radiogroup" aria-label="App icon" data-icons>
+              <button role="radio" aria-checked="true" data-icon="nebula">Nebula Dossier</button>
+              <button role="radio" aria-checked="false" data-icon="folio-bolt">Folio Bolt</button>
+              <button role="radio" aria-checked="false" data-icon="drawer-bolt">Drawer Bolt</button>
+            </div>
+          </div>
+        </div>
+        <div class="split-media custom-media" data-reveal>
+          <div class="icon-stage">
+            <div class="icon-halo" aria-hidden="true"></div>
+            <img class="icon-big" src="assets/icons/nebula-purple.png" width="512" height="512" alt="The Rile app icon in the selected design and accent" data-app-icon data-icon-big>
+            <div class="dock" aria-hidden="true">
+              <span></span><span></span><img src="assets/icons/nebula-purple.png" alt="" data-app-icon><span></span><span></span>
+            </div>
+          </div>
+          <figure class="window window--small">
+            <img src="assets/screens/appearance.webp" width="1600" height="1000" alt="Current appearance settings with icon sets, app icon designs, density and icon size controls" loading="lazy" data-zoom>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────── Download ─────────────────────────── -->
+    <section class="section section--download" id="download">
+      <div class="launch-sky" aria-hidden="true"><div class="launch-glow"></div></div>
+      <div class="wrap">
+        <header class="section-head section-head--center" data-reveal>
+          <p class="eyebrow"><span>T–0</span> Ready for launch</p>
+          <h2>Download Rile.</h2>
+          <p class="section-lede">Free and open source. <span data-release-line>Latest release v0.8.1.</span></p>
+        </header>
+
+        <div class="platforms">
+          <article class="platform" data-reveal data-spotlight data-platform="mac">
+            <div class="platform-ico"><svg class="i"><use href="#i-apple"/></svg></div>
+            <h3>macOS</h3>
+            <p>Apple Silicon and Intel. On-device AI on Apple Silicon with macOS 26 or later.</p>
+            <div class="platform-links">
+              <a class="btn btn--primary" data-asset="arm64.dmg" href="https://github.com/RickyDane/rile/releases/download/v0.8.1/Rile-0.8.1-arm64.dmg" data-warp>Apple Silicon</a>
+              <a class="btn btn--ghost" data-asset="x86_64.dmg" href="https://github.com/RickyDane/rile/releases/download/v0.8.1/Rile-0.8.1-x86_64.dmg">Intel</a>
+            </div>
+          </article>
+          <article class="platform" data-reveal data-spotlight data-platform="win">
+            <div class="platform-ico"><svg class="i"><use href="#i-windows"/></svg></div>
+            <h3>Windows</h3>
+            <p>Windows 10 and 11. Installs per user, no administrator rights needed.</p>
+            <div class="platform-links">
+              <a class="btn btn--primary" data-asset="x64-setup.exe" href="https://github.com/RickyDane/rile/releases/download/v0.8.1/Rile-0.8.1-x64-setup.exe" data-warp>Installer</a>
+              <a class="btn btn--ghost" data-asset="x86_64-pc-windows-msvc.zip" href="https://github.com/RickyDane/rile/releases/download/v0.8.1/rile-x86_64-pc-windows-msvc.zip">Portable .zip</a>
+            </div>
+          </article>
+          <article class="platform" data-reveal data-spotlight data-platform="linux">
+            <div class="platform-ico"><svg class="i"><use href="#i-terminal"/></svg></div>
+            <h3>Rile Server</h3>
+            <p>A headless Nearby device for Linux servers, x86_64 and aarch64.</p>
+            <div class="platform-links">
+              <button class="btn btn--primary" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/RickyDane/rile/master/packaging/linux/install.sh | sudo sh">
+                <svg class="i i-copy"><use href="#i-copy"/></svg><svg class="i i-done"><use href="#i-check"/></svg>
+                <span>Copy install command</span>
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <p class="build-src" data-reveal>Prefer to build it yourself? <code>cargo run -p rile-app</code> — see the <a href="https://github.com/RickyDane/rile#run-from-source" target="_blank" rel="noopener">README</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/icons/nebula-purple.png" alt="" width="40" height="40" data-app-icon>
+        <div><b>Rile</b><span>A file explorer at light speed.</span></div>
+      </div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="https://github.com/RickyDane/rile" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/RickyDane/rile/releases" target="_blank" rel="noopener">Releases</a>
+        <a href="https://github.com/RickyDane/rile/blob/master/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a>
+        <a href="https://github.com/RickyDane/rile/tree/master/plugins" target="_blank" rel="noopener">Plugins</a>
+        <a href="https://github.com/RickyDane/rile/issues" target="_blank" rel="noopener">Issues</a>
+      </nav>
+    </div>
+    <div class="footer-word" aria-hidden="true">rile</div>
+    <p class="footer-fine wrap">MIT licensed. Built with Rust &amp; GPUI. Screens show demonstration files; storage and device values come from the capture machine.</p>
+  </footer>
+
+  <dialog class="lightbox" data-lightbox aria-label="Screenshot">
+    <img alt="">
+    <button class="lightbox-close" type="button" aria-label="Close" data-close>
+      <svg class="i"><use href="#i-x"/></svg>
+    </button>
+  </dialog>
+
+  <!-- Icon sprite: 24px grid, 1.7px rounded strokes (matches the app's icon language). -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+      <symbol id="i-github" viewBox="0 0 24 24"><path class="fill" d="M12 .5a11.5 11.5 0 0 0-3.64 22.42c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.29-1.69-1.29-1.69-1.04-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></symbol>
+      <symbol id="i-columns" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.2 4.5v15M14.8 4.5v15"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
+      <symbol id="i-pie" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12z"/><path d="M15 3.9A8.5 8.5 0 0 1 20.1 9H15z"/></symbol>
+      <symbol id="i-server" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6.5" rx="2"/><rect x="4" y="13.5" width="16" height="6.5" rx="2"/><path d="M8 7.25h.01M8 16.75h.01"/></symbol>
+      <symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.6"/><path d="M4 4v4.6h4.6M12 8v4.5l3 1.8"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-puzzle" viewBox="0 0 24 24"><path d="M9 4.5h3.2a1.8 1.8 0 1 1 3.6 0H19v3.4a1.8 1.8 0 1 1 0 3.6V15h-3.2a1.8 1.8 0 1 0-3.6 0H9v-3.2a1.8 1.8 0 1 1 0-3.6z" transform="translate(-2 2)"/></symbol>
+      <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="4.5" rx="1.5"/><path d="M5 8.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5M10 12.5h4"/></symbol>
+      <symbol id="i-drive" viewBox="0 0 24 24"><rect x="3.5" y="12.5" width="17" height="7" rx="2"/><path d="M3.5 14.5 6 6.5A2 2 0 0 1 7.9 5h8.2A2 2 0 0 1 18 6.5l2.5 8M7.5 16h.01"/></symbol>
+      <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.6"/><path d="M8.2 15.8a5.4 5.4 0 0 1 0-7.6M15.8 8.2a5.4 5.4 0 0 1 0 7.6M5.3 18.7a9.5 9.5 0 0 1 0-13.4M18.7 5.3a9.5 9.5 0 0 1 0 13.4"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/></symbol>
+      <symbol id="i-laptop" viewBox="0 0 24 24"><rect x="4.5" y="5" width="15" height="10.5" rx="1.8"/><path d="M2.5 19h19"/></symbol>
+      <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.2h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M13.5 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13.5 3.5V9H19M9 13h6M9 16.5h4"/></symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="m7.5 10 2.5 2.5L7.5 15M12.5 15h4"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-apple" viewBox="0 0 24 24"><path class="fill" d="M16.37 12.62c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.15-2.77.83-3.49.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.93 1.16 9.2.77 1.11 1.68 2.35 2.88 2.31 1.16-.05 1.59-.75 2.99-.75 1.39 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.24.88-1.29 1.24-2.53 1.26-2.6-.03-.01-2.42-.93-2.45-3.71ZM14.08 5.85c.64-.77 1.07-1.85.95-2.92-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.77-.97 2.82 1.02.08 2.07-.52 2.71-1.28Z"/></symbol>
+      <symbol id="i-windows" viewBox="0 0 24 24"><path class="fill" d="M3 5.5 10.4 4.4v7.1H3zM11.4 4.3 21 3v8.5h-9.6zM3 12.5h7.4v7.1L3 18.5zM11.4 12.5H21V21l-9.6-1.3z"/></symbol>
+    </defs>
+  </svg>
+</body>
+</html>

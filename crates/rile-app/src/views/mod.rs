@@ -333,6 +333,10 @@ fn build_context_menu(
             .menu_with_icon("Refresh", menu_icon(IconName::RotateCw), Box::new(Refresh))
             .menu_with_icon("Show / Hide Hidden Files", menu_icon(IconName::Eye), Box::new(ToggleHidden))
             .menu_with_icon("Search in Folder…", menu_icon(IconName::Search), Box::new(AdvancedSearch))
+            .when(!remote, |m| {
+                m.menu_with_icon("Open in Terminal", menu_icon(IconName::SquareTerminal), Box::new(OpenTerminal))
+                    .menu_with_icon("Compare Folders…", menu_icon(IconName::GitCompareArrows), Box::new(CompareFolders))
+            })
             .when(ai && !remote, |m| m.menu_with_icon("Summarize Folder with AI", crate::icons::ai_icon(), Box::new(AiSummarize)))
             .menu_with_icon("Folder Properties", menu_icon(IconName::Info), Box::new(ShowProperties));
     }
@@ -358,10 +362,21 @@ fn build_context_menu(
         .menu_with_icon("Duplicate", menu_icon(IconName::Files), Box::new(Duplicate))
         .menu_with_icon("Copy Path", menu_icon(IconName::Link), Box::new(CopyPath))
         .separator()
-        .menu_with_icon("Rename…", menu_icon(IconName::Pencil), Box::new(Rename))
+        .menu_with_icon(if selection.len() > 1 && !remote { format!("Rename {} Items…", selection.len()) } else { "Rename…".into() }, menu_icon(IconName::Pencil), Box::new(Rename))
         .menu_with_icon("Add to / Remove from Favorites", menu_icon(IconName::Star), Box::new(ToggleFavorite));
     if !remote {
+        let dirs = selection.iter().filter(|p| p.is_dir()).count();
+        menu = menu.separator().menu_with_icon("Add to Shelf", menu_icon(IconName::PackagePlus), Box::new(AddToShelf));
+        if dirs == 1 && selection.len() == 1 {
+            menu = menu.menu_with_icon("Open in Terminal", menu_icon(IconName::SquareTerminal), Box::new(OpenTerminal));
+        }
+        if dirs >= 1 && dirs == selection.len() && dirs <= 2 {
+            menu = menu.menu_with_icon(if dirs == 2 { "Compare These Folders…" } else { "Compare with…" }, menu_icon(IconName::GitCompareArrows), Box::new(CompareFolders));
+        }
         menu = menu.separator().menu_with_icon("Compress…", menu_icon(IconName::Archive), Box::new(Compress));
+        if selection.iter().any(|p| crate::archive_fs::is_browsable(p)) {
+            menu = menu.menu_with_icon("Browse Archive", menu_icon(IconName::FolderOpen), Box::new(BrowseArchive));
+        }
         if archives {
             menu = menu.menu_with_icon("Extract Here", menu_icon(IconName::PackageOpen), Box::new(Extract));
         }
@@ -460,6 +475,7 @@ pub fn entry_interactions(
         source: cx.entity().downgrade(),
         conn: pane_conn,
         path: entry.path.clone(),
+        set: None,
     };
     let name = entry.name.clone();
     let entry_icon = crate::icons::icon_for_entry(entry);

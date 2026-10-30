@@ -7,6 +7,8 @@
 
 pub mod app_icons;
 pub mod autostart;
+pub mod batch_rename;
+pub mod compare;
 pub mod local_model;
 pub mod model_runtime;
 pub mod mlx_runtime;
@@ -15,6 +17,7 @@ pub mod file_manager;
 pub mod gallery;
 pub mod highlight;
 pub mod index;
+pub mod journal;
 pub mod open_with;
 pub mod pdf;
 pub mod preview;
@@ -25,6 +28,7 @@ pub mod semantic_search;
 pub mod space;
 pub mod speedtest;
 pub mod tags;
+pub mod terminal;
 pub mod updater;
 pub mod vision;
 pub mod volumes;

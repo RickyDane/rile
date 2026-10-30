@@ -115,6 +115,23 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
             cx.notify();
         }));
 
+    let history_button = div()
+        .id("statusbar-history")
+        .flex_none()
+        .size(px(22.))
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(px(6.))
+        .cursor_pointer()
+        .hover(|s| s.bg(ch.hover_strong))
+        .child(crate::icons::icon(IconName::ClockFading).size(px(14.)).text_color(ch.sidebar_icon))
+        .tooltip(|w, cx| {
+            let tip = format!("History  {}", crate::views::chrome::shortcut(if cfg!(target_os = "macos") { "alt-mod-z" } else { "mod-h" }));
+            gpui_kit::component::tooltip::Tooltip::new(tip).build(w, cx)
+        })
+        .on_click(cx.listener(|this, _, window, cx| this.show_history(&crate::actions::ShowHistory, window, cx)));
+
     h_flex()
         .h(px(crate::views::chrome::FOOTER_HEIGHT))
         .pl(px(if width <= Width::Phone { 11. } else { 20. }))
@@ -143,5 +160,6 @@ pub fn render(ws: &mut Workspace, window: &mut Window, cx: &mut Context<Workspac
                     .child(crate::icons::icon(IconName::LayoutGrid).size(px(13.)).text_color(ch.text_faint)),
             )
         })
+        .child(history_button)
         .child(jobs_button)
 }

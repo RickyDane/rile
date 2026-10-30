@@ -10,6 +10,8 @@ dirs.workspace = true
 rayon.workspace = true
 rile-core.workspace = true
 anyhow.workspace = true
+trash.workspace = true
+chrono.workspace = true
 # search
 ignore = "0.4.23"
 globset = { version = "0.4.16", default-features = false }

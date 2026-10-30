@@ -47,8 +47,8 @@
 <main id="main"></main>
 <script>document.write('<script src="symbols.js?' + Date.now() + '"><\/script>')</script>
 <script>
-const NAMES = ['storage','files','folder','computer','external-drive','discovered','free-space','network-share','nearby-computer','nearby-server','cloud-drive','desktop'];
-const LABELS = { 'external-drive':'external drive', 'free-space':'free space', 'network-share':'network share', 'nearby-computer':'nearby computer', 'nearby-server':'nearby server', 'cloud-drive':'cloud drive' };
+const NAMES = ['storage','files','folder','computer','desktop','external-drive','discovered','free-space','network-share','nearby-computer','nearby-desktop','nearby-server','cloud-drive'];
+const LABELS = { 'external-drive':'external drive', 'free-space':'free space', 'network-share':'network share', 'nearby-computer':'nearby computer', 'nearby-desktop':'nearby desktop', 'nearby-server':'nearby server', 'cloud-drive':'cloud drive' };
 const SUITES = [
   { id:'current', name:'Current', tag:'reference', desc:'The symbols the app ships today (crates/rile-app/assets/overview).' },
   { id:'glass', name:'Glass', tag:'frosted', desc:'Frosted glass panes floating over vivid color fields, with bright rims and soft colored shadows. Airy and modern, close to the newest macOS look.' },
@@ -62,7 +62,7 @@ const SUITES = [
   { id:'riso', name:'Riso Print', tag:'2-ink overprint', desc:'Risograph look: fluorescent pink and blue inks overprinting each other, halftone dot shading and slight misregistration.' },
   { id:'blueprint', name:'Blueprint', tag:'technical', desc:'White technical linework on a gridded blueprint tile, with hidden (dashed) lines, center axes, dimension marks and construction circles.' },
   { id:'sticker', name:'Sticker', tag:'die-cut vinyl', desc:'Playful die-cut stickers: flat bold colors with ink outlines, a thick white border, a soft shadow and a slight tilt.' },
-  { id:'midnight', name:'Midnight', tag:'suggestion · from your screenshot', desc:'The screenshot language, extended to all 11 symbols: deep navy glass bodies with a hairline rim, one glowing royal-blue accent, a hex plate for storage, sparkles on folders and tiny LED dots.' },
+  { id:'midnight', name:'Midnight', tag:'suggestion · from your screenshot', desc:'The screenshot language, extended to all 13 symbols: deep navy glass bodies with a hairline rim, one glowing royal-blue accent, a hex plate for storage, sparkles on folders and tiny LED dots.' },
   { id:'aurora', name:'Aurora', tag:'suggestion · from your screenshot', desc:'Same navy bodies and rims, but the glow runs cyan to violet to pink. Storage becomes the screenshot’s database stack, and LEDs use the NAS colors (cyan, violet, magenta).' },
   { id:'titanium', name:'Titanium', tag:'suggestion · from your screenshot', desc:'The Mac Studio side of the screenshot: brushed silver bodies with dark glass panels and a glowing blue accent. A silver drum for storage, status LEDs in green, blue and amber. Works on light backgrounds too.' },
 ];

@@ -6,6 +6,10 @@ mod ask_text;
 pub use ai_agent::tag_file;
 pub mod archive;
 pub mod backups;
+mod batch_rename;
+mod compare;
+pub mod history;
+pub mod named;
 mod file_ops;
 mod inspector;
 pub mod nearby;
@@ -16,6 +20,7 @@ pub mod preview;
 mod remote_ops;
 mod rewards;
 mod search;
+pub mod shelf;
 mod sources;
 mod speedtest;
 mod tabs;
@@ -150,6 +155,10 @@ pub struct Workspace {
     pub nearby: nearby::NearbyState,
     pub updates: UpdateState,
     pub search_form: Option<Entity<search::SearchForm>>,
+    /// Files and folders staged for sending somewhere together.
+    pub shelf: shelf::ShelfState,
+    /// The named workspace last opened or saved.
+    pub current_workspace: Option<String>,
     /// The ⌘K Ask palette, kept so reopening it continues the conversation.
     pub ask: Option<Entity<ask::AskPalette>>,
     _ask_sub: Option<Subscription>,
@@ -261,6 +270,8 @@ impl Workspace {
             nearby: Default::default(),
             updates: UpdateState::default(),
             search_form: None,
+            shelf: shelf::ShelfState::load(),
+            current_workspace: None,
             ask: None,
             _ask_sub: None,
             sidebar_drop_hover: None,
@@ -291,6 +302,7 @@ impl Workspace {
         }
         theme::apply(&this.settings, window, cx);
         rile_services::index::set_enabled(this.settings.index_discovered);
+        crate::archive_fs::BROWSE_ON_OPEN.store(this.settings.browse_archives, std::sync::atomic::Ordering::Relaxed);
         this._index_task = Some(Self::save_index_periodically(cx));
         this.rewards.task = Some(Self::watch_rewards(cx));
         this.refresh_volumes(cx);
@@ -671,6 +683,7 @@ impl Workspace {
             pane.update(cx, |_, cx| cx.notify());
         }
         rile_services::index::set_enabled(self.settings.index_discovered);
+        crate::archive_fs::BROWSE_ON_OPEN.store(self.settings.browse_archives, std::sync::atomic::Ordering::Relaxed);
         let size = self.settings.grid_icon_size.clamp(views::grid::MIN_ICON, views::grid::MAX_ICON);
         self.zoom.update(cx, |z, cx| z.set_value(size, window, cx));
         let hidden = self.settings.show_hidden;
@@ -1112,6 +1125,7 @@ impl Render for Workspace {
                 .child(sidebar::render(self, window, cx))
                 .into_any_element()
         });
+        let shelf = self.render_shelf(window, cx);
         let toolbar = views::chrome::render_toolbar(self, window, cx);
         let tabs = views::chrome::render_tab_strip(self, window, cx);
         let root_picker = views::plugin_page::root_picker_bar(self, cx);
@@ -1242,10 +1256,21 @@ impl Render for Workspace {
             .on_action(cx.listener(Self::prev_tab))
             .on_action(cx.listener(Self::open_in_new_tab))
             .on_action(cx.listener(Self::toggle_sidebar))
+            .on_action(cx.listener(Self::undo))
+            .on_action(cx.listener(Self::redo))
+            .on_action(cx.listener(Self::show_history))
+            .on_action(cx.listener(Self::batch_rename))
+            .on_action(cx.listener(Self::add_to_shelf))
+            .on_action(cx.listener(Self::toggle_shelf))
+            .on_action(cx.listener(Self::open_terminal))
+            .on_action(cx.listener(Self::compare_folders))
+            .on_action(cx.listener(Self::save_workspace))
+            .on_action(cx.listener(Self::browse_archive))
             // Linux keeps a drawn title bar for the window controls; Windows
             // puts its caption buttons in the toolbar (chrome::caption_buttons).
             .when(cfg!(target_os = "linux"), |d| d.child(TitleBar::new()))
             .child(h_flex().flex_1().min_h_0().children(sidebar).child(main))
+            .children(shelf)
             .children(transfers)
             .children(jobs_panel)
             .children(quicklook)

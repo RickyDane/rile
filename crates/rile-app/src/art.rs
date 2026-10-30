@@ -32,10 +32,12 @@ pub enum Art {
     OneDrive,
     /// Network share / NAS (SMB, SFTP, FTP).
     NetworkShare,
-    /// Nearby Rile laptop or desktop.
+    /// Nearby Rile laptop.
     NearbyComputer,
     /// Nearby Rile server.
     NearbyServer,
+    /// Nearby Rile desktop, with the discovery badge.
+    NearbyDesktop,
     /// A desktop computer (monitor on a stand beside a tower).
     Desktop,
 }
@@ -102,6 +104,7 @@ macro_rules! symbol_files {
             include_str!(concat!("../assets/overview/", $dir, "nearby-computer.svg")),
             include_str!(concat!("../assets/overview/", $dir, "nearby-server.svg")),
             include_str!(concat!("../assets/overview/", $dir, "desktop.svg")),
+            include_str!(concat!("../assets/overview/", $dir, "nearby-desktop.svg")),
         ]
     };
 }
@@ -111,7 +114,7 @@ const NETWORK_SHARE: usize = 7;
 
 /// Source SVG of a symbol in a style (indices as in [`symbol_files!`]).
 fn source(style: SymbolStyle, ix: usize) -> &'static str {
-    static FILES: [[&str; 11]; 11] = [
+    static FILES: [[&str; 12]; 11] = [
         symbol_files!(""),
         symbol_files!("glass/"),
         symbol_files!("clay/"),
@@ -205,6 +208,7 @@ pub fn image_in(style: SymbolStyle, art: Art) -> Arc<Image> {
         Art::NearbyComputer => 8,
         Art::NearbyServer => 9,
         Art::Desktop => 10,
+        Art::NearbyDesktop => 11,
     };
     cached(style, ix, 0, || hires_svg(source(style, ix), 256, 256))
 }

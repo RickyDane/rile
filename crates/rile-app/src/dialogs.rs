@@ -1,6 +1,6 @@
 use gpui_kit::component::{
-    ActiveTheme, Sizable, WindowExt, h_flex,
-    button::{Button, ButtonVariant, ButtonVariants},
+    ActiveTheme, FocusableExt, Sizable, WindowExt, h_flex,
+    button::{Button, ButtonCustomVariant, ButtonVariant, ButtonVariants},
     dialog::Dialog,
     input::{Input, InputEvent, InputState},
     slider::{Slider, SliderEvent, SliderState},
@@ -8,7 +8,7 @@ use gpui_kit::component::{
     v_flex,
 };
 use gpui_kit::{
-    AnyElement, App, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement,
+    AnyElement, App, AppContext, Context, Entity, FocusHandle, InteractiveElement, IntoElement, ParentElement,
     Render, SharedString, StatefulInteractiveElement, Styled, Subscription, Window, div,
     prelude::FluentBuilder, px,
 };
@@ -44,6 +44,37 @@ pub fn input_dialog(
     )
 }
 
+/// Shared confirmation button; the surrounding control draws its focus outline.
+fn confirmation_button(id: impl Into<gpui_kit::ElementId>, label: impl Into<SharedString>, variant: ButtonVariant, focus: &FocusHandle, _window: &Window, cx: &App) -> Button {
+    Button::new(id).cursor_pointer().label(label).with_variant(variant).track_focus(focus).focus_ring(false)
+        // Keep destructive actions visibly red even when the active theme's
+        // danger token shares the primary button's background.
+        .when(variant == ButtonVariant::Danger, |button| {
+            button.custom(ButtonCustomVariant::new(cx)
+                    .color(gpui_kit::rgba(0xb83e48ff).into())
+                    .foreground(gpui_kit::rgba(0xffffffff).into())
+                    .hover(gpui_kit::rgba(0xc84b55ff).into())
+                    .active(gpui_kit::rgba(0xa3323dff).into()))
+                .bg(gpui_kit::rgba(0xb83e48ff))
+                .border_color(gpui_kit::rgba(0xb83e48ff))
+                .text_color(gpui_kit::rgba(0xffffffff))
+        })
+}
+
+fn confirmation_focus_outline(cx: &App) -> gpui_kit::Div {
+    div().absolute().top(px(0.)).left(px(0.)).size_full()
+        .rounded(cx.theme().radius + px(4.))
+        .border_1().border_dashed().border_color(crate::theme::chrome(cx).accent)
+        .debug_selector(|| "confirmation-focus-outline".into())
+}
+
+fn confirmation_control(button: Button, focus: &FocusHandle, window: &Window, cx: &App) -> gpui_kit::Div {
+    // Always reserve the outline space: a 1 px dashed line and a 3 px gap.
+    // Focusing a different button must not shift the footer's layout.
+    div().relative().flex_none().p(px(4.)).child(button)
+        .when(focus.is_focused(window), |control| control.child(confirmation_focus_outline(cx)))
+}
+
 /// Confirmation alert; `on_confirm` runs when the user accepts.
 pub fn confirm(
     message: String,
@@ -54,9 +85,16 @@ pub fn confirm(
     on_confirm: impl Fn(&mut Window, &mut App) + 'static,
 ) {
     let on_confirm = std::rc::Rc::new(on_confirm);
-    window.open_alert_dialog(cx, move |alert, _, cx| {
+    let confirm_focus = cx.focus_handle();
+    let cancel_focus = cx.focus_handle();
+    let first = std::cell::Cell::new(true);
+    window.open_alert_dialog(cx, move |alert, window, cx| {
+        if first.replace(false) {
+            confirm_focus.focus(window, cx);
+        }
         let on_confirm = on_confirm.clone();
         let on_click_confirm = on_confirm.clone();
+        let cancel_focus_for_enter = cancel_focus.clone();
         let ch = crate::theme::chrome(cx);
         let alert = kit::surface(alert, cx)
             .centered()
@@ -76,21 +114,24 @@ pub fn confirm(
                 h_flex()
                     .justify_center()
                     .gap_2()
-                    .child(Button::new("cancel").debug_selector(|| "confirm-cancel".into()).cursor_pointer().label("Cancel").on_click(|_, window, cx| window.close_dialog(cx)))
+                    .child(confirmation_button("cancel", "Cancel", ButtonVariant::Secondary, &cancel_focus, window, cx)
+                        .debug_selector(|| "confirm-cancel".into()).on_click(|_, window, cx| window.close_dialog(cx))
+                        .map(|button| confirmation_control(button, &cancel_focus, window, cx)))
                     .child(
-                        Button::new("ok").cursor_pointer()
+                        confirmation_button("ok", ok_label, if destructive { ButtonVariant::Danger } else { ButtonVariant::Primary }, &confirm_focus, window, cx)
                             .debug_selector(|| "confirm-ok".into())
-                            .cursor_pointer()
-                            .label(ok_label)
-                            .with_variant(if destructive { ButtonVariant::Danger } else { ButtonVariant::Primary })
                             .on_click(move |_, window, cx| {
                                 on_click_confirm(window, cx);
                                 window.close_dialog(cx);
-                            }),
+                            }).map(|button| confirmation_control(button, &confirm_focus, window, cx)),
                     ),
             )
             .on_ok(move |_, window, cx| {
-                on_confirm(window, cx);
+                // The dialog's Enter binding can run before a button's key
+                // activation. Respect the selected button in that path too.
+                if !cancel_focus_for_enter.is_focused(window) {
+                    on_confirm(window, cx);
+                }
                 true
             });
         if destructive { alert.ok_variant(ButtonVariant::Danger) } else { alert }
@@ -117,25 +158,46 @@ impl Choice {
 pub fn choose(title: String, detail: String, destructive: bool, choices: Vec<Choice>, window: &mut Window, cx: &mut App) {
     let choices: Vec<(SharedString, ButtonVariant, ChoiceAction)> =
         choices.into_iter().map(|c| (SharedString::from(c.label), c.variant, c.action)).collect();
-    window.open_dialog(cx, move |dialog, _, cx| {
+    let default = choices.iter().position(|(_, variant, _)| *variant == ButtonVariant::Primary).unwrap_or(0);
+    let choice_focus: Vec<_> = choices.iter().map(|_| cx.focus_handle()).collect();
+    let cancel_focus = cx.focus_handle();
+    let first = std::cell::Cell::new(true);
+    window.open_dialog(cx, move |dialog, window, cx| {
+        if first.replace(false) {
+            choice_focus.get(default).unwrap_or(&cancel_focus).focus(window, cx);
+        }
         let icon = if destructive { IconName::TriangleAlert } else { IconName::Info };
-        kit::dialog(dialog, icon, title.clone(), None, 480., cx).child(
+        let actions = choices.clone();
+        let handles = choice_focus.clone();
+        let cancel_focus_for_enter = cancel_focus.clone();
+        kit::dialog(dialog, icon, title.clone(), None, 480., cx)
+            .on_ok(move |_, window, cx| {
+                if cancel_focus_for_enter.is_focused(window) {
+                    return true;
+                }
+                let index = handles.iter().position(|focus| focus.is_focused(window)).unwrap_or(default);
+                window.close_dialog(cx);
+                if let Some((_, _, action)) = actions.get(index) {
+                    action(window, cx);
+                }
+                false
+            }).child(
             v_flex()
                 .gap(px(16.))
                 .child(div().text_size(px(13.)).line_height(px(19.)).text_color(crate::theme::chrome(cx).text).child(detail.clone()))
                 .child(
                     kit::footer()
                         .flex_wrap()
-                        .child(Button::new("choose-cancel").debug_selector(|| "choose-cancel".into()).cursor_pointer().ghost().label("Cancel")
-                            .on_click(|_, window, cx| window.close_dialog(cx)))
+                        .child(confirmation_button("choose-cancel", "Cancel", ButtonVariant::Ghost, &cancel_focus, window, cx).debug_selector(|| "choose-cancel".into())
+                            .on_click(|_, window, cx| window.close_dialog(cx))
+                            .map(|button| confirmation_control(button, &cancel_focus, window, cx)))
                         .children(choices.iter().enumerate().map(|(i, (label, variant, action))| {
                             let action = action.clone();
-                            Button::new(("choose", i)).debug_selector(move || format!("choose-{i}")).cursor_pointer()
-                                .label(label.clone()).with_variant(*variant)
+                            confirmation_button(("choose", i), label.clone(), *variant, &choice_focus[i], window, cx).debug_selector(move || format!("choose-{i}"))
                                 .on_click(move |_, window, cx| {
                                     window.close_dialog(cx);
                                     action(window, cx);
-                                })
+                                }).map(|button| confirmation_control(button, &choice_focus[i], window, cx))
                         })),
                 ),
         )
@@ -186,6 +248,10 @@ pub fn open_shortcuts(window: &mut Window, cx: &mut App) {
                     (keys(&["mod-c", "mod-x", "mod-v"]), "Copy, cut, paste"),
                     (keys(&["mod-d"]), "Duplicate"),
                     ("F2".into(), "Rename"),
+                    ("⇧F2".replace('⇧', if mac { "⇧" } else { "Shift+" }), "Rename several items"),
+                    (keys(&["mod-z", "shift-mod-z"]), "Undo, redo"),
+                    (pick(&["alt-mod-z"], &["mod-h"]), "History"),
+                    (pick(&["alt-mod-a"], &["shift-mod-a"]), "Add to Shelf"),
                     (keys(&["shift-mod-n"]), "New folder"),
                     (pick(&["alt-mod-n"], &["shift-mod-e"]), "New file"),
                     (pick(&["mod-backspace"], &["delete"]), if mac { "Move to Trash" } else { "Move to Recycle Bin" }),
@@ -225,6 +291,7 @@ pub fn open_shortcuts(window: &mut Window, cx: &mut App) {
                     (keys(&["shift-mod-."]), "Hidden files"),
                     (keys(&["shift-mod-t"]), "Light, dark"),
                     (keys(&["mod-k"]), "Ask AI"),
+                    (pick(&["alt-mod-t"], &["mod-`"]), "Open in Terminal"),
                     (keys(&["mod-,"]), "Settings"),
                 ],
             ),
@@ -570,6 +637,41 @@ impl SettingsView {
             .into_any_element()
     }
 
+    /// Dropdown of the terminals found on this computer.
+    fn terminal_picker(&self, current: &str) -> AnyElement {
+        use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
+        let installed = rile_services::terminal::installed();
+        let label = installed
+            .iter()
+            .find(|(_, v)| v == current)
+            .map(|(l, _)| l.clone())
+            .unwrap_or_else(|| if current.is_empty() { "System default".into() } else { current.to_string() });
+        let ws = self.ws.clone();
+        let current = current.to_string();
+        Button::new("s-terminal")
+            .cursor_pointer()
+            .small()
+            .outline()
+            .dropdown_caret(true)
+            .label(label)
+            .dropdown_menu_with_anchor(gpui_kit::Anchor::TopRight, move |mut menu, _, _| {
+                let mut options = vec![("System default".to_string(), String::new())];
+                options.extend(installed.iter().cloned());
+                for (label, value) in options {
+                    let ws = ws.clone();
+                    menu = menu.item(PopupMenuItem::new(label).checked(value == current).on_click(move |_, window, cx| {
+                        let value = value.clone();
+                        ws.update(cx, |ws, cx| {
+                            ws.settings.terminal = value;
+                            ws.settings_changed(window, cx);
+                        });
+                    }));
+                }
+                menu
+            })
+            .into_any_element()
+    }
+
     fn switch(&self, id: &'static str, value: bool, f: fn(&mut Settings, bool)) -> AnyElement {
         let ws = self.ws.clone();
         Switch::new(id).cursor_pointer()
@@ -716,6 +818,7 @@ impl Render for SettingsView {
                         ),
                         r("Dual pane by default", "Two panes side by side (Tab switches)", self.switch("s-dual", s.dual_pane, |s, v| s.dual_pane = v)),
                         r("Inspector", "Details and preview of the selection on the right", self.switch("s-prev", s.show_preview_panel, |s, v| s.show_preview_panel = v)),
+                        r("Open archives as folders", "Zip, 7z and tar files open like a folder; Extract Here still unpacks them", self.switch("s-archives", s.browse_archives, |s, v| s.browse_archives = v)),
                     ],
                     cx,
                 ))
@@ -774,6 +877,7 @@ impl Render for SettingsView {
                                     .into_any_element()
                             },
                         ),
+                        r("Terminal", "Used by Open in Terminal", self.terminal_picker(&s.terminal)),
                         r(if cfg!(target_os = "macos") { "Confirm before moving to Trash" } else { "Confirm before moving to Recycle Bin" }, "Ask before deleting items", self.switch("s-trash", s.confirm_trash, |s, v| s.confirm_trash = v)),
                     ],
                     cx,
@@ -1214,5 +1318,33 @@ impl Render for SettingsView {
             .child(nav)
             .child(div().w(px(1.)).self_stretch().bg(ch.hairline))
             .child(div().id("settings-body").flex_1().min_w_0().h_full().overflow_y_scroll().child(body))
+    }
+}
+
+#[cfg(test)]
+mod confirmation_tests {
+    use super::*;
+
+    #[gpui_kit::test]
+    fn confirmation_focus_ring_tracks_the_focused_button(cx: &mut gpui_kit::TestAppContext) {
+        let tmp = tempfile::tempdir().unwrap();
+        let (window, _ws) = crate::tests::setup(tmp.path(), cx);
+        cx.update_window(window, |_, window, cx| {
+            let confirm = cx.focus_handle();
+            let cancel = cx.focus_handle();
+            confirm.focus(window, cx);
+            let mut focused = confirmation_button("ok", "Delete", ButtonVariant::Danger, &confirm, window, cx);
+            assert_eq!(focused.style().background.as_ref().unwrap().color(), Some(gpui_kit::rgba(0xb83e48ff).into()));
+            let unfocused = confirmation_button("cancel", "Cancel", ButtonVariant::Secondary, &cancel, window, cx);
+            assert!(!focused.is_focus_ring_enabled(), "replace the toolkit's solid focus ring");
+            assert!(!unfocused.is_focus_ring_enabled());
+            let mut outline = confirmation_focus_outline(cx);
+            assert_eq!(outline.style().border_style, Some(gpui_kit::BorderStyle::Dashed));
+            cancel.focus(window, cx);
+            let mut destructive = confirmation_button("ok", "Delete", ButtonVariant::Danger, &confirm, window, cx);
+            assert_eq!(destructive.style().background.as_ref().unwrap().color(), Some(gpui_kit::rgba(0xb83e48ff).into()));
+            let focused = confirmation_button("cancel", "Cancel", ButtonVariant::Secondary, &cancel, window, cx);
+            assert!(!focused.is_focus_ring_enabled());
+        }).unwrap();
     }
 }

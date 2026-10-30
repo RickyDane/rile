@@ -25,6 +25,8 @@ Use the sidebar, or deep-link with `?page=photos`, `?page=space`, `?page=backups
 
 `design-system.html` remains the control-language reference. `tabs.html`, `storage-indicators.html`, and `app-icons/` are isolated design studies, not the current application shell.
 
+`shelf.html` previews an inset shelf popup: a padded collection tray, individual remove controls, an empty state, and separated file/device actions. Use Reset preview to restore its sample files; no file operations are performed.
+
 ## Interface
 
 - A dedicated Home/start page, separate from `rickyperlick`'s home directory, opens by default and in new tabs. It includes storage cards, discovery and file-type graphs, workspace counts, recent files, and location shortcuts.

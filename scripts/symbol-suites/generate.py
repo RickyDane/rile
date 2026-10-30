@@ -1,11 +1,11 @@
-"""Five alternative styles of the full-color Overview symbols (64 x 64 artboards).
+"""Alternative styles of the full-color Overview symbols (64 x 64 artboards).
 
 Usage: python3 -I generate.py <out dir> [--app]
 
 With --app, the suites offered in Settings > Appearance > Symbol style are
 also copied into crates/rile-app/assets/overview/<style>/ (art.rs embeds them).
 
-Every suite draws the same 11 symbols as crates/rile-app/assets/overview/.
+Every suite draws the same 13 symbols as crates/rile-app/assets/overview/.
 free-space.svg keeps the hooks art.rs rewrites per capacity level: the arc
 path "M23.5 40.5a12 12 0 0 1 17-17" with stroke="url(#rile-free-arc)", the
 tint colors #5fd39a / #85c6fa / #2e80cc (used only in that gradient) and the
@@ -16,7 +16,7 @@ import sys
 
 NAMES = [
     "storage", "files", "folder", "computer", "external-drive", "discovered",
-    "free-space", "network-share", "nearby-computer", "nearby-server", "cloud-drive", "desktop",
+    "free-space", "network-share", "nearby-computer", "nearby-server", "nearby-desktop", "cloud-drive", "desktop",
 ]
 
 
@@ -205,6 +205,15 @@ def glass():
         + '<path d="M49.5 18h6" stroke="#ffffff" stroke-opacity=".8" stroke-width="2" stroke-linecap="round"/>'
         + '<path d="M49.5 23h6" stroke="#ffffff" stroke-opacity=".5" stroke-width="1.4" stroke-linecap="round"/>'
         + '<circle cx="52.5" cy="46" r="2" fill="#7ff5c4"/>')
+    out["nearby-desktop"] = svg(base + BLUE + SLATE + MINT,
+        body(rect(21.5, 36, 6, 8, 1.5), "slate") + body(rect(13, 43, 22, 5, 2.5), "slate", "#3d4b6b")
+        + body(rect(5, 9, 38, 28, 4.5), "blue", "#3a4bff") + frost(rect(8.5, 12.5, 31, 21, 2.5), 0.22)
+        + f'<path d="{SCENE}" transform="{DT_SCENE}" {W} stroke-width="2.4"/>'
+        + body(rect(46, 12, 13, 41, 4), "slate", "#3d4b6b")
+        + '<path d="M49.5 18h6" stroke="#ffffff" stroke-opacity=".8" stroke-width="2" stroke-linecap="round"/>'
+        + '<path d="M49.5 23h6" stroke="#ffffff" stroke-opacity=".5" stroke-width="1.4" stroke-linecap="round"/>'
+        + '<circle cx="52.5" cy="46" r="2" fill="#7ff5c4"/>'
+        + '<g transform="translate(8 -12)">' + badge(43, 24, 10, "mint") + wifi + '</g>')
     return out
 
 
@@ -294,6 +303,14 @@ def clay():
         + f'<path d="{SCENE}" transform="{DT_SCENE}" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
         + blob(rect(46, 12, 13, 41, 5), "#d3dbe8", "#a3afc4", 2.4)
         + '<path d="M49.5 18h6" stroke="#9aa7bd" stroke-width="2.4" stroke-linecap="round"/><circle cx="52.5" cy="46" r="2.2" fill="#4fd8a6"/>')
+    out["nearby-desktop"] = svg(base, ground(32, 56, 27)
+        + blob(rect(21.5, 36, 6, 8, 1.5), "#d3dbe8", "#a3afc4", 1.6) + blob(rect(13, 43, 22, 5, 2.5), "#d3dbe8", "#a3afc4", 2)
+        + blob(rect(5, 9, 38, 28, 6), "#3d4d70", "#2a3653", 2)
+        + f'<path d="{rect(8.5, 12.5, 31, 21, 3)}" fill="#7cc4ff"/><path d="{rect(8.5, 12.5, 31, 21, 3)}" fill="url(#hl)"/>'
+        + f'<path d="{SCENE}" transform="{DT_SCENE}" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+        + blob(rect(46, 12, 13, 41, 5), "#d3dbe8", "#a3afc4", 2.4)
+        + '<path d="M49.5 18h6" stroke="#9aa7bd" stroke-width="2.4" stroke-linecap="round"/><circle cx="52.5" cy="46" r="2.2" fill="#4fd8a6"/>'
+        + '<g transform="translate(8 -12)">' + badge(43, 24, 10, "#4fd8a6", "#2aa97c") + wifi + '</g>')
     return out
 
 
@@ -350,6 +367,11 @@ def line():
         + L(rect(5, 9, 38, 28, 5), C, 0.12) + L(rect(9.5, 13.5, 29, 19, 2), C, 0.22, 1.8)
         + S(SCENE, C, 2.2, 0.7, f' transform="{DT_SCENE}"') + L(rect(46, 12, 13, 41, 4), C, 0.18)
         + S("M49.5 18.5h6", C, 2.2, 0.6) + f'<circle cx="52.5" cy="46" r="2" fill="{M}"/>')
+    out["nearby-desktop"] = svg("", L(rect(21.5, 36, 6, 8, 1.5), C, 0.2, 2) + L(rect(13, 43, 22, 5, 2.5), C, 0.28)
+        + L(rect(5, 9, 38, 28, 5), C, 0.12) + L(rect(9.5, 13.5, 29, 19, 2), C, 0.22, 1.8)
+        + S(SCENE, C, 2.2, 0.7, f' transform="{DT_SCENE}"') + L(rect(46, 12, 13, 41, 4), C, 0.18)
+        + S("M49.5 18.5h6", C, 2.2, 0.6) + f'<circle cx="52.5" cy="46" r="2" fill="{M}"/>'
+        + '<g transform="translate(8 -12)">' + halo + badge + '</g>')
     return out
 
 
@@ -402,6 +424,11 @@ def neon():
         + N(rect(5, 9, 38, 28, 5), CY) + N(rect(9, 13, 30, 20, 2), VI, 1.2)
         + N(SCENE, MG, 1.5, False, f' transform="{DT_SCENE}"') + N(rect(46, 12, 13, 41, 4), CY)
         + N("M49.5 18.5h6", VI, 1.4, False) + dot(52.5, 46, 1.7, LM))
+    out["nearby-desktop"] = svg(base, N(rect(21.5, 36, 6, 8, 1.5), CY, 1.2) + N(rect(13, 43, 22, 5, 2.5), CY, 1.4)
+        + N(rect(5, 9, 38, 28, 5), CY) + N(rect(9, 13, 30, 20, 2), VI, 1.2)
+        + N(SCENE, MG, 1.5, False, f' transform="{DT_SCENE}"') + N(rect(46, 12, 13, 41, 4), CY)
+        + N("M49.5 18.5h6", VI, 1.4, False) + dot(52.5, 46, 1.7, LM)
+        + '<g transform="translate(8 -12)">' + badge + '</g>')
     return out
 
 
@@ -571,6 +598,7 @@ def iso():
     cx, cy = P(ox, oy, 12.5, 9, 6)
     s += f'<circle cx="{n(round(cx, 2))}" cy="{n(round(cy, 2))}" r="1.4" fill="#4fd8a6"/>'
     out["desktop"] = svg("", s)
+    out["nearby-desktop"] = svg("", s + '<g transform="translate(6 -6)">' + badge + '</g>')
     return out
 
 
@@ -721,6 +749,14 @@ def tilt():
         + f'<path d="{SCENE}" transform="{DT_SCENE}" {W} stroke-width="2.2" stroke-opacity=".9"/>'
         + solid(rect(46, 14, 13, 39, 3), "deckF", "deckT", 0.05, 6)
         + '<path d="M49.5 20h6" stroke="#4a5670" stroke-width="2.2" stroke-linecap="round"/><circle cx="52.5" cy="46" r="1.8" fill="#4da3ff"/>')
+    out["nearby-desktop"] = svg(defs("slateF", "slateT", "deckF", "deckT", "screen", "mintF", "mintT"), ground(30, 56, 28)
+        + solid(rect(21.5, 36, 6, 9, 1.5), "deckF", "deckT", 0.02, 3) + solid(rect(13, 43, 22, 5, 2.5), "deckF", "deckT", 0.03, 4)
+        + solid(rect(5, 9, 38, 28, 4), "slateF", "slateT", 0.045, 6)
+        + f'<path d="{rect(8.5, 12.5, 31, 21, 2)}" fill="url(#screen)"/><path d="{rect(8.5, 12.5, 31, 21, 2)}" fill="url(#sheen)"/>'
+        + f'<path d="{SCENE}" transform="{DT_SCENE}" {W} stroke-width="2.2" stroke-opacity=".9"/>'
+        + solid(rect(46, 14, 13, 39, 3), "deckF", "deckT", 0.05, 6)
+        + '<path d="M49.5 20h6" stroke="#4a5670" stroke-width="2.2" stroke-linecap="round"/><circle cx="52.5" cy="46" r="1.8" fill="#4da3ff"/>'
+        + '<g transform="translate(8 -12)">' + badge(43, 24, 10, "mintF", "mintT") + wifi + '</g>')
     return out
 
 
@@ -808,6 +844,9 @@ def paper():
     out["desktop"] = svg(base, monitor(4, 8, 40, 28)
         + L(rect(47, 13, 12, 40, 3), NAVY) + L(rect(50, 18, 6, 2.6, 1.3), SAND, 0.6) + L(rect(50, 24, 6, 2, 1), "#5b5f7a", 0.5)
         + f'<circle cx="53" cy="46" r="2" fill="{TERRA}"/>')
+    out["nearby-desktop"] = svg(base, monitor(4, 8, 40, 28)
+        + L(rect(47, 13, 12, 40, 3), NAVY) + L(rect(50, 18, 6, 2.6, 1.3), SAND, 0.6) + L(rect(50, 24, 6, 2, 1), "#5b5f7a", 0.5)
+        + f'<circle cx="53" cy="46" r="2" fill="{TERRA}"/>' + waves(51, 12))
     return out
 
 
@@ -875,7 +914,16 @@ def pixelart():
                 by.setdefault(ch, []).append(f"M{start * 4} {y * 4}h{(x - start) * 4}v4h{-(x - start) * 4}z")
         return "".join(f'<path fill="{PX[c]}" d="{"".join(d)}"/>' for c, d in by.items())
 
-    out = {k: svg("", f'<g shape-rendering="crispEdges">{sprite(v)}</g>') for k, v in SPRITES.items()}
+    # Reserve the same upper-right radio badge as the other nearby devices.
+    sprites = dict(SPRITES)
+    sprites["desktop"] = [
+        row[:10] + SPRITES["nearby-computer"][y][10:] if y < 6
+        else row[:10] + ".kkkkk" if y == 6 else row
+        for y, row in enumerate(SPRITES["desktop"])
+    ]
+    out = {k: svg("", f'<g shape-rendering="crispEdges">{sprite(v)}</g>') for k, v in sprites.items()}
+    out["nearby-desktop"] = out["desktop"]
+    out["desktop"] = svg("", f'<g shape-rendering="crispEdges">{sprite(SPRITES["desktop"])}</g>')
     rows = []
     for y in range(16):
         row = ""
@@ -946,6 +994,9 @@ def riso():
         + line("M33 50V34m-6 6 6-6 6 6", YE, 4.4) + line("M33 50V34m-6 6 6-6 6 6", BL, 1.4, MIS))
     out["desktop"] = P(monitor(4, 9, 38, 28) + ink(rect(46, 13, 13, 40, 2), PK) + ink(rect(46, 13, 13, 18, 2), "url(#hb)")
         + ink(rect(49.5, 36, 6, 2.6, 1.3), YE) + f'<circle cx="52.5" cy="46" r="2.2" fill="{BL}" style="mix-blend-mode:multiply"/>')
+    out["nearby-desktop"] = P('<g transform="translate(0 14) scale(.8)">' + monitor(4, 9, 38, 28)
+        + ink(rect(46, 13, 13, 40, 2), PK) + ink(rect(46, 13, 13, 18, 2), "url(#hb)")
+        + ink(rect(49.5, 36, 6, 2.6, 1.3), YE) + f'<circle cx="52.5" cy="46" r="2.2" fill="{BL}" style="mix-blend-mode:multiply"/></g>' + wifi(45, 18))
     return out
 
 
@@ -1023,6 +1074,9 @@ def blueprint():
     out["desktop"] = B('<g transform="translate(32 32) scale(.82) translate(-32 -31)">' + monitor(5, 9, 38, 28)
         + Ln(rect(46, 12, 13, 41, 2.5)) + Ln("M49.5 18h6", 1.1) + Ln("M49.5 22h6", 1.1) + H(rect(48, 27, 9, 12, 1.5))
         + '<circle cx="52.5" cy="46" r="1.6" fill="none" stroke="#fff" stroke-width="1.1"/></g>')
+    out["nearby-desktop"] = B('<g transform="translate(27 39) scale(.72) translate(-32 -31)">' + monitor(5, 9, 38, 28)
+        + Ln(rect(46, 12, 13, 41, 2.5)) + Ln("M49.5 18h6", 1.1) + Ln("M49.5 22h6", 1.1) + H(rect(48, 27, 9, 12, 1.5))
+        + '<circle cx="52.5" cy="46" r="1.6" fill="none" stroke="#fff" stroke-width="1.1"/></g>' + wifi(45, 18))
     return out
 
 
@@ -1088,8 +1142,11 @@ def sticker():
     out["nearby-server"] = svg(base, make(parts + bp, after=extra + bx))
     out["cloud-drive"] = svg(base, make([("f", CL, S, "translate(21 -4) scale(.7)"), ("f", CL, W)], rot=-4,
         after=f'<path d="M33 46V33m-5 5 5-5 5 5" fill="none" stroke="{B}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'))
+    bp, bx = badge(51, 15)
     out["desktop"] = svg(base, make(crt(4, 11, 38, 28) + [("f", rect(46, 14, 11, 38, 4), V)],
         after=f'<path d="M49.5 21h4M49.5 26h4" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/><circle cx="51.5" cy="45" r="2.2" fill="{Y}" stroke="{K}" stroke-width="1"/>'))
+    out["nearby-desktop"] = svg(base, make(crt(4, 11, 38, 28) + [("f", rect(46, 14, 11, 38, 4), V)] + bp,
+        after=f'<path d="M49.5 21h4M49.5 26h4" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/><circle cx="51.5" cy="45" r="2.2" fill="{Y}" stroke="{K}" stroke-width="1"/>' + bx))
     return out
 
 
@@ -1236,6 +1293,12 @@ def family(P):
         + f'<path d="M7.6 11.6h20L19.4 33.4H7.6Z" fill="#ffffff" opacity=".16"/>'
         + body(rect(46, 12, 13, 41, 4)) + f'<path d="{rect(49.5, 17.5, 6, 2.4, 1.2)}" fill="{P["ink"]}" opacity=".5"/>'
         + f'<path d="M49.5 23.5h6M49.5 26.5h6" stroke="{P["line"]}" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>' + led(52.5, 46, 1.7, P["dots"][0]))
+    out["nearby-desktop"] = svg(defs, body(rect(21.5, 36, 6, 8, 1.5)) + body(rect(12.5, 43, 23, 5.5, 2.7))
+        + body(rect(5, 9, 38, 28, 4.5), "inner") + glow(scr, 0.55) + f'<path d="{scr}" fill="url(#acc)"/>'
+        + f'<path d="M7.6 11.6h20L19.4 33.4H7.6Z" fill="#ffffff" opacity=".16"/>'
+        + body(rect(46, 12, 13, 41, 4)) + f'<path d="{rect(49.5, 17.5, 6, 2.4, 1.2)}" fill="{P["ink"]}" opacity=".5"/>'
+        + f'<path d="M49.5 23.5h6M49.5 26.5h6" stroke="{P["line"]}" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>' + led(52.5, 46, 1.7, P["dots"][0])
+        + badge(51, 12, 10.5, wifi(51, 12)))
     return out
 
 
