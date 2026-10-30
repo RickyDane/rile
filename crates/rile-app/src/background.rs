@@ -190,7 +190,7 @@ pub fn show(window: &mut Window, cx: &mut App) {
 #[cfg(all(windows, not(test)))]
 fn hwnd(window: &Window) -> Option<windows::Win32::Foundation::HWND> {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-    match window.window_handle().ok()?.as_raw() {
+    match HasWindowHandle::window_handle(window).ok()?.as_raw() {
         RawWindowHandle::Win32(handle) => Some(windows::Win32::Foundation::HWND(handle.hwnd.get() as *mut _)),
         _ => None,
     }
