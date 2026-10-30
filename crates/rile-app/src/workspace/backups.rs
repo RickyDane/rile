@@ -131,15 +131,11 @@ impl Workspace {
     pub(super) fn start_backups(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.sync_backup_watcher();
         if !cfg!(test) {
-            // Install agents for configs from older versions and bring the
-            // menu bar helper back if it was quit.
+            // Only schedules need an agent; the main app owns the unified tray.
             let config = self.backups.config.clone();
             cx.background_spawn(async move {
                 if let Err(e) = rile_backup::agent::sync(&config) {
                     eprintln!("backup agents: {e:#}");
-                }
-                if config.wants_menu_bar() {
-                    rile_backup::agent::start(rile_backup::agent::Agent::MenuBar);
                 }
             })
             .detach();
@@ -339,7 +335,7 @@ impl Workspace {
         self.backup_config_changed(cx);
     }
 
-    /// Shows or hides the backups menu bar item.
+    /// Shows or hides backup status in the shared Rile tray menu.
     pub fn set_backup_menu_bar(&mut self, on: bool, cx: &mut Context<Self>) {
         self.backups.config.menu_bar = on;
         self.backup_config_changed(cx);

@@ -4,7 +4,7 @@ members = ["crates/rile-core", "crates/rile-services", "crates/rile-plugins", "c
 exclude = ["plugins", "vendor/smb"]
 
 [workspace.package]
-version = "0.8.1"
+version = "0.8.2-beta.1"
 edition = "2024"
 license = "MIT"
 

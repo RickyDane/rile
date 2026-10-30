@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.8.2-beta.1
+
+- Consolidate Rile and backup status/actions into one tray/menu bar item. Retire the old backup-only login helper without interrupting its active backups; retain the headless scheduler.
+
+- Add an opt-in **Start Rile at login** tray toggle on macOS and Windows. Login launches stay hidden while Nearby starts; disabling startup does not stop the running app.
+
+- Keep Rile running in the macOS menu bar / Windows tray when its window is closed, so enabled Nearby sharing and transfers remain available. Reopen or explicitly quit from the tray; incoming pairing and file offers reveal their confirmation dialogs.
+
 ## v0.8.1
 
 - Back up to writable shared folders on paired Nearby devices, with a destination picker for saved servers and devices.

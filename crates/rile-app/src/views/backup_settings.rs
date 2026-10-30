@@ -477,9 +477,9 @@ impl Render for BackupSettingsView {
             .when(cfg!(any(target_os = "macos", windows)), |d| {
                 let ws = self.ws.clone();
                 let (title, label, hint) = if cfg!(windows) {
-                    ("NOTIFICATION AREA", "Show in notification area", "Follow, start and stop backups from the taskbar's notification area, also while Rile is closed")
+                    ("RILE MENU", "Show backup status", "Follow, start and stop backups from Rile's tray menu, also when its window is closed")
                 } else {
-                    ("MENU BAR", "Show in menu bar", "Follow, start and stop backups from the menu bar, also while Rile is closed")
+                    ("RILE MENU", "Show backup status", "Follow, start and stop backups from Rile's menu bar item, also when its window is closed")
                 };
                 d.child(section(
                     title,

@@ -1,9 +1,8 @@
-//! Background agents for backups:
-//! - the scheduler, started every 15 minutes as `rile --run-backups` to run
-//!   due background jobs while Rile is closed (a launchd agent on macOS, a
-//!   Task Scheduler task on Windows);
-//! - the status helper (`rile --backup-menu`), started at login, which shows
-//!   running backups in the menu bar (macOS) or notification area (Windows).
+//! Background scheduler for backups, started every 15 minutes as
+//! `rile --run-backups` to run due jobs while Rile is closed (a launchd agent
+//! on macOS, a Task Scheduler task on Windows).
+//! The former `--backup-menu` agent is retained here only for migration and
+//! removal; its status/actions now belong to the main app's single tray item.
 
 use std::path::{Path, PathBuf};
 
@@ -11,7 +10,7 @@ use anyhow::{Context, Result};
 
 /// Command-line flag that makes the app binary run due jobs and exit.
 pub const RUN_FLAG: &str = "--run-backups";
-/// Command-line flag that makes the app binary run the menu bar helper.
+/// Legacy login flag, now treated as a background launch of the main app.
 pub const MENU_FLAG: &str = "--backup-menu";
 /// `--config-dir <dir>`: sets `RILE_CONFIG_DIR` for agents started by
 /// Windows, which can't pass environment variables to scheduled tasks.
@@ -132,10 +131,19 @@ pub fn uninstall(agent: Agent) -> Result<()> {
     if !path.exists() {
         return Ok(());
     }
-    if !launchctl(&["bootout", &target(agent)]) {
+    // A legacy --backup-menu login entry can now be running the unified app.
+    // Remove its future registration without booting out this very process.
+    let current = std::process::Command::new("/bin/launchctl").args(["print", &target(agent)]).output()
+        .is_ok_and(|out| launchctl_pid(&String::from_utf8_lossy(&out.stdout)) == Some(std::process::id()));
+    if !current && !launchctl(&["bootout", &target(agent)]) {
         launchctl(&["unload", &path.to_string_lossy()]);
     }
     std::fs::remove_file(&path).with_context(|| format!("removing {}", path.display()))
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn launchctl_pid(output: &str) -> Option<u32> {
+    output.lines().find_map(|line| line.trim().strip_prefix("pid = ").and_then(|pid| pid.parse().ok()))
 }
 
 /// Starts an installed agent that isn't running (e.g. the menu bar helper
@@ -297,26 +305,30 @@ fn launchctl(args: &[&str]) -> bool {
         .is_ok_and(|s| s.success())
 }
 
-/// Installs or removes both agents to match the configuration.
+/// Keeps the headless scheduler in line with the configuration. The former
+/// menu helper is retired by the app only after its active backups finish.
 pub fn sync(config: &crate::BackupConfig) -> Result<()> {
     // Development runs can opt out of touching the user's launch agents.
     if std::env::var_os("RILE_NO_LAUNCH_AGENTS").is_some() {
         return Ok(());
     }
     let exe = std::env::current_exe().context("locating the Rile program")?;
-    let mut result = Ok(());
-    for (agent, wanted) in [(Agent::Scheduler, config.wants_agent()), (Agent::MenuBar, cfg!(any(target_os = "macos", windows)) && config.wants_menu_bar())] {
-        let r = if wanted { install(agent, &exe) } else { uninstall(agent) };
-        if r.is_err() && result.is_ok() {
-            result = r;
-        }
+    if config.wants_agent() {
+        install(Agent::Scheduler, &exe)
+    } else {
+        uninstall(Agent::Scheduler)
     }
-    result
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn identifies_self_before_retiring_a_legacy_login_job() {
+        assert_eq!(launchctl_pid("gui/501/dev.rile.backup-menu = {\n\tpid = 1234\n}"), Some(1234));
+        assert_eq!(launchctl_pid("state = waiting\nlast exit code = 0"), None);
+    }
 
     #[test]
     fn plists_escape_paths_and_differ_per_agent() {

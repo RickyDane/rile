@@ -630,6 +630,7 @@ impl Workspace {
     pub(crate) fn handle_peer_event(&mut self, ev: PeerEvent, window: &mut Window, cx: &mut Context<Self>) {
         match ev {
             PeerEvent::PairRequest { device, code, reply } => {
+                crate::background::show(window, cx);
                 let name = name_of(&device);
                 let reply = Arc::new(Mutex::new(Some(reply)));
                 let accept = {
@@ -653,6 +654,7 @@ impl Workspace {
                 );
             }
             PeerEvent::Offer { device, items, total, reply, transfer } => {
+                crate::background::show(window, cx);
                 let name = name_of(&device);
                 let tops: Vec<&str> = items.iter().filter(|i| !i.path.contains('/')).map(|i| i.path.as_str()).collect();
                 let what = match tops.as_slice() {

@@ -109,6 +109,47 @@ fn platform_keys(keys: &str) -> String {
     }
 }
 
+#[cfg(any(target_os = "macos", windows))]
+#[gpui_kit::test]
+fn login_launch_only_hides_when_a_tray_is_available(cx: &mut TestAppContext) {
+    let login = vec![rile_services::autostart::BACKGROUND_FLAG.into()];
+    cx.update(|cx| {
+        assert!(!crate::background::start_hidden(&login, cx), "failed tray installation must leave a visible window");
+        cx.set_global(crate::background::RunningInTray);
+        assert!(crate::background::start_hidden(&login, cx));
+        assert!(!crate::background::start_hidden(&[], cx), "normal launches should be visible");
+        assert!(!crate::background::start_hidden(&["--backups".into()], cx));
+    });
+}
+
+#[cfg(any(target_os = "macos", windows))]
+#[gpui_kit::test]
+async fn tray_close_preserves_workspace_and_reopens_same_window(cx: &mut TestAppContext) {
+    let dir = tempfile::tempdir().unwrap();
+    let (window, ws) = setup(dir.path(), cx);
+    wait_for_names(cx, window, &ws, &[]).await;
+    let _guard = config_lock();
+    // Model successful tray installation without creating a native status item
+    // in GPUI's simulated application.
+    cx.update(|cx| cx.set_global(crate::background::RunningInTray));
+    let weak = ws.downgrade();
+    let mut visual = gpui_kit::VisualTestContext::from_window(window, cx);
+    assert!(!visual.simulate_close(), "tray mode must veto destruction of the workspace window");
+    drop(ws);
+    cx.run_until_parked();
+    assert!(weak.upgrade().is_some(), "the window keeps the workspace and Nearby tasks alive");
+    cx.update(crate::reopen);
+    cx.update(crate::reopen);
+    assert_eq!(cx.windows(), vec![window], "reopening must not start a second workspace/server");
+    cx.update(|cx| {
+        let ws = weak.upgrade().unwrap();
+        assert_eq!(ws.read(cx).current_dir(cx).as_deref(), Some(dir.path()));
+    });
+    // Explicit Quit must still perform the normal persistence/shutdown path.
+    cx.update(crate::quit);
+    assert_eq!(rile_core::settings::Settings::load().last_location.as_deref(), Some(dir.path()));
+}
+
 #[gpui_kit::test]
 async fn dock_reopen_after_window_close(cx: &mut TestAppContext) {
     let dir = tempfile::tempdir().unwrap();
@@ -2416,6 +2457,45 @@ fn wait_for_backup(cx: &mut TestAppContext, ws: &Entity<Workspace>) {
         std::thread::sleep(Duration::from_millis(10));
     }
     panic!("backup did not finish");
+}
+
+#[cfg(any(target_os = "macos", windows))]
+#[gpui_kit::test]
+async fn unified_tray_runs_backups_in_the_hidden_workspace(cx: &mut TestAppContext) {
+    use rile_backup::{Destination, Schedule};
+    let tmp = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(tmp.path()).unwrap();
+    let (source, dest) = (root.join("Docs"), root.join("Backup"));
+    fs::create_dir(&source).unwrap();
+    fs::write(source.join("file.txt"), "first").unwrap();
+    let (window, ws) = setup(&root, cx);
+    let _guard = config_lock();
+    let id = cx.update(|cx| {
+        cx.set_global(crate::background::RunningInTray);
+        ws.update(cx, |ws, cx| {
+            let id = ws.add_backup_job(vec![source.clone()], cx);
+            ws.update_backup_job(&id, cx, |job| {
+                job.destination = Destination::Local { path: dest.clone() };
+                job.schedule = Schedule::Manual;
+            });
+            id
+        })
+    });
+    let mut visual = gpui_kit::VisualTestContext::from_window(window, cx);
+    assert!(!visual.simulate_close());
+    cx.update(|cx| crate::backup_menu::dispatch(&format!("rile.backup.run:{id}"), cx));
+    assert!(cx.read(|cx| ws.read(cx).backups.running.contains_key(&id)));
+    wait_for_backup(cx, &ws);
+    assert_eq!(fs::read_to_string(dest.join("Docs/file.txt")).unwrap(), "first");
+    fs::write(source.join("file.txt"), "updated").unwrap();
+    cx.update(|cx| crate::backup_menu::dispatch("rile.backup.all", cx));
+    wait_for_backup(cx, &ws);
+    assert_eq!(fs::read_to_string(dest.join("Docs/file.txt")).unwrap(), "updated");
+    assert_eq!(cx.windows(), vec![window], "tray actions reuse the hidden workspace");
+    cx.update(|cx| crate::backup_menu::dispatch(&format!("rile.backup.stop:{id}"), cx));
+    assert!(rile_backup::state::job_dir(&id).unwrap().join("cancel").exists());
+    cx.update(|cx| crate::backup_menu::dispatch("rile.backup.open", cx));
+    assert!(cx.read(|cx| matches!(ws.read(cx).pane().read(cx).location, Location::Backups)));
 }
 
 /// A job created in the app backs up incrementally, keeps replaced files as

@@ -6,6 +6,7 @@
 //! expected to run them on a background thread.
 
 pub mod app_icons;
+pub mod autostart;
 pub mod local_model;
 pub mod model_runtime;
 pub mod mlx_runtime;

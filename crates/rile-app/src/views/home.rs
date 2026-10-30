@@ -221,7 +221,8 @@ pub(super) fn card(ch: &Chrome) -> gpui_kit::Div {
         .rounded(px(12.))
         .border_1()
         .border_color(ch.card_border)
-        .bg(linear_gradient(145., linear_color_stop(ch.card_top, 0.), linear_color_stop(ch.card_bottom, 1.)))
+        // A faint accent-tinted sheen from the top left, fading into the plain card.
+        .bg(linear_gradient(150., linear_color_stop(ch.accent.opacity(0.055), 0.), linear_color_stop(ch.card_bottom, 0.75)))
 }
 
 fn panel_header(title: &'static str, subtitle: String, trailing: Option<AnyElement>, ch: &Chrome) -> AnyElement {
@@ -1011,8 +1012,6 @@ fn source_card(
         .overflow_hidden()
         .px(px(13.))
         .py(px(12.))
-        // A faint accent-tinted sheen from the top left, fading into the plain card.
-        .bg(linear_gradient(150., linear_color_stop(ch.accent.opacity(0.055), 0.), linear_color_stop(ch.card_bottom, 0.75)))
         .when(live, |d| {
             d.cursor_pointer()
                 .hover(|st| st.border_color(ch.accent.opacity(0.3)))

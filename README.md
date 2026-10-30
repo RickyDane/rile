@@ -63,6 +63,14 @@ An interactive design prototype is also available in [`mockups/`](mockups/README
 
 ## Getting started
 
+### Running in the background
+
+On macOS and Windows, closing Rile's main window hides it in the menu bar / system tray instead of exiting. Nearby discovery, shared folders and transfers stay available while Nearby is enabled in Settings. Use **Open Rile** in the tray (or launch Rile again) to return, and **Quit Rile** to stop the app. Incoming pairing and file offers show the window for your approval; they are never accepted automatically.
+
+Enable **Start Rile at login** in the tray menu to launch silently in the background at your next login. It is opt-in and can be disabled from the same menu. **Quit Rile** stops it until you launch it again or log in again; it does not keep a sleeping or powered-off computer online.
+
+The same tray item includes a **Backups** submenu with progress, run/stop actions and backup settings. The old backup-only login helper is retired automatically after any backups it owns finish; its login preference moves to the unified app. Scheduled backups still use a separate headless scheduler, which has no tray icon.
+
 To share a Linux server with Rile, see [Rile Server (Linux)](#rile-server-linux). It installs with one command.
 
 ### Run from source

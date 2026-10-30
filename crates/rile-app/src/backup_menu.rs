@@ -1,18 +1,11 @@
-//! The backups menu bar item (`rile --backup-menu`; a notification-area icon
-//! on Windows): a small helper process, started at login by its agent, that shows running backups from any
-//! process (the app, the scheduler agent or itself), starts and stops them,
-//! posts a notification when one fails, and opens Rile on the Backups page.
-//!
-//! Everything it shows comes from the files the backup engine shares in the
-//! config folder (jobs, history, live status), so it never talks to the app.
-
-#[cfg(target_os = "macos")]
-use std::cell::RefCell;
+//! Backup status and actions in the main app's single tray/menu bar item.
+//! Shared status files also expose jobs run by the headless scheduler.
 use std::collections::HashMap;
-use std::sync::atomic::AtomicBool;
 
 use rile_backup::state::{self, RunRecord, RunStatus};
-use rile_backup::{BackupConfig, Outcome, Progress, RunOptions, Trigger};
+use rile_backup::{BackupConfig, Outcome};
+#[cfg(test)]
+use rile_backup::Trigger;
 
 use crate::workspace::backups::describe;
 
@@ -32,7 +25,6 @@ pub struct MenuModel {
 impl MenuModel {
     /// What decides the menu's items (not their titles): while it stays the
     /// same, the open menu is updated in place instead of rebuilt.
-    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     pub fn shape(&self) -> Vec<(String, bool, usize)> {
         self.jobs.iter().map(|j| (j.id.clone(), j.running, j.details.len())).collect()
     }
@@ -43,17 +35,6 @@ pub enum Icon {
     Idle,
     Running,
     Problem,
-}
-
-impl Icon {
-    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
-    fn symbol(self) -> &'static str {
-        match self {
-            Icon::Idle => "externaldrive.badge.timemachine",
-            Icon::Running => "arrow.triangle.2.circlepath",
-            Icon::Problem => "externaldrive.badge.exclamationmark",
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -189,39 +170,212 @@ pub fn new_problems(config: &BackupConfig, history: &HashMap<String, Vec<RunReco
     out
 }
 
-// ---------------------------------------------------------------- state
+// ---------------------------------------------------------------- shared app menu
 
-#[derive(Default)]
-struct Tray {
-    config: BackupConfig,
-    history: HashMap<String, Vec<RunRecord>>,
-    live: HashMap<String, RunStatus>,
-    seen: HashMap<String, i64>,
+use tray_icon::menu::{MenuItem, PredefinedMenuItem, Submenu};
+
+/// Native handles are retained so progress updates don't rebuild an open menu.
+pub struct BackupMenu {
+    pub menu: Submenu,
     shown: Option<MenuModel>,
-    /// Job ids in menu order, for item tags.
-    order: Vec<String>,
+    header: MenuItem,
+    jobs: Vec<(Submenu, Vec<MenuItem>, MenuItem)>,
+    all: MenuItem,
 }
 
-impl Tray {
-    fn refresh(&mut self) {
-        self.config = BackupConfig::load();
-        self.history.clear();
-        self.live.clear();
-        for job in &self.config.job {
-            let Some(dir) = state::job_dir(&job.id) else { continue };
-            self.history.insert(job.id.clone(), state::load_history(&dir));
-            if let Some(status) = state::read_status(&dir) {
-                self.live.insert(job.id.clone(), status);
+impl BackupMenu {
+    pub fn new() -> Self {
+        Self {
+            menu: Submenu::new("Backups", true),
+            shown: None,
+            header: MenuItem::new("Backups", false, None),
+            jobs: Vec::new(),
+            all: MenuItem::with_id("rile.backup.all", "Back Up All Now", false, None),
+        }
+    }
+
+    pub fn update(&mut self, model: &MenuModel) -> anyhow::Result<()> {
+        if self.shown.as_ref() == Some(model) {
+            return Ok(());
+        }
+        if self.shown.as_ref().is_none_or(|old| old.shape() != model.shape()) {
+            while self.menu.remove_at(0).is_some() {}
+            self.jobs.clear();
+            self.menu.append(&self.header)?;
+            self.menu.append(&PredefinedMenuItem::separator())?;
+            for job in &model.jobs {
+                let sub = Submenu::new(&job.title, true);
+                let details: Vec<MenuItem> = job.details.iter().map(|line| MenuItem::new(line, false, None)).collect();
+                for line in &details {
+                    sub.append(line)?;
+                }
+                sub.append(&PredefinedMenuItem::separator())?;
+                let action = if job.running {
+                    MenuItem::with_id(format!("rile.backup.stop:{}", job.id), "Stop", true, None)
+                } else {
+                    MenuItem::with_id(format!("rile.backup.run:{}", job.id), "Back Up Now", job.can_run, None)
+                };
+                sub.append(&action)?;
+                self.menu.append(&sub)?;
+                self.jobs.push((sub, details, action));
             }
+            self.menu.append_items(&[
+                &PredefinedMenuItem::separator(),
+                &self.all,
+                &PredefinedMenuItem::separator(),
+                &MenuItem::with_id("rile.backup.open", "Open Backups…", true, None),
+                &MenuItem::with_id("rile.backup.settings", "Backup Settings…", true, None),
+            ])?;
         }
-        for (title, body) in new_problems(&self.config, &self.history, &mut self.seen) {
-            notify(&title, &body);
+        self.header.set_text(if model.title.is_empty() { "Backups" } else { &model.title });
+        self.menu.set_text(match model.icon {
+            Icon::Running => "Backups — Running",
+            Icon::Problem => "Backups — Needs attention",
+            Icon::Idle => "Backups",
+        });
+        for ((sub, lines, action), job) in self.jobs.iter().zip(&model.jobs) {
+            sub.set_text(&job.title);
+            for (item, title) in lines.iter().zip(&job.details) {
+                item.set_text(title);
+            }
+            action.set_enabled(job.running || job.can_run);
         }
+        self.all.set_enabled(model.jobs.iter().any(|job| job.can_run));
+        self.shown = Some(model.clone());
+        Ok(())
     }
 }
 
-/// Posts a macOS notification (via AppleScript, which works without an app
-/// bundle or notification entitlement).
+#[derive(Default)]
+pub struct Monitor {
+    seen: HashMap<String, i64>,
+    retired: bool,
+    pub handoff_pending: bool,
+}
+
+impl Monitor {
+    /// Reads shared status off the UI thread, including scheduler-owned runs.
+    pub fn refresh(&mut self) -> MenuModel {
+        let mut config = BackupConfig::load();
+        if !self.retired {
+            match retire_legacy_helper(&config) {
+                Ok(retired) => {
+                    self.retired = retired;
+                    self.handoff_pending = !retired;
+                }
+                Err(error) => {
+                    self.handoff_pending = false;
+                    eprintln!("Retiring the old backup menu: {error:#}");
+                }
+            }
+        }
+        let mut history = HashMap::new();
+        let mut live = HashMap::new();
+        for job in &config.job {
+            let Some(dir) = state::job_dir(&job.id) else { continue };
+            history.insert(job.id.clone(), state::load_history(&dir));
+            if let Some(status) = state::read_status(&dir) {
+                live.insert(job.id.clone(), status);
+            }
+        }
+        if config.menu_bar {
+            for (title, body) in new_problems(&config, &history, &mut self.seen) {
+                notify(&title, &body);
+            }
+        } else {
+            config.job.clear();
+        }
+        model(&config, &history, &live, chrono::Utc::now().timestamp())
+    }
+}
+
+/// Retire the old login registration/process only when its own backups are idle.
+/// Scheduler jobs and their login-independent agent are deliberately untouched.
+fn retire_legacy_helper(config: &BackupConfig) -> anyhow::Result<bool> {
+    use rile_backup::agent::{self, Agent};
+    if std::env::var_os("RILE_NO_LAUNCH_AGENTS").is_some() {
+        return Ok(true);
+    }
+    let lock = state::job_dir("menu").map(|dir| dir.join("lock"));
+    let pid = lock.as_ref().and_then(|path| std::fs::read_to_string(path).ok()).and_then(|s| s.trim().parse::<u32>().ok());
+    let helper = pid.filter(|pid| *pid != std::process::id() && legacy_helper(*pid, |_| ()).is_some());
+    let dirs: Vec<_> = config.job.iter().filter_map(|job| state::job_dir(&job.id)).collect();
+    // Locks precede live status (for example while connecting to a target).
+    let locked = dirs.iter().any(|dir| helper_owns_lock(helper, dir));
+    let statuses = dirs.iter().filter_map(|dir| state::read_status(dir));
+    if locked || helper_has_runs(helper, statuses) {
+        return Ok(false);
+    }
+    // Preserve the old helper's login behavior when migrating an existing user.
+    if agent::is_installed(Agent::MenuBar) && config.wants_menu_bar() && !rile_services::autostart::is_enabled() {
+        rile_services::autostart::set_enabled(true)?;
+    }
+    agent::uninstall(Agent::MenuBar)?;
+    // Windows removes the Run entry but doesn't stop its already-running helper.
+    // Validate its command line before acting on a possibly stale/reused pid.
+    if let Some(pid) = helper {
+        anyhow::ensure!(legacy_helper(pid, |process| process.kill()) != Some(false), "couldn't stop the idle legacy backup helper");
+    }
+    Ok(true)
+}
+
+fn legacy_helper<T>(pid: u32, use_process: impl FnOnce(&sysinfo::Process) -> T) -> Option<T> {
+    let system = sysinfo::System::new_with_specifics(
+        sysinfo::RefreshKind::nothing().with_processes(sysinfo::ProcessRefreshKind::nothing().with_cmd(sysinfo::UpdateKind::Always)),
+    );
+    let process = system.process(sysinfo::Pid::from_u32(pid))?;
+    let own_name = std::env::current_exe().ok()?.file_name()?.to_owned();
+    let matches_exe = process.cmd().first().and_then(|arg| std::path::Path::new(arg).file_name()) == Some(own_name.as_os_str());
+    (matches_exe && process.cmd().iter().any(|arg| arg == rile_backup::agent::MENU_FLAG)).then(|| use_process(process))
+}
+
+fn helper_has_runs(pid: Option<u32>, mut statuses: impl Iterator<Item = RunStatus>) -> bool {
+    pid.is_some_and(|pid| statuses.any(|status| status.pid == pid))
+}
+
+fn helper_owns_lock(pid: Option<u32>, dir: &std::path::Path) -> bool {
+    pid.is_some_and(|pid| std::fs::read_to_string(dir.join("lock")).ok()
+        .and_then(|text| text.trim().parse::<u32>().ok()) == Some(pid))
+}
+
+pub fn quit_title(running: usize) -> String {
+    match running {
+        0 => "Quit Rile".into(),
+        1 => "Quit Rile (stops 1 backup)".into(),
+        n => format!("Quit Rile (stops {n} backups)"),
+    }
+}
+
+/// Uses stable job ids, not menu indices: configuration can change while open.
+pub fn dispatch(id: &str, cx: &mut gpui_kit::App) {
+    match id {
+        "rile.backup.open" => return crate::show_backups(false, cx),
+        "rile.backup.settings" => return crate::show_backups(true, cx),
+        _ => {},
+    }
+    let Some((handle, ws)) = cx.try_global::<crate::MainWindow>()
+        .and_then(|main| main.1.upgrade().map(|ws| (main.0, ws))) else { return };
+    handle.update(cx, |_, window, cx| {
+        ws.update(cx, |ws, cx| {
+            if id == "rile.backup.all" {
+                let ids: Vec<String> = ws.backups.config.job.iter()
+                    .filter(|job| job.problem().is_none() && ws.backups.live(&job.id).is_none() && !ws.backup_task_running(&job.id))
+                    .map(|job| job.id.clone()).collect();
+                for id in ids {
+                    ws.run_backup(&id, rile_backup::Trigger::Manual, false, window, cx);
+                }
+            } else if let Some(id) = id.strip_prefix("rile.backup.run:") {
+                ws.run_backup(id, rile_backup::Trigger::Manual, false, window, cx);
+            } else if let Some(id) = id.strip_prefix("rile.backup.stop:") {
+                ws.cancel_backup(id, cx);
+                if let Some(dir) = state::job_dir(id) {
+                    state::request_cancel(&dir).ok();
+                }
+            }
+        });
+    }).ok();
+}
+
 #[cfg(target_os = "macos")]
 fn notify(title: &str, body: &str) {
     let quote = |s: &str| s.replace('\\', "\\\\").replace('"', "\\\"");
@@ -229,660 +383,20 @@ fn notify(title: &str, body: &str) {
     std::process::Command::new("/usr/bin/osascript").args(["-e", &script]).spawn().ok();
 }
 
-/// Runs a job on a thread of this process; its progress reaches the menu
-/// (and the app) through the shared status file.
-/// Backups this process runs: their cancel flags and threads.
-type OwnRun = (std::sync::Arc<AtomicBool>, std::thread::JoinHandle<()>);
-
-fn own_runs() -> &'static std::sync::Mutex<Vec<OwnRun>> {
-    static RUNS: std::sync::OnceLock<std::sync::Mutex<Vec<OwnRun>>> = std::sync::OnceLock::new();
-    RUNS.get_or_init(Default::default)
-}
-
-fn start_job(id: &str) {
-    let Some(job) = BackupConfig::load().get(id).cloned() else { return };
-    let cancel = std::sync::Arc::new(AtomicBool::new(false));
-    let flag = cancel.clone();
-    let thread = std::thread::spawn(move || {
-        let progress = Progress::default();
-        let connect = |conn: &str| crate::remote::connect_dedicated(conn);
-        if let Err(e) = rile_backup::run_job(&job, Trigger::Manual, RunOptions::default(), &connect, &flag, &progress) {
-            notify(&format!("Backup “{}”", job.name), &format!("{e:#}"));
-        }
-    });
-    if let Ok(mut runs) = own_runs().lock() {
-        runs.retain(|(_, t)| !t.is_finished());
-        runs.push((cancel, thread));
-    }
-}
-
-/// "Quit Backup Menu", noting backups that quitting would stop.
-fn quit_title() -> String {
-    let running = own_runs().lock().map_or(0, |r| r.iter().filter(|(_, t)| !t.is_finished()).count());
-    match running {
-        0 => "Quit Backup Menu".into(),
-        1 => "Quit Backup Menu (stops 1 backup)".into(),
-        n => format!("Quit Backup Menu (stops {n} backups)"),
-    }
-}
-
-/// Exits after stopping the backups this process runs, so they end as
-/// "Cancelled" (with what they copied kept) instead of being killed.
-/// Backups run by the app or the scheduler are not affected.
-fn exit_cleanly() -> ! {
-    let runs = own_runs().lock().map(|mut r| std::mem::take(&mut *r)).unwrap_or_default();
-    for (cancel, _) in &runs {
-        cancel.store(true, std::sync::atomic::Ordering::Relaxed);
-    }
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
-    while runs.iter().any(|(_, t)| !t.is_finished()) && std::time::Instant::now() < deadline {
-        std::thread::sleep(std::time::Duration::from_millis(50));
-    }
-    // A successful exit: launchd doesn't restart it (see the agent's KeepAlive).
-    std::process::exit(0)
-}
-
-/// Identity of this program's file, to notice an update replacing it.
-#[cfg(target_os = "macos")]
-fn exe_stamp() -> Option<(u64, u64, std::time::SystemTime)> {
-    use std::os::unix::fs::MetadataExt;
-    let meta = std::fs::metadata(std::env::current_exe().ok()?).ok()?;
-    Some((meta.dev(), meta.ino(), meta.modified().ok()?))
-}
-
-/// After an update replaced the app, exits with a failure code once idle so
-/// launchd (KeepAlive on unsuccessful exit) starts the new version.
-#[cfg(target_os = "macos")]
-fn restart_if_replaced() {
-    static STARTED: std::sync::OnceLock<Option<(u64, u64, std::time::SystemTime)>> = std::sync::OnceLock::new();
-    let started = *STARTED.get_or_init(exe_stamp);
-    let busy = own_runs().lock().map_or(true, |r| r.iter().any(|(_, t)| !t.is_finished()));
-    if started.is_some() && !busy && exe_stamp().is_some_and(|now| Some(now) != started) {
-        std::process::exit(75);
-    }
-}
-
-fn stop_job(id: &str) {
-    if let Some(dir) = state::job_dir(id) {
-        state::request_cancel(&dir).ok();
-    }
-}
-
-/// Opens Rile at `rile://<page>`: through the URL scheme when running from
-/// the app bundle, else by starting this binary on the Backups page.
-#[cfg(target_os = "macos")]
-fn open_rile(page: &str) {
-    let exe = std::env::current_exe().unwrap_or_default();
-    if exe.to_string_lossy().contains(".app/Contents/MacOS/") {
-        // Not `open rile://…`: LaunchServices could hand it back to this process.
-        mac::forward(mac::Forward::Urls(vec![format!("rile://{page}")]));
-    } else {
-        std::process::Command::new(exe).arg("--backups").spawn().ok();
-    }
-}
-
-// ---------------------------------------------------------------- AppKit
-
-#[cfg(target_os = "macos")]
-mod mac {
-    use objc2::rc::Retained;
-    use objc2::runtime::{AnyObject, Bool, Sel};
-    use objc2::{DefinedClass, MainThreadOnly, define_class, msg_send, sel};
-    use objc2_app_kit::{
-        NSApplication, NSApplicationActivationOptions, NSApplicationActivationPolicy, NSImage, NSMenu, NSMenuItem, NSRunningApplication,
-        NSStatusBar, NSStatusItem,
-    };
-    use objc2_foundation::{
-        MainThreadMarker, NSAppleEventDescriptor, NSAppleEventManager, NSAppleEventSendOptions, NSArray, NSBundle, NSObject, NSRunLoop,
-        NSRunLoopCommonModes, NSString, NSTimer, NSURL,
-    };
-
-    use super::*;
-
-    const KEY_DIRECT: u32 = u32::from_be_bytes(*b"----");
-
-    /// A LaunchServices request meant for the app.
-    pub enum Forward {
-        /// Dock click or `open Rile.app`.
-        Reopen,
-        /// rile:// links and files to open.
-        Urls(Vec<String>),
-        /// Reveal in Finder (Rile as file viewer): the event's direct object.
-        Reveal(Retained<NSAppleEventDescriptor>),
-    }
-
-    /// Hands `request` to the running app (by pid, so LaunchServices can't
-    /// route it back here) or starts a fresh instance with it.
-    pub fn forward(request: Forward) {
-        let Some(mtm) = MainThreadMarker::new() else { return };
-        let bundle = NSBundle::mainBundle();
-        let own = std::process::id() as libc::pid_t;
-        let app = bundle.bundleIdentifier().and_then(|id| {
-            NSRunningApplication::runningApplicationsWithBundleIdentifier(&id)
-                .iter()
-                .find(|a| a.processIdentifier() != own && a.activationPolicy() == NSApplicationActivationPolicy::Regular)
-        });
-        match app {
-            Some(app) => {
-                let target = NSAppleEventDescriptor::descriptorWithProcessIdentifier(app.processIdentifier());
-                let event = |class: &[u8; 4], id: &[u8; 4]| {
-                    NSAppleEventDescriptor::appleEventWithEventClass_eventID_targetDescriptor_returnID_transactionID(
-                        u32::from_be_bytes(*class),
-                        u32::from_be_bytes(*id),
-                        Some(&target),
-                        -1, // kAutoGenerateReturnID
-                        0,  // kAnyTransactionID
-                    )
-                };
-                let events = match &request {
-                    Forward::Reopen => vec![event(b"aevt", b"rapp")],
-                    Forward::Urls(urls) => urls
-                        .iter()
-                        .map(|url| {
-                            let e = event(b"GURL", b"GURL");
-                            e.setParamDescriptor_forKeyword(&NSAppleEventDescriptor::descriptorWithString(&NSString::from_str(url)), KEY_DIRECT);
-                            e
-                        })
-                        .collect(),
-                    Forward::Reveal(items) => {
-                        let e = event(b"misc", b"mvis");
-                        e.setParamDescriptor_forKeyword(items, KEY_DIRECT);
-                        vec![e]
-                    }
-                };
-                for e in events {
-                    e.sendEventWithOptions_timeout_error(NSAppleEventSendOptions::NoReply, 5.0).ok();
-                }
-                app.activateWithOptions(NSApplicationActivationOptions::ActivateAllWindows);
-            }
-            None => {
-                let mut open = std::process::Command::new("/usr/bin/open");
-                // -n: a new instance, never this process.
-                open.arg("-n").arg(bundle.bundlePath().to_string());
-                match &request {
-                    Forward::Reopen => {}
-                    Forward::Urls(urls) => {
-                        open.arg("--args").args(urls.iter().map(|u| launch_arg(u)));
-                    }
-                    Forward::Reveal(items) => {
-                        let paths = crate::external_open::mac::descriptor_paths(items);
-                        open.arg("--args").args(paths.first());
-                    }
-                }
-                open.spawn().ok();
-            }
-        }
-        // LaunchServices activated this process as if it were the app; stay
-        // a menu bar item without a Dock dot.
-        let ns_app = NSApplication::sharedApplication(mtm);
-        ns_app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
-        ns_app.hide(None);
-    }
-
-    /// Launch arguments take paths, not file:// URLs.
-    fn launch_arg(url: &str) -> String {
-        if url.starts_with("file://")
-            && let Some(path) = crate::external_open::file_paths(vec![url.to_owned()]).into_iter().next()
-        {
-            return path.to_string_lossy().into_owned();
-        }
-        url.to_owned()
-    }
-
-    pub struct Ivars {
-        tray: RefCell<Tray>,
-        item: Retained<NSStatusItem>,
-        menu: Retained<NSMenu>,
-        items: RefCell<Option<Items>>,
-    }
-
-    /// A job's entry, its detail lines and its action.
-    type JobItems = (Retained<NSMenuItem>, Vec<Retained<NSMenuItem>>, Retained<NSMenuItem>);
-
-    /// The menu's items that change while it is shown.
-    struct Items {
-        shape: Vec<(String, bool, usize)>,
-        header: Retained<NSMenuItem>,
-        jobs: Vec<JobItems>,
-        all: Retained<NSMenuItem>,
-        quit: Retained<NSMenuItem>,
-    }
-
-    define_class!(
-        // SAFETY: NSObject has no subclass requirements. Access is main-thread only.
-        #[unsafe(super = NSObject)]
-        #[thread_kind = MainThreadOnly]
-        #[name = "RileBackupMenu"]
-        #[ivars = Ivars]
-        pub struct Menu;
-
-        impl Menu {
-            #[unsafe(method(tick:))]
-            fn tick(&self, _timer: &NSTimer) {
-                restart_if_replaced();
-                self.update();
-            }
-
-            // This helper runs from Rile.app, so LaunchServices sees it as
-            // Rile: Dock clicks, `open Rile.app`, rile:// links, files and
-            // Reveal in Finder can land here instead of in the app.
-            // SAFETY (all three): NSApplicationDelegate / Apple Event handler signatures.
-            #[unsafe(method(applicationShouldHandleReopen:hasVisibleWindows:))]
-            fn should_reopen(&self, _app: &NSApplication, _visible: Bool) -> Bool {
-                forward(Forward::Reopen);
-                Bool::NO
-            }
-
-            #[unsafe(method(application:openURLs:))]
-            fn open_urls(&self, _app: &NSApplication, urls: &NSArray<NSURL>) {
-                let urls = urls.iter().filter_map(|u| u.absoluteString()).map(|s| s.to_string()).collect();
-                forward(Forward::Urls(urls));
-            }
-
-            #[unsafe(method(reveal:withReplyEvent:))]
-            fn reveal(&self, event: &NSAppleEventDescriptor, _reply: &NSAppleEventDescriptor) {
-                if let Some(items) = event.paramDescriptorForKeyword(KEY_DIRECT) {
-                    forward(Forward::Reveal(items));
-                }
-            }
-
-            #[unsafe(method(runJob:))]
-            fn run_job(&self, item: &NSMenuItem) {
-                if let Some(id) = self.job_id(item) {
-                    start_job(&id);
-                }
-                self.update();
-            }
-
-            #[unsafe(method(stopJob:))]
-            fn stop_job(&self, item: &NSMenuItem) {
-                if let Some(id) = self.job_id(item) {
-                    stop_job(&id);
-                }
-            }
-
-            #[unsafe(method(runAll:))]
-            fn run_all(&self, _item: &NSMenuItem) {
-                let ids: Vec<String> = self.ivars().tray.borrow().shown.iter().flat_map(|m| m.jobs.iter()).filter(|j| j.can_run).map(|j| j.id.clone()).collect();
-                for id in ids {
-                    start_job(&id);
-                }
-                self.update();
-            }
-
-            #[unsafe(method(openBackups:))]
-            fn open_backups(&self, _item: &NSMenuItem) {
-                open_rile("backups");
-            }
-
-            #[unsafe(method(openSettings:))]
-            fn open_settings(&self, _item: &NSMenuItem) {
-                open_rile("backup-settings");
-            }
-
-            #[unsafe(method(hide:))]
-            fn hide(&self, _item: &NSMenuItem) {
-                // Turning it off in the config also removes the login item.
-                let mut config = BackupConfig::load();
-                config.menu_bar = false;
-                config.save().ok();
-                rile_backup::agent::uninstall(rile_backup::agent::Agent::MenuBar).ok();
-                exit_cleanly();
-            }
-
-            #[unsafe(method(quit:))]
-            fn quit(&self, _item: &NSMenuItem) {
-                // Stays a login item: back at the next login or Rile launch.
-                exit_cleanly();
-            }
-        }
-    );
-
-    impl Menu {
-        fn job_id(&self, item: &NSMenuItem) -> Option<String> {
-            self.ivars().tray.borrow().order.get(usize::try_from(item.tag()).ok()?).cloned()
-        }
-
-        /// Reloads the shared state and rebuilds the menu when it changed.
-        fn update(&self) {
-            let mtm = self.mtm();
-            let mut tray = self.ivars().tray.borrow_mut();
-            tray.refresh();
-            if !tray.config.wants_menu_bar() {
-                // Turned off in Settings, or no jobs left.
-                std::process::exit(0);
-            }
-            let model = model(&tray.config, &tray.history, &tray.live, chrono::Utc::now().timestamp());
-            if tray.shown.as_ref() == Some(&model) {
-                return;
-            }
-            tray.order = model.jobs.iter().map(|j| j.id.clone()).collect();
-            let ivars = self.ivars();
-            if let Some(button) = ivars.item.button(mtm) {
-                let image = NSImage::imageWithSystemSymbolName_accessibilityDescription(&NSString::from_str(model.icon.symbol()), Some(&NSString::from_str("Backups")));
-                if let Some(image) = &image {
-                    image.setTemplate(true);
-                }
-                button.setImage(image.as_deref());
-                button.setToolTip(Some(&NSString::from_str(if model.title.is_empty() { "Backups" } else { &model.title })));
-            }
-            // Rebuilding an open menu leaves AppKit with a stale height (an
-            // empty row at the bottom); retitle the existing items instead.
-            let mut items = ivars.items.borrow_mut();
-            match items.as_ref() {
-                Some(current) if current.shape == model.shape() => Self::retitle(current, &model),
-                _ => *items = Some(self.build(&ivars.menu, &model, mtm)),
-            }
-            tray.shown = Some(model);
-        }
-
-        fn item(&self, title: &str, action: Option<Sel>, mtm: MainThreadMarker) -> Retained<NSMenuItem> {
-            // SAFETY: The selectors are implemented by `self`, which outlives the menu.
-            unsafe {
-                let item = NSMenuItem::initWithTitle_action_keyEquivalent(NSMenuItem::alloc(mtm), &NSString::from_str(title), action, &NSString::new());
-                if action.is_some() {
-                    item.setTarget(Some(self as &AnyObject));
-                } else {
-                    item.setEnabled(false);
-                }
-                item
-            }
-        }
-
-        fn header_title(model: &MenuModel) -> &str {
-            if model.title.is_empty() { "Backups" } else { &model.title }
-        }
-
-        fn retitle(items: &Items, model: &MenuModel) {
-            items.header.setTitle(&NSString::from_str(Self::header_title(model)));
-            for ((entry, lines, action), job) in items.jobs.iter().zip(&model.jobs) {
-                entry.setTitle(&NSString::from_str(&job.title));
-                for (line, text) in lines.iter().zip(&job.details) {
-                    line.setTitle(&NSString::from_str(text));
-                }
-                if !job.running {
-                    action.setEnabled(job.can_run);
-                }
-            }
-            items.all.setEnabled(model.jobs.iter().any(|j| j.can_run));
-            items.quit.setTitle(&NSString::from_str(&quit_title()));
-        }
-
-        fn build(&self, menu: &NSMenu, model: &MenuModel, mtm: MainThreadMarker) -> Items {
-            menu.removeAllItems();
-            let header = self.item(Self::header_title(model), None, mtm);
-            menu.addItem(&header);
-            let mut jobs = Vec::new();
-            for (i, job) in model.jobs.iter().enumerate() {
-                let entry = self.item(&job.title, Some(sel!(openBackups:)), mtm);
-                let sub = NSMenu::new(mtm);
-                sub.setAutoenablesItems(false);
-                let lines: Vec<Retained<NSMenuItem>> = job.details.iter().map(|line| self.item(line, None, mtm)).collect();
-                for line in &lines {
-                    sub.addItem(line);
-                }
-                if !lines.is_empty() {
-                    sub.addItem(&NSMenuItem::separatorItem(mtm));
-                }
-                let action = if job.running {
-                    self.item("Stop", Some(sel!(stopJob:)), mtm)
-                } else {
-                    let run = self.item("Back Up Now", Some(sel!(runJob:)), mtm);
-                    run.setEnabled(job.can_run);
-                    run
-                };
-                action.setTag(i as isize);
-                sub.addItem(&action);
-                entry.setSubmenu(Some(&sub));
-                menu.addItem(&entry);
-                jobs.push((entry, lines, action));
-            }
-            menu.addItem(&NSMenuItem::separatorItem(mtm));
-            let all = self.item("Back Up All Now", Some(sel!(runAll:)), mtm);
-            all.setEnabled(model.jobs.iter().any(|j| j.can_run));
-            menu.addItem(&all);
-            menu.addItem(&NSMenuItem::separatorItem(mtm));
-            menu.addItem(&self.item("Open Backups…", Some(sel!(openBackups:)), mtm));
-            menu.addItem(&self.item("Backup Settings…", Some(sel!(openSettings:)), mtm));
-            menu.addItem(&NSMenuItem::separatorItem(mtm));
-            menu.addItem(&self.item("Hide from Menu Bar", Some(sel!(hide:)), mtm));
-            let quit = self.item(&quit_title(), Some(sel!(quit:)), mtm);
-            quit.setKeyEquivalent(&NSString::from_str("q"));
-            menu.addItem(&quit);
-            Items { shape: model.shape(), header, jobs, all, quit }
-        }
-    }
-
-    pub fn run() {
-        let mtm = MainThreadMarker::new().expect("main thread");
-        let app = NSApplication::sharedApplication(mtm);
-        // A menu bar item only: no Dock icon, no menu bar of its own.
-        app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
-        let item = NSStatusBar::systemStatusBar().statusItemWithLength(-2.0); // NSSquareStatusItemLength: a constant width
-        let menu = NSMenu::new(mtm);
-        menu.setAutoenablesItems(false);
-        item.setMenu(Some(&menu));
-        let this = Menu::alloc(mtm).set_ivars(Ivars { tray: RefCell::new(Tray::default()), item, menu, items: RefCell::new(None) });
-        // SAFETY: Initialize the NSObject superclass.
-        let this: Retained<Menu> = unsafe { msg_send![super(this), init] };
-        // SAFETY: `this` implements the delegate methods above and outlives
-        // the run loop; the handler selector has the Apple Event signature.
-        unsafe {
-            let _: () = msg_send![&app, setDelegate: &*this];
-            NSAppleEventManager::sharedAppleEventManager().setEventHandler_andSelector_forEventClass_andEventID(
-                &this,
-                sel!(reveal:withReplyEvent:),
-                u32::from_be_bytes(*b"misc"),
-                u32::from_be_bytes(*b"mvis"),
-            );
-        }
-        this.update();
-        // SAFETY: `tick:` has the timer-callback signature; common modes keep
-        // the menu live while it is open.
-        unsafe {
-            let timer = NSTimer::timerWithTimeInterval_target_selector_userInfo_repeats(1.0, &this, sel!(tick:), None, true);
-            NSRunLoop::mainRunLoop().addTimer_forMode(&timer, NSRunLoopCommonModes);
-        }
-        app.run();
-    }
-}
-
-pub fn run() {
-    // One menu bar item, however often it gets started.
-    let Some(dir) = state::job_dir("menu") else { return };
-    let Ok(_lock) = state::Lock::acquire(&dir) else { return };
-    crate::remote::load_saved();
-    if !BackupConfig::load().wants_menu_bar() {
-        rile_backup::agent::uninstall(rile_backup::agent::Agent::MenuBar).ok();
-        return;
-    }
-    #[cfg(target_os = "macos")]
-    mac::run();
-    #[cfg(windows)]
-    win::run();
-}
-
-// ---------------------------------------------------------------- Windows
-
-/// Shows a toast through the Start menu shortcut's app id (set by the
-/// installer); silently does nothing for unregistered (zip) installs.
 #[cfg(windows)]
 fn notify(title: &str, body: &str) {
     use windows::Data::Xml::Dom::XmlDocument;
     use windows::UI::Notifications::{ToastNotification, ToastNotificationManager, ToastTemplateType};
     use windows::core::HSTRING;
     let show = || -> windows::core::Result<()> {
-        let xml: XmlDocument = ToastNotificationManager::GetTemplateContent(ToastTemplateType::ToastText02)?;
+        let xml = ToastNotificationManager::GetTemplateContent(ToastTemplateType::ToastText02)?;
         let texts = xml.GetElementsByTagName(&HSTRING::from("text"))?;
         texts.Item(0)?.AppendChild(&xml.CreateTextNode(&HSTRING::from(title))?)?;
         texts.Item(1)?.AppendChild(&xml.CreateTextNode(&HSTRING::from(body))?)?;
         let toast = ToastNotification::CreateToastNotification(&xml)?;
-        ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(win::APP_ID))?.Show(&toast)
+        ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from("dev.rile.Rile"))?.Show(&toast)
     };
     show().ok();
-}
-
-/// Opens Rile at `rile://<page>`; a running Rile picks the link up from the
-/// new process (see `instance`).
-#[cfg(windows)]
-fn open_rile(page: &str) {
-    use std::os::windows::process::CommandExt;
-    if let Ok(exe) = std::env::current_exe() {
-        std::process::Command::new(exe).arg(format!("rile://{page}")).creation_flags(0x0800_0000).spawn().ok();
-    }
-}
-
-#[cfg(windows)]
-mod win {
-    use std::time::{Duration, Instant};
-
-    use tray_icon::menu::{IsMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
-    use tray_icon::{Icon as TrayImage, TrayIconBuilder};
-
-    use super::{Icon, Tray, exit_cleanly, model, open_rile, quit_title, start_job, stop_job};
-    use rile_backup::BackupConfig;
-
-    /// AppUserModelID of the Start menu shortcut (packaging/windows/rile.iss).
-    pub const APP_ID: &str = "dev.rile.Rile";
-
-    /// The app icon with a status dot: accent for running, red for a problem.
-    fn image(icon: Icon) -> Option<TrayImage> {
-        let mut img = image::load_from_memory(crate::app_icon::WINDOWS_PNG).ok()?.resize(32, 32, image::imageops::FilterType::Lanczos3).to_rgba8();
-        let dot = match icon {
-            Icon::Idle => None,
-            Icon::Running => Some([0x2f, 0xb3, 0x4a, 0xff]),
-            Icon::Problem => Some([0xe0, 0x3c, 0x31, 0xff]),
-        };
-        if let Some(color) = dot {
-            let (cx, cy, r) = (24.0f32, 24.0f32, 7.0f32);
-            for (x, y, px) in img.enumerate_pixels_mut() {
-                let d = ((x as f32 + 0.5 - cx).powi(2) + (y as f32 + 0.5 - cy).powi(2)).sqrt();
-                if d <= r + 1.5 {
-                    // White ring around the dot keeps it readable on the icon.
-                    px.0 = if d <= r { color } else { [0xff, 0xff, 0xff, 0xff] };
-                }
-            }
-        }
-        let (w, h) = img.dimensions();
-        TrayImage::from_rgba(img.into_raw(), w, h).ok()
-    }
-
-    fn build(tray: &Tray, model: &super::MenuModel) -> Menu {
-        let menu = Menu::new();
-        let header = MenuItem::new(if model.title.is_empty() { "Backups" } else { &model.title }, false, None);
-        menu.append(&header).ok();
-        menu.append(&PredefinedMenuItem::separator()).ok();
-        for (ix, job) in model.jobs.iter().enumerate() {
-            let sub = Submenu::new(&job.title, true);
-            for line in &job.details {
-                sub.append(&MenuItem::new(line, false, None)).ok();
-            }
-            sub.append(&PredefinedMenuItem::separator()).ok();
-            if job.running {
-                sub.append(&MenuItem::with_id(format!("stop:{ix}"), "Stop", true, None)).ok();
-            } else {
-                sub.append(&MenuItem::with_id(format!("run:{ix}"), "Back Up Now", job.can_run, None)).ok();
-            }
-            menu.append(&sub).ok();
-        }
-        let _ = tray;
-        let items: [&dyn IsMenuItem; 8] = [
-            &PredefinedMenuItem::separator(),
-            &MenuItem::with_id("all", "Back Up All Now", model.jobs.iter().any(|j| j.can_run), None),
-            &PredefinedMenuItem::separator(),
-            &MenuItem::with_id("open", "Open Backups…", true, None),
-            &MenuItem::with_id("settings", "Backup Settings…", true, None),
-            &PredefinedMenuItem::separator(),
-            &MenuItem::with_id("hide", "Hide from Notification Area", true, None),
-            &MenuItem::with_id("quit", quit_title(), true, None),
-        ];
-        menu.append_items(&items).ok();
-        menu
-    }
-
-    /// Pumps this thread's window messages (the tray icon's hidden window).
-    fn pump() {
-        use windows::Win32::UI::WindowsAndMessaging::{DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage};
-        let mut msg = MSG::default();
-        while unsafe { PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE) }.as_bool() {
-            unsafe {
-                let _ = TranslateMessage(&msg);
-                DispatchMessageW(&msg);
-            }
-        }
-    }
-
-    pub fn run() {
-        let mut tray = Tray::default();
-        tray.refresh();
-        let shown = model(&tray.config, &tray.history, &tray.live, chrono::Utc::now().timestamp());
-        let Ok(icon) = TrayIconBuilder::new()
-            .with_tooltip("Backups")
-            .with_menu(Box::new(build(&tray, &shown)))
-            .with_icon(image(shown.icon).unwrap_or_else(|| TrayImage::from_rgba(vec![0; 4], 1, 1).expect("1px icon")))
-            .build()
-        else {
-            return;
-        };
-        tray.order = shown.jobs.iter().map(|j| j.id.clone()).collect();
-        tray.shown = Some(shown);
-        let mut next_refresh = Instant::now();
-        loop {
-            pump();
-            while let Ok(event) = MenuEvent::receiver().try_recv() {
-                let id = event.id().0.as_str();
-                let job = |prefix: &str| id.strip_prefix(prefix).and_then(|ix| ix.parse::<usize>().ok()).and_then(|ix| tray.order.get(ix).cloned());
-                match id {
-                    "all" => {
-                        for job in tray.shown.iter().flat_map(|m| m.jobs.iter()).filter(|j| j.can_run) {
-                            start_job(&job.id);
-                        }
-                    }
-                    "open" => open_rile("backups"),
-                    "settings" => open_rile("backup-settings"),
-                    "hide" => {
-                        // Turning it off in the config also removes the login item.
-                        let mut config = BackupConfig::load();
-                        config.menu_bar = false;
-                        config.save().ok();
-                        rile_backup::agent::uninstall(rile_backup::agent::Agent::MenuBar).ok();
-                        exit_cleanly();
-                    }
-                    "quit" => exit_cleanly(),
-                    _ if id.starts_with("run:") => {
-                        if let Some(job) = job("run:") {
-                            start_job(&job);
-                        }
-                    }
-                    _ if id.starts_with("stop:") => {
-                        if let Some(job) = job("stop:") {
-                            stop_job(&job);
-                        }
-                    }
-                    _ => {}
-                }
-                next_refresh = Instant::now();
-            }
-            if Instant::now() >= next_refresh {
-                next_refresh = Instant::now() + Duration::from_secs(1);
-                tray.refresh();
-                if !tray.config.wants_menu_bar() {
-                    std::process::exit(0);
-                }
-                let model = model(&tray.config, &tray.history, &tray.live, chrono::Utc::now().timestamp());
-                if tray.shown.as_ref() != Some(&model) {
-                    if tray.shown.as_ref().is_none_or(|m| m.icon != model.icon) {
-                        icon.set_icon(image(model.icon)).ok();
-                    }
-                    icon.set_tooltip(Some(if model.title.is_empty() { "Backups" } else { &model.title })).ok();
-                    icon.set_menu(Some(Box::new(build(&tray, &model))));
-                    tray.order = model.jobs.iter().map(|j| j.id.clone()).collect();
-                    tray.shown = Some(model);
-                }
-            }
-            std::thread::sleep(Duration::from_millis(30));
-        }
-    }
 }
 
 #[cfg(test)]
@@ -939,20 +453,29 @@ mod tests {
 
     #[test]
     fn quit_names_the_backups_it_would_stop() {
-        assert_eq!(quit_title(), "Quit Backup Menu");
-        let cancel = std::sync::Arc::new(AtomicBool::new(false));
-        let flag = cancel.clone();
-        let thread = std::thread::spawn(move || {
-            while !flag.load(std::sync::atomic::Ordering::Relaxed) {
-                std::thread::sleep(std::time::Duration::from_millis(5));
-            }
-        });
-        own_runs().lock().unwrap().push((cancel.clone(), thread));
-        assert_eq!(quit_title(), "Quit Backup Menu (stops 1 backup)");
-        cancel.store(true, std::sync::atomic::Ordering::Relaxed);
-        let (_, thread) = own_runs().lock().unwrap().pop().unwrap();
-        thread.join().unwrap();
-        assert_eq!(quit_title(), "Quit Backup Menu");
+        assert_eq!(quit_title(0), "Quit Rile");
+        assert_eq!(quit_title(1), "Quit Rile (stops 1 backup)");
+        assert_eq!(quit_title(3), "Quit Rile (stops 3 backups)");
+    }
+
+    #[test]
+    fn handoff_waits_only_for_backups_owned_by_the_legacy_helper() {
+        let live = status(1, 10);
+        assert!(helper_has_runs(Some(live.pid), std::iter::once(live.clone())));
+        assert!(!helper_has_runs(Some(live.pid + 1), std::iter::once(live.clone())));
+        assert!(!helper_has_runs(None, std::iter::once(live)));
+        assert!(!helper_has_runs(Some(42), std::iter::empty()));
+    }
+
+    #[test]
+    fn handoff_waits_for_the_job_lock_before_progress_is_published() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("lock"), "42").unwrap();
+        assert!(helper_owns_lock(Some(42), dir.path()));
+        assert!(!helper_owns_lock(Some(43), dir.path()));
+        assert!(!helper_owns_lock(None, dir.path()));
+        std::fs::remove_file(dir.path().join("lock")).unwrap();
+        assert!(!helper_owns_lock(Some(42), dir.path()));
     }
 
     #[test]

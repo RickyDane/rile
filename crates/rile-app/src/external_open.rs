@@ -111,7 +111,7 @@ pub fn open(paths: Vec<PathBuf>, reveal: bool, cx: &mut App) {
                         if same_directory { pane.reload(cx); }
                     });
                 });
-                window.activate_window();
+                crate::background::show(window, cx);
             });
             if opened.is_ok() { cx.activate(true); continue; }
         }

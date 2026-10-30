@@ -4,6 +4,7 @@
 mod actions;
 mod ai_glow;
 mod app_icon;
+mod background;
 #[cfg(any(target_os = "macos", windows))]
 mod backup_menu;
 mod art;
@@ -44,7 +45,7 @@ impl Global for MainWindow {}
 fn reopen(cx: &mut App) {
     // Auxiliary windows (previews, speed tests) may outlive the workspace.
     let window = cx.try_global::<MainWindow>().map(|window| window.0);
-    if window.is_none_or(|window| window.update(cx, |_, window, _| window.activate_window()).is_err()) {
+    if window.is_none_or(|window| window.update(cx, |_, window, cx| background::show(window, cx)).is_err()) {
         open_workspace(Location::Home, None, cx).expect("failed to reopen window");
     }
     cx.activate(true);
@@ -55,10 +56,21 @@ fn open_workspace(
     reveal: Option<PathBuf>,
     cx: &mut App,
 ) -> anyhow::Result<(AnyWindowHandle, Entity<Workspace>)> {
+    open_workspace_with_visibility(start, reveal, true, cx)
+}
+
+fn open_workspace_with_visibility(
+    start: Location,
+    reveal: Option<PathBuf>,
+    visible: bool,
+    cx: &mut App,
+) -> anyhow::Result<(AnyWindowHandle, Entity<Workspace>)> {
     let bounds = Bounds::centered(None, size(px(1180.), px(740.)), cx);
     let mut options = WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(bounds)),
         window_min_size: Some(size(px(560.), px(430.))),
+        show: visible,
+        focus: visible,
         ..TitleBar::window_options()
     };
     // Center the traffic lights in the sidebar header (52px tall).
@@ -74,7 +86,12 @@ fn open_workspace(
             ws
         });
         let weak = workspace.downgrade();
-        window.on_window_should_close(cx, move |_, cx| {
+        window.on_window_should_close(cx, move |window, cx| {
+            // Preserve the workspace and its window-bound Nearby tasks. Fall
+            // back to normal closing if the tray couldn't be installed.
+            if background::hide(window, cx) {
+                return false;
+            }
             // Save before the window releases the workspace, not only on Cmd-Q.
             weak.update(cx, |ws, cx| ws.on_quit(cx)).ok();
             true
@@ -104,7 +121,7 @@ pub(crate) fn show_backups(settings: bool, cx: &mut App) {
                     dialogs::open_backup_settings(cx.entity(), ws.settings.clone(), None, window, cx);
                 }
             });
-            window.activate_window();
+            background::show(window, cx);
         })
         .ok();
     cx.activate(true);
@@ -133,6 +150,7 @@ fn launch_target(args: &[String]) -> (Option<Location>, Option<PathBuf>) {
 fn handle_forwarded(args: Vec<String>, requests: &external_open::Requests, cx: &mut App) {
     match args.first().map(String::as_str) {
         None => reopen(cx),
+        Some(rile_services::autostart::BACKGROUND_FLAG) => {},
         Some(link) if link.starts_with("rile://") => {
             if let Some(link) = external_open::AppLink::parse(link) {
                 requests.dispatch_link(link);
@@ -161,18 +179,16 @@ fn main() {
         workspace::backups::run_agent();
         return;
     }
-    // Started at login by its agent: the backups menu bar / tray item.
-    #[cfg(any(target_os = "macos", windows))]
-    if std::env::args().any(|a| a == rile_backup::agent::MENU_FLAG) {
-        backup_menu::run();
-        return;
-    }
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    // Old login entries launch the unified app, never a second tray helper.
+    let args: Vec<String> = std::env::args().skip(1).map(|arg| {
+        if arg == rile_backup::agent::MENU_FLAG { rile_services::autostart::BACKGROUND_FLAG.into() } else { arg }
+    }).collect();
     // The uninstaller removes Rile's Explorer integration this way.
     #[cfg(windows)]
     if args.first().is_some_and(|a| a == "--unregister") {
         rile_services::file_manager::unregister_shell_integration().ok();
         rile_backup::agent::uninstall_all();
+        rile_services::autostart::set_enabled(false).ok();
         return;
     }
     // A second launch on Windows hands its arguments to the running Rile.
@@ -204,12 +220,8 @@ fn main() {
         .run(move |cx: &mut App| {
             gpui_kit::init(cx);
             actions::bind_keys(cx);
-            cx.on_action(|_: &actions::Quit, cx| {
-                if let Some(ws) = cx.try_global::<views::WorkspaceHandle>().and_then(|h| h.0.upgrade()) {
-                    ws.update(cx, |ws, cx| ws.on_quit(cx));
-                }
-                cx.quit();
-            });
+            cx.on_action(|_: &actions::Quit, cx| quit(cx));
+            background::install(cx);
 
             // Keep `rile://` and "Open in Rile" pointing at this executable
             // (zip installs move, updates replace it). Per-user only.
@@ -218,7 +230,8 @@ fn main() {
                 cx.background_executor().spawn(async { rile_services::file_manager::register_shell_integration().ok() }).detach();
             }
             let (start, reveal) = launch_target(&args);
-            open_workspace(start.unwrap_or(Location::Home), reveal, cx).expect("failed to open window");
+            let hidden = background::start_hidden(&args, cx);
+            open_workspace_with_visibility(start.unwrap_or(Location::Home), reveal, !hidden, cx).expect("failed to open window");
             requests.ready(cx);
             if args.first().and_then(|a| external_open::AppLink::parse(a)) == Some(external_open::AppLink::BackupSettings) {
                 show_backups(true, cx);
@@ -230,6 +243,15 @@ fn main() {
                 }
             })
             .detach();
-            cx.activate(true);
+            if !hidden {
+                cx.activate(true);
+            }
         });
+}
+
+fn quit(cx: &mut App) {
+    if let Some(ws) = cx.try_global::<views::WorkspaceHandle>().and_then(|h| h.0.upgrade()) {
+        ws.update(cx, |ws, cx| ws.on_quit(cx));
+    }
+    cx.quit();
 }

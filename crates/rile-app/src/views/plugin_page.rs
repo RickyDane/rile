@@ -245,7 +245,7 @@ impl Renderer<'_> {
             })));
         }
         v_flex().gap_3().p_4().rounded(px(12.)).border_1().border_color(ch.card_border)
-            .bg(linear_gradient(145., linear_color_stop(ch.card_top, 0.), linear_color_stop(ch.card_bottom, 1.)))
+            .bg(linear_gradient(150., linear_color_stop(ch.accent.opacity(0.055), 0.), linear_color_stop(ch.card_bottom, 0.75)))
             .child(h_flex().justify_between().gap_2()
                 .child(v_flex().gap_1().child(div().text_sm().font_weight(FontWeight::SEMIBOLD).child("Space map"))
                     .child(div().text_xs().text_color(ch.text_muted).child("Bigger bubbles take up more space")))
